@@ -30,7 +30,7 @@ export function EstateTable() {
   const actions = useCloudControlActions();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-tour="discover-estate">
       {clouds.map(cloud => {
         const cloudRegions = regions[cloud.id] || [];
         return (

@@ -34,7 +34,7 @@ export function NetOpsPage() {
         description="NetOps for AI — the network that acts, not just sees. The closed loop and the four capabilities it runs on."
       >
         {/* Loop banner */}
-        <div className="rounded-2xl border border-fw-secondary bg-fw-base px-5 py-4 space-y-3">
+        <div className="rounded-2xl border border-fw-secondary bg-fw-base px-5 py-4 space-y-3" data-tour="netops-loop">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-figma-sm font-medium text-fw-heading">
               Observe → Diagnose → Recommend → Act

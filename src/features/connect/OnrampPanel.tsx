@@ -30,7 +30,7 @@ export function OnrampPanel() {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-tour="connect-onramp">
       {onramps.map(onramp => {
         const preview = expanded === onramp.id && !onramp.active ? actions.previewOnramp(onramp.id) : null;
         return (

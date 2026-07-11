@@ -73,7 +73,7 @@ export function RulesPanel() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-tour="govern-rules">
       <div className="rounded-2xl border border-fw-secondary bg-fw-base overflow-hidden">
         <div className="flex items-center gap-3 px-5 py-3 border-b border-fw-secondary bg-fw-wash">
           <AttIcon name="check-shield" className="h-5 w-5 text-fw-body" />

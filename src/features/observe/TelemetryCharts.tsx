@@ -42,7 +42,7 @@ export function TelemetryCharts() {
   const egressData = t.egress.map((e, i) => ({ i, pub: e.pub, priv: e.priv }));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-tour="observe-telemetry">
       <div className="rounded-2xl border border-fw-secondary bg-fw-base overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-fw-secondary bg-fw-wash">
           <span className="font-medium text-fw-heading">Latency by region</span>

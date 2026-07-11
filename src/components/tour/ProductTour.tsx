@@ -10,6 +10,10 @@ export interface TourStep {
   placement?: 'top' | 'bottom' | 'left' | 'right' | 'center';
   highlightPadding?: number;
   scrollIntoView?: boolean;
+  /** Optional route this step lives on. ProductTour itself is route-agnostic
+   * (it only knows the DOM) — a consumer that spans multiple pages can read
+   * this off the step passed to `onStepChange` and navigate there. */
+  route?: string;
   action?: {
     label: string;
     onClick: () => void;
@@ -22,9 +26,13 @@ interface ProductTourProps {
   onClose: () => void;
   onComplete: () => void;
   storageKey?: string;
+  /** Fires whenever the active step changes (including the initial step when
+   * the tour opens). Lets a multi-page tour navigate to `step.route` before
+   * the spotlight looks for `step.targetSelector` on the new page. */
+  onStepChange?: (step: TourStep, index: number) => void;
 }
 
-export function ProductTour({ steps, isOpen, onClose, onComplete, storageKey = 'product-tour-completed' }: ProductTourProps) {
+export function ProductTour({ steps, isOpen, onClose, onComplete, storageKey = 'product-tour-completed', onStepChange }: ProductTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
@@ -33,6 +41,13 @@ export function ProductTour({ steps, isOpen, onClose, onComplete, storageKey = '
   const step = steps[currentStep];
   const isLastStep = currentStep === steps.length - 1;
   const progress = ((currentStep + 1) / steps.length) * 100;
+
+  useEffect(() => {
+    if (isOpen && step) {
+      onStepChange?.(step, currentStep);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, currentStep, step]);
 
   useEffect(() => {
     if (!isOpen || !step?.targetSelector) {

@@ -14,7 +14,7 @@ export function TokenPolicies() {
   const actions = useCloudControlActions();
 
   return (
-    <div className="rounded-2xl border border-fw-secondary bg-fw-base overflow-hidden">
+    <div className="rounded-2xl border border-fw-secondary bg-fw-base overflow-hidden" data-tour="aifabric-policies">
       <div className="flex items-center gap-3 px-5 py-3 border-b border-fw-secondary bg-fw-wash">
         <AttIcon name="apis" className="h-5 w-5 text-fw-body" />
         <span className="font-medium text-fw-heading">Token policies</span>

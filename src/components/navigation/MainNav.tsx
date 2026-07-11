@@ -10,6 +10,7 @@ import { UserMenu } from './UserMenu';
 import { MobileMenu } from './MobileMenu';
 import { AdaptiveNavigation } from './AdaptiveNavigation';
 import { TenantSelector } from './TenantSelector';
+import { TourLauncher } from '../../features/tour/TourLauncher';
 import { NAV_ITEMS } from './navItems';
 import { TabItem } from '../../types/navigation';
 import { Button } from '../common/Button';
@@ -248,6 +249,8 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
                 <SearchBar onSearch={onSearch} />
                 <div className="h-5 w-px bg-fw-secondary hidden xl:block" />
                 <HelpButton />
+                <div className="h-5 w-px bg-fw-secondary hidden xl:block" />
+                <TourLauncher />
                 <div className="h-5 w-px bg-fw-secondary hidden xl:block" />
                 <NotificationsButton count={notifications} />
                 <div className="h-5 w-px bg-fw-secondary hidden xl:block" />
