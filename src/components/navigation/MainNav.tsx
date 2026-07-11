@@ -181,7 +181,7 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
             </div>
 
             {/* Desktop Navigation */}
-            <div className="hidden min-[1280px]:flex min-[1280px]:items-center min-[1280px]:h-full ml-4 gap-1">
+            <div className="hidden min-[1280px]:flex min-[1280px]:items-center min-[1280px]:h-full ml-6 gap-3 min-[1440px]:gap-5 min-[1680px]:gap-7">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const disabled = isNavDisabled(item.href);
