@@ -5,6 +5,8 @@ import { AttIcon } from '../../components/icons/AttIcon';
 import { useCloudControl } from '../../engine/react/useCloudControl';
 import { TelemetryCharts } from './TelemetryCharts';
 import { EventStream } from './EventStream';
+import { TokenCharts } from './TokenCharts';
+import { AppsPanel } from './AppsPanel';
 
 type ObserveTab = 'telemetry' | 'applications';
 
@@ -42,17 +44,13 @@ export function ObservePage() {
 
             <TelemetryCharts />
 
+            <TokenCharts />
+
             <EventStream />
           </div>
         )}
 
-        {activeTab === 'applications' && (
-          <div className="rounded-2xl border border-dashed border-fw-secondary px-5 py-10 text-center">
-            <p className="text-figma-sm text-fw-bodyLight">
-              Application-level insight (per-app egress, top talkers) lands in Task 3.4.
-            </p>
-          </div>
-        )}
+        {activeTab === 'applications' && <AppsPanel />}
       </PageSection>
     </div>
   );
