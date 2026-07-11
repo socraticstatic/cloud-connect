@@ -12,7 +12,9 @@ describe('ConnectPage', () => {
       </MemoryRouter>
     );
     const inactive = CC.onramps.find((o: { active: boolean }) => !o.active)!;
-    expect(screen.getByText(new RegExp(inactive.name, 'i'))).toBeInTheDocument();
+    // getAllByText: the on-ramp's name now also appears as a node label in the
+    // route topology SVG mounted below the panel (Task 2.2).
+    expect(screen.getAllByText(new RegExp(inactive.name, 'i')).length).toBeGreaterThan(0);
 
     const btn = screen.getAllByRole('button', { name: /attach|provision/i })[0];
     fireEvent.click(btn);
