@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useState, useEffect, Suspense, lazy, memo } from 'react';
 import { startLmccLifecycleClock } from './data/lmccLifecycleClock';
+import { restoreFromLocation } from './features/share/shareLink';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -351,6 +352,8 @@ function LegacyHubRedirect() {
 function App() {
   // Demo lifecycle clock: Provisioning resolves to Live; reduced paths self-heal.
   useEffect(() => { startLmccLifecycleClock(useStore); }, []);
+  // Replay a shared session (?s=... — router-safe under HashRouter) once on mount.
+  useEffect(() => { restoreFromLocation(); }, []);
   const navigate = useNavigate();
   const location = useLocation();
   const connections = useStore(state => state.connections);

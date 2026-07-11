@@ -95,6 +95,7 @@ export interface CloudControl {
   // --- share (state-share.js) ---
   shareUrl(): string;
   serialize(): string;
+  hydrate(): boolean;
 
   // catch-all for the rest of the ported surface not yet typed
   [key: string]: any;

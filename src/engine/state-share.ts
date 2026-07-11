@@ -2,8 +2,13 @@
 /* Cloud Control - grounded answers + shareable sessions.
    Loads LAST of the state modules: hydrate() replays a shared session
    through the real mutations, so every engine it touches (rules,
-   custom policies, fixes, sim) must already exist - and it must run
-   before any UI script renders. Script order guarantees both. */
+   custom policies, fixes, sim) must already exist by the time it runs.
+   Load order guarantees that. Unlike the original vanilla-JS build,
+   hydrate() is NOT auto-invoked at module load - the app runs under
+   HashRouter now, and calling it before React mounts would race the
+   router's own history handling. Instead the React shell calls
+   restoreFromLocation() (src/features/share/shareLink.ts) once on app
+   mount, which delegates to CC.hydrate() below. */
 (function(CC){
 const _=CC._;
 const {onramps,fixes,sim}=CC;
@@ -60,8 +65,16 @@ function answerFor(text){
 
 /* ---------------- shareable session state ----------------
    Only DELTAS from the pristine model travel: attached on-ramp ids,
-   fix flags, custom policies, active sim. Compact JSON -> base64url
-   in location.hash so a pasted link replays the session. */
+   fix flags, custom policies, active sim. Compact JSON -> base64url.
+
+   The app now runs under HashRouter (routes live at #/discover etc.), so
+   the payload can no longer ride location.hash the way the original
+   vanilla-JS build did - a pasted #s=... link would be swallowed by the
+   router as an unmatched route instead of reaching hydrate(). It travels
+   as a top-level ?s= query param instead: HashRouter never reads
+   location.search, so the param survives every client-side navigation
+   untouched, and a share link can still carry the current #/route after
+   it (?s=<payload>#/discover) so the recipient lands on the right page. */
 function serialize(){
   const d={
     o:onramps.filter(o=>o.active&&o.id!=='nb1').map(o=>o.id),
@@ -78,13 +91,15 @@ function serialize(){
 }
 function shareUrl(){
   const s=serialize();
-  return location.origin+location.pathname+(s?'#s='+s:'');
+  return location.origin+location.pathname+(s?'?s='+s:'')+location.hash;
 }
-function hydrate(){
-  const m=location.hash.match(/#s=([A-Za-z0-9_-]+)/);
-  if(!m)return false;
+/* Applies one decoded payload string against the live model. Shared by
+   hydrate() (below) and any router-safe caller (see the React bridge's
+   restoreFromLocation in src/features/share/shareLink.ts) that has already
+   pulled the raw ?s= value off the URL itself. */
+function applyShareData(raw){
   try{
-    const d=JSON.parse(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')));
+    const d=JSON.parse(atob(raw.replace(/-/g,'+').replace(/_/g,'/')));
     if(!d||typeof d!=='object'||Array.isArray(d))throw new Error('share payload is not an object');
     (d.o||[]).forEach(id=>CC.activateOnramp(id,true));
     (d.o||[]).forEach(id=>{const o=onramps.find(x=>x.id===id);if(o)o.targets.forEach(([cid,rid])=>{const k=cid+'/'+rid;if(!_.sessionAttached.includes(k))_.sessionAttached.push(k);});});
@@ -105,9 +120,22 @@ function hydrate(){
     if(d.s){const o=onramps.find(x=>x.id===d.s);if(o&&o.active)sim.onrampId=d.s;}
     _.hist.push({label:'Restored shared session',posture:CC.posture()});
     return true;
-  }catch(e){console.warn('bad share hash',e);return false;}
+  }catch(e){console.warn('bad share payload',e);return false;}
 }
-hydrate(); // before any page renders - script order guarantees this
+let hydrated=false;
+/* Router-safe restore entry point: reads ?s= off location.search (ignored
+   by HashRouter), falling back to the legacy #s= hash form so any link
+   copied before this change still replays. Guarded so a caller invoking
+   this from a React mount effect can't double-apply the same payload. */
+function hydrate(){
+  if(hydrated)return false;
+  const q=new URLSearchParams(location.search).get('s');
+  if(q){hydrated=true;return applyShareData(q);}
+  const m=location.hash.match(/#s=([A-Za-z0-9_-]+)/);
+  if(!m)return false;
+  hydrated=true;
+  return applyShareData(m[1]);
+}
 
 /* emulated-AI streaming: think, then type. Strips to text while
    streaming, swaps in the full html at the end. */
@@ -126,5 +154,5 @@ function stream(elm,html,done){
   },420);
 }
 
-Object.assign(CC,{answerFor,serialize,shareUrl,stream});
+Object.assign(CC,{answerFor,serialize,shareUrl,hydrate,stream});
 })(window.CC);
