@@ -87,7 +87,7 @@ export function NetworkAI({
       
       switch(step) {
         case 0: // Initial question about network purpose
-          newMessage = `👋 Hello! I'm Niva, your NetBond Advanced AI Assistant. I'll help you create the optimal cloud connection. Based on your organization profile, I recommend considering **AWS** or **Azure** as they match your business needs. What type of workloads will you be running?`;
+          newMessage = `👋 Hello! I'm Niva, your Cloud Connect AI Assistant. I'll help you create the optimal cloud connection. Based on your organization profile, I recommend considering **AWS** or **Azure** as they match your business needs. What type of workloads will you be running?`;
           break;
           
         case 1: // Connection type
@@ -185,7 +185,7 @@ export function NetworkAI({
           response += `\n\nWould you like me to select AWS for you?`;
         }
       } else if (step === 1) {
-        response = `For connecting to ${provider}, I recommend using "Internet to Cloud" connection type. It offers a good balance of security, performance, and cost. This type uses the secure AT&T NetBond Advanced service to provide reliable connectivity over the internet to your cloud resources.`;
+        response = `For connecting to ${provider}, I recommend using "Internet to Cloud" connection type. It offers a good balance of security, performance, and cost. This type uses the secure AT&T Cloud Connect service to provide reliable connectivity over the internet to your cloud resources.`;
       } else if (step === 2) {
         response = `Based on your workload profile and connection type, I recommend **10 Gbps** bandwidth in the **US East** region. This provides optimal performance for your applications while maintaining cost efficiency. This configuration will support approximately 8,500 concurrent users with your current application profile.`;
       }
@@ -204,7 +204,7 @@ export function NetworkAI({
       response = `Bandwidth determines the maximum amount of data that can flow through your connection at once. Here's a guideline:\n\n**1 Gbps**: Suitable for small businesses with < 100 users\n**10 Gbps**: Mid-size organizations with 100-1000 users\n**100 Gbps**: Large enterprises with 1000+ users or data-intensive workloads\n\nAnalyzing your traffic patterns, I recommend 10 Gbps for optimal performance.`;
     }
     else if (userQuestion.toLowerCase().includes('security') || userQuestion.toLowerCase().includes('encrypt')) {
-      response = `All AT&T NetBond Advanced connections include enterprise-grade security features:\n\n- AES-256 encryption\n- DDoS protection\n- Private connectivity that doesn't traverse the public internet\n- Integrated firewall capabilities\n\nThe connection you're configuring meets financial industry compliance requirements including PCI-DSS, SOX, and GDPR.`;
+      response = `All AT&T Cloud Connect connections include enterprise-grade security features:\n\n- AES-256 encryption\n- DDoS protection\n- Private connectivity that doesn't traverse the public internet\n- Integrated firewall capabilities\n\nThe connection you're configuring meets financial industry compliance requirements including PCI-DSS, SOX, and GDPR.`;
     }
     else if (userQuestion.toLowerCase().includes('cost') || userQuestion.toLowerCase().includes('price') || userQuestion.toLowerCase().includes('pricing')) {
       let pricing = "Pricing depends on connection type, bandwidth, and billing plan. ";
@@ -220,7 +220,7 @@ export function NetworkAI({
     else {
       // Generic responses based on step
       if (step === 0) {
-        response = `I can help you select the ideal cloud provider for your needs. I recommend analyzing your workload characteristics, compliance requirements, and existing technology investments. ${provider || 'AWS, Azure, and Google Cloud'} all offer excellent connectivity options through AT&T NetBond Advanced.`;
+        response = `I can help you select the ideal cloud provider for your needs. I recommend analyzing your workload characteristics, compliance requirements, and existing technology investments. ${provider || 'AWS, Azure, and Google Cloud'} all offer excellent connectivity options through AT&T Cloud Connect.`;
       } else if (step === 1) {
         response = `The connection type determines how your network traffic flows between your infrastructure and the cloud provider. For most enterprise use cases, "Internet to Cloud" provides the best balance of security, performance, and cost.`;
       } else if (step === 2) {
@@ -335,7 +335,7 @@ export function NetworkAI({
             </div>
             <div>
               <h3 className="text-figma-base font-medium">Niva</h3>
-              <p className="text-figma-sm text-white/70">NetBond Advanced AI Assistant</p>
+              <p className="text-figma-sm text-white/70">Cloud Connect AI Assistant</p>
             </div>
           </div>
           <button

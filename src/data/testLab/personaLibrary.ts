@@ -46,7 +46,7 @@ export const PERSONA_LIBRARY: LibraryPersona[] = [
     title: 'Technical Seller',
     characterName: 'Dre Whitfield',
     rbacRole: 'ClientAdmin',
-    bio: 'You are an AT&T technical seller demoing NetBond Advanced to a skeptical enterprise prospect this afternoon. Everything must look effortless — you need to know every click before they see it.',
+    bio: 'You are an AT&T technical seller demoing Cloud Connect to a skeptical enterprise prospect this afternoon. Everything must look effortless — you need to know every click before they see it.',
     goal: 'Rehearse a flawless end-to-end demo: from empty state to a live connection with monitoring you can show off.',
     suggestedTemplateIds: ['demo-end-to-end', 'find-connection-entry', 'interpret-order-status', 'exec-health-read', 'locate-glossary'],
   },

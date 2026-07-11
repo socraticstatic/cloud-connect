@@ -107,7 +107,7 @@ export function HelpResourcesPage() {
                 </div>
 
                 <h2 className="text-[24px] font-bold text-white tracking-[-0.03em] mb-3">
-                  Meet Niva, Your NetBond Advanced AI Assistant
+                  Meet Niva, Your Cloud Connect AI Assistant
                 </h2>
 
                 <p className="text-[14px] font-medium text-white/80 mb-6 max-w-2xl tracking-[-0.03em]">

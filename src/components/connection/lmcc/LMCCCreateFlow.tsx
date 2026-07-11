@@ -119,7 +119,7 @@ export function LMCCCreateFlow({ isOpen, onClose, onKeyGenerated }: LMCCCreateFl
                   </span>
                 </span>
               </div>
-              <p className="text-figma-xs text-fw-bodyLight">AT&T NetBond Advanced Max — generate key to take to AWS</p>
+              <p className="text-figma-xs text-fw-bodyLight">AT&T Cloud Connect — generate key to take to AWS</p>
             </div>
           </div>
 

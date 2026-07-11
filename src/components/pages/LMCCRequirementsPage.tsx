@@ -1277,7 +1277,7 @@ export default function LMCCRequirementsPage() {
           <div className="md:col-span-2 p-3 rounded-xl border border-fw-secondary bg-fw-wash flex items-start gap-2">
             <Zap className="h-3.5 w-3.5 text-fw-bodyLight shrink-0 mt-0.5" />
             <p className="text-figma-xs text-fw-bodyLight">
-              <strong className="text-fw-body">Post-GA (EPIC 08):</strong> Automated ActivationKey handoff eliminates the manual portal-to-portal key transfer entirely. Customers will no longer copy-paste keys between AWS Console and NetBond® Advanced.
+              <strong className="text-fw-body">Post-GA (EPIC 08):</strong> Automated ActivationKey handoff eliminates the manual portal-to-portal key transfer entirely. Customers will no longer copy-paste keys between AWS Console and Cloud Connect.
             </p>
           </div>
         </div>

@@ -172,7 +172,7 @@ function AppMockup() {
       <div className="flex items-center justify-between px-6 h-12" style={{ background: '#f8fafb', borderBottom: '1px solid #dcdfe3' }}>
         <div className="flex items-center gap-2">
           <span className="text-[12px] font-bold" style={{ color: '#009fdb' }}>AT&amp;T</span>
-          <span className="text-[12px] font-bold" style={{ color: '#1d2329' }}>NetBond® Advanced</span>
+          <span className="text-[12px] font-bold" style={{ color: '#1d2329' }}>Cloud Connect</span>
         </div>
         <div className="flex items-center gap-6">
           {['Create', 'Manage', 'Monitor', 'Configure'].map((item) => (
@@ -1352,7 +1352,7 @@ export function ExecutiveBriefPage() {
         <div className="flex items-center gap-3">
           <AttIcon name="hub" className="w-5 h-5" style={{ color: '#009fdb' }} />
           <span className="text-[13px] font-bold" style={{ color: '#1d2329' }}>
-            AT&amp;T NetBond® Advanced
+            AT&amp;T Cloud Connect
           </span>
           <span className="text-[12px] font-medium px-2 py-0.5 rounded" style={{ background: '#f0f4ff', color: '#0057b8' }}>
             Executive Brief

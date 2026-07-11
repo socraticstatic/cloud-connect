@@ -256,7 +256,7 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
                 Sign Out
               </button>
               <div className="mt-4 text-center text-figma-sm text-fw-bodyLight">
-                <p className="font-semibold text-fw-heading">AT&T NetBond® Advanced • v2.0.1</p>
+                <p className="font-semibold text-fw-heading">AT&T Cloud Connect • v2.0.1</p>
                 <p className="mt-1">© 2025 AT&T Intellectual Property. All rights reserved.</p>
               </div>
             </div>

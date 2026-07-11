@@ -314,7 +314,7 @@ export function NetBondMax_Modal_CustomerDemo() {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="AT&T NetBond Advanced Max"
+      aria-label="AT&T Cloud Connect"
       className={`fixed inset-0 z-[60] flex flex-col items-center justify-center gap-3 p-4 transition-opacity duration-280 ${
         visible ? 'opacity-100' : 'opacity-0 pointer-events-none'
       }`}

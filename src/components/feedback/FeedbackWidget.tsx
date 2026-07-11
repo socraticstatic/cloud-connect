@@ -111,7 +111,7 @@ function logFeedback(type: FeedbackType, data: Record<string, unknown>) {
   // 3. Email dispatch via mailto (prototype mode)
   //    In production: replace with fetch() to your email API / SendGrid / etc.
   try {
-    const subject = encodeURIComponent(`[NetBond Advanced] ${type.charAt(0).toUpperCase() + type.slice(1)} Feedback — ${entry.id}`);
+    const subject = encodeURIComponent(`[Cloud Connect] ${type.charAt(0).toUpperCase() + type.slice(1)} Feedback — ${entry.id}`);
     const bodyLines = [
       `Feedback ID: ${entry.id}`,
       `Type: ${type}`,
@@ -315,7 +315,7 @@ export function FeedbackWidget({ onStartTour }: { onStartTour?: () => void }) {
                       </button>
                     </div>
                     <p className="text-[13px] text-fw-bodyLight mb-4">
-                      How would you like to help improve NetBond Advanced?
+                      How would you like to help improve Cloud Connect?
                     </p>
                     {feedbackTypes.map((type) => {
                       const Icon = type.icon;
@@ -522,7 +522,7 @@ export function FeedbackWidget({ onStartTour }: { onStartTour?: () => void }) {
                   >
                     <div>
                       <p className="text-[13px] font-medium text-fw-heading mb-1">
-                        How likely are you to recommend NetBond Advanced to a colleague?
+                        How likely are you to recommend Cloud Connect to a colleague?
                       </p>
                       <p className="text-[11px] text-fw-bodyLight mb-4">0 = Not at all likely, 10 = Extremely likely</p>
                       <div className="grid grid-cols-11 gap-1">

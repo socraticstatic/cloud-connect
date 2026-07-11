@@ -211,7 +211,7 @@ export function NotificationsShowcasePage() {
           Notification System
         </h1>
         <p className="text-figma-base text-fw-bodyLight mt-1 tracking-[-0.03em]">
-          AT&T NetBond Advanced — FLYWHEEL-compliant notification patterns. Trigger each type to preview behavior.
+          AT&T Cloud Connect — FLYWHEEL-compliant notification patterns. Trigger each type to preview behavior.
         </p>
       </div>
 

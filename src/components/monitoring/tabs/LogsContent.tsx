@@ -223,7 +223,7 @@ function LogsContent({ selectedConnection, connections }: LogsContentProps) {
       user: 'system',
       connectionId: 'conn-lmcc-1',
       metadata: { metro: 'San Jose, CA', paths: 4 },
-      details: 'NetBond Advanced Max provisioning workflow started. Four AWS Interconnect – last mile connections are being configured across two colocation PoPs in San Jose, CA, providing full path redundancy.',
+      details: 'Cloud Connect provisioning workflow started. Four AWS Interconnect – last mile connections are being configured across two colocation PoPs in San Jose, CA, providing full path redundancy.',
       correlationId: 'COR-20260701-LMCC-001',
       rawPayload: {
         event: 'provisioning.aws_max.initiated',

@@ -52,7 +52,7 @@ export function AWSPendingConfigModal({ connection, isOpen, onClose }: AWSPendin
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="AT&T NetBond Advanced Max — Pending Activation"
+      title="AT&T Cloud Connect — Pending Activation"
       size="xl"
     >
       <div className="space-y-6">
@@ -64,7 +64,7 @@ export function AWSPendingConfigModal({ connection, isOpen, onClose }: AWSPendin
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-figma-xs font-semibold text-fw-heading uppercase tracking-wider">AT&T NetBond Advanced Max</span>
+                <span className="text-figma-xs font-semibold text-fw-heading uppercase tracking-wider">AT&T Cloud Connect</span>
                 <span className="px-2 py-0.5 text-figma-xs font-medium text-fw-active rounded bg-fw-active/[0.16]">
                   Internet to Cloud
                 </span>

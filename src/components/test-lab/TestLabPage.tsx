@@ -70,7 +70,7 @@ export default function TestLabPage() {
           <h1 className="text-figma-2xl font-bold text-fw-heading tracking-[-0.03em]">Feature testing session</h1>
         </div>
         <p className="text-figma-base text-fw-body mb-8">
-          You've been invited to try out new NetBond Advanced features. Enter your invite code to begin —
+          You've been invited to try out new Cloud Connect features. Enter your invite code to begin —
           the whole session takes about 15 minutes.
         </p>
         {noStudies ? (

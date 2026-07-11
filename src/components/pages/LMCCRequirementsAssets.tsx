@@ -11,7 +11,7 @@ interface ErrorBannerProps {
 
 function ErrorBanner({
   type,
-  connectionName = 'NetBond Advanced Max — San Jose, CA',
+  connectionName = 'Cloud Connect — San Jose, CA',
   caseRef = 'ATT-20260506-84291',
 }: ErrorBannerProps) {
   const [dismissed, setDismissed] = useState(false);
@@ -152,11 +152,11 @@ function EmailPreview({
         <div className="flex-1 min-w-0 space-y-0.5">
           <div className="flex items-center gap-2 text-figma-xs text-fw-bodyLight">
             <span className="font-medium text-fw-body">From:</span>
-            <span>AT&T NetBond Advanced &lt;noreply@netbond.att.com&gt;</span>
+            <span>AT&T Cloud Connect &lt;noreply@netbond.att.com&gt;</span>
           </div>
           <div className="flex items-center gap-2 text-figma-xs text-fw-bodyLight">
             <span className="font-medium text-fw-body">Subject:</span>
-            <span className="font-medium text-fw-heading">Your AT&T NetBond® Advanced Max connection is live — {metro}</span>
+            <span className="font-medium text-fw-heading">Your AT&T Cloud Connect connection is live — {metro}</span>
           </div>
         </div>
         <button
@@ -245,7 +245,7 @@ function EmailPreview({
                   className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full text-white text-figma-base font-bold"
                   style={{ backgroundColor: '#009fdb' }}
                 >
-                  View connection in NetBond Advanced
+                  View connection in Cloud Connect
                   <ArrowRight className="h-4 w-4" />
                 </a>
               </div>
@@ -267,7 +267,7 @@ function EmailPreview({
               <div className="flex items-center gap-4 text-figma-sm text-gray-500 font-medium">
                 <a href="/manage" className="hover:text-gray-800 hover:underline flex items-center gap-1.5 transition-colors">
                   <ExternalLink className="h-3.5 w-3.5" />
-                  NetBond Advanced Portal
+                  Cloud Connect
                 </a>
                 <a href="tel:18002220300" className="hover:text-gray-800 hover:underline flex items-center gap-1.5 transition-colors">
                   <Phone className="h-3.5 w-3.5" />
@@ -633,7 +633,7 @@ const REQUIREMENT_SECTIONS: RequirementSection[] = [
     title: 'Email Notification',
     items: [
       { id: 'r33', label: 'Sent when all 4 paths reach Live status', detail: 'Coordination with AT&T comms — no duplicate with AWS notification. Should Have | GA.', where: 'Secondary Assets → Live Connection Email Notification' },
-      { id: 'r34', label: 'AT&T NetBond® Advanced branding', detail: 'AT&T globe logo + product wordmark', where: 'Email preview header' },
+      { id: 'r34', label: 'AT&T Cloud Connect branding', detail: 'AT&T globe logo + product wordmark', where: 'Email preview header' },
       { id: 'r35', label: 'Connection details in email', detail: 'Metro, Bandwidth × 4 paths, AT&T Account Email, Transport', where: 'Email preview → Connection Summary table' },
       { id: 'r36', label: 'Billing start notice', detail: 'Billing timing + Preview/GA distinction', where: 'Email preview → What happens next' },
     ],
@@ -653,7 +653,7 @@ const REQUIREMENT_SECTIONS: RequirementSection[] = [
       { id: 'r-bl02', label: 'deferProvisioning pattern for Flow 04 (Active vs. Deferring Provider)', detail: 'Open decision from 04092026 PRD: AT&T is the Active Provider by default in Flow 04, but may use deferProvisioning=true to hand the role to AWS. The team must decide which pattern to implement before EPIC 4 is built.', where: 'Engineering decision required before EPIC 4', status: 'blocked', addedDate: '2026-05-07' },
       { id: 'r-bl03', label: 'MACsec key management ownership split (GA)', detail: 'macsecManagerProvider is readOnly per channel. AT&T and AWS must agree on key management ownership (AT&T all, AWS all, or 50/50 split) before GA. 50/50 is the recommended default. Hard gate: all 4 channels must have MACsec active before GA connections are made available.', where: 'Engineering decision required before GA — not visible in demo', status: 'blocked', addedDate: '2026-05-07' },
       { id: 'r-bl04', label: 'Key reminder timing before expiry — Flow 03', detail: 'If the customer generates a key but has not taken it to AWS after several days, does the portal show a reminder warning? Is there a warning threshold before the 7-day deadline? No timing or trigger defined in either source document. Reminder copy and threshold require product decision.', where: 'Not yet designed — requires product decision on timing threshold', status: 'blocked', addedDate: '2026-05-11' },
-      { id: 'r-bl05', label: 'AWS-portal-created connections visible in AT&T portal?', detail: 'If a customer creates a connection via the AWS portal (Flow 04), does it appear in the AT&T NetBond Advanced connection list? Connection list design depends on this. If yes, the list must show connections originating from either portal.', where: 'Engineering decision required — impacts connection list design', status: 'blocked', addedDate: '2026-05-11' },
+      { id: 'r-bl05', label: 'AWS-portal-created connections visible in AT&T portal?', detail: 'If a customer creates a connection via the AWS portal (Flow 04), does it appear in the AT&T Cloud Connect connection list? Connection list design depends on this. If yes, the list must show connections originating from either portal.', where: 'Engineering decision required — impacts connection list design', status: 'blocked', addedDate: '2026-05-11' },
       { id: 'r-bl06', label: 'Business Center contracting step at GA — portal handoff design', detail: 'At GA, customers sign contracts via digital self-service in Business Center. If contracting is embedded in the onboarding journey, what does the handoff from the NetBond portal to Business Center look and feel like? No design spec defined.', where: 'Requires AT&T Product + Business Center team decision before GA', status: 'blocked', addedDate: '2026-05-11' },
     ],
   },
@@ -965,7 +965,7 @@ const DESIGN_PRINCIPLES = [
   {
     icon: Network,
     title: 'One portal, two entry paths',
-    body: 'AT&T NetBond Advanced is a single application. Flow 03 (AT&T-first) and Flow 04 (AWS-first) are entry paths — not separate products, not separate portals. Design must not distinguish between the two personas once inside.',
+    body: 'AT&T Cloud Connect is a single application. Flow 03 (AT&T-first) and Flow 04 (AWS-first) are entry paths — not separate products, not separate portals. Design must not distinguish between the two personas once inside.',
     source: 'LMCC Design Brief 04212026, Section 2',
   },
   {
@@ -1140,7 +1140,7 @@ const PERSONAS = [
       'Sign in to AT&T Business Center',
       'Sign LMCC contract in Business Center',
       'Provisioning role assigned by account admin',
-      'Access granted to NetBond Advanced portal',
+      'Access granted to Cloud Connect',
     ],
     dependency: 'Must hold the connection provisioning role. Users without it are completely blocked and directed to their account admin. No workaround.',
     source: 'LMCC Product Notes 04092026, Section 4',
@@ -1154,7 +1154,7 @@ const PERSONAS = [
       'Create AT&T Business account',
       'Sign LMCC contract in Business Center',
       'Provisioning role assigned during account setup',
-      'Access granted to NetBond Advanced portal',
+      'Access granted to Cloud Connect',
     ],
     dependency: 'Account creation and contracting must complete quickly — onboarding momentum is a requirement. A slow handoff between account creation and portal access is a design risk.',
     source: 'LMCC Product Notes 04092026, Section 4',
@@ -1191,7 +1191,7 @@ const FUTURE_LMCCS = [
     status: 'In development',
     statusColor: 'text-fw-link',
     statusBg: 'bg-fw-accent border-fw-active/30',
-    product: 'AT&T NetBond Advanced Max',
+    product: 'AT&T Cloud Connect',
     api: 'Connection Coordinator API (AWS)',
     preview: 'June 30, 2026',
     ga: 'November 16, 2026',
@@ -1251,7 +1251,7 @@ export function ProductDesignStrategy() {
                 <span className="text-tag-xs font-semibold uppercase tracking-wide text-fw-error bg-fw-errorLight px-1.5 py-0.5 rounded">Unconfirmed</span>
               </p>
               <p className="text-figma-xs text-fw-body leading-relaxed">
-                <strong className="text-fw-heading">"AT&T NetBond® Advanced Max"</strong> has not been confirmed by AT&T Brand or Product. Do not use this name in customer-facing copy, marketing, or external materials. Treat all references as a working title until the final name is locked.
+                <strong className="text-fw-heading">"AT&T Cloud Connect"</strong> has not been confirmed by AT&T Brand or Product. Do not use this name in customer-facing copy, marketing, or external materials. Treat all references as a working title until the final name is locked.
               </p>
               <p className="text-tag-xs text-fw-bodyLight mt-2 font-medium">Owner: AT&T Brand / Product Marketing</p>
             </div>
@@ -1437,7 +1437,7 @@ export function ProductDesignStrategy() {
           </div>
           <div className="p-5 space-y-4">
             <p className="text-figma-sm text-fw-body leading-relaxed">
-              AT&T NetBond Advanced uses a <strong className="text-fw-heading">Marketplace</strong> as the product discovery and entry point. Customers browse available cloud connectivity products, select the LMCC product, and click "Get Started" — which enters the connection creation flow.
+              AT&T Cloud Connect uses a <strong className="text-fw-heading">Marketplace</strong> as the product discovery and entry point. Customers browse available cloud connectivity products, select the LMCC product, and click "Get Started" — which enters the connection creation flow.
             </p>
             <div className="rounded-lg bg-fw-wash border border-fw-secondary p-4">
               <p className="text-[10px] font-semibold text-fw-bodyLight uppercase tracking-wider mb-3">Portal Entry Architecture</p>
@@ -1445,7 +1445,7 @@ export function ProductDesignStrategy() {
                 <div className="flex items-center gap-2 text-figma-xs text-fw-body flex-wrap">
                   <span className="px-2 py-1 rounded-md bg-fw-accent border border-fw-active/20 text-fw-link font-medium whitespace-nowrap">AT&T Business Center</span>
                   <ArrowRight className="h-3.5 w-3.5 text-fw-bodyLight shrink-0" />
-                  <span className="px-2 py-1 rounded-md bg-fw-accent border border-fw-active/20 text-fw-link font-medium whitespace-nowrap">NetBond Advanced Portal</span>
+                  <span className="px-2 py-1 rounded-md bg-fw-accent border border-fw-active/20 text-fw-link font-medium whitespace-nowrap">Cloud Connect</span>
                   <ArrowRight className="h-3.5 w-3.5 text-fw-bodyLight shrink-0" />
                   <span className="px-2 py-1 rounded-md bg-fw-wash border border-fw-secondary text-fw-body font-medium whitespace-nowrap">Marketplace → LMCC card</span>
                   <ArrowRight className="h-3.5 w-3.5 text-fw-bodyLight shrink-0" />
@@ -1456,7 +1456,7 @@ export function ProductDesignStrategy() {
                   <ArrowRight className="h-3.5 w-3.5 text-fw-bodyLight shrink-0" />
                   <span className="px-2 py-1 rounded-md bg-fw-wash border border-fw-secondary text-fw-body font-medium whitespace-nowrap">Generate ActivationKey</span>
                   <ArrowRight className="h-3.5 w-3.5 text-fw-bodyLight shrink-0" />
-                  <span className="px-2 py-1 rounded-md bg-fw-accent border border-fw-active/20 text-fw-link font-medium whitespace-nowrap">NetBond Advanced Portal</span>
+                  <span className="px-2 py-1 rounded-md bg-fw-accent border border-fw-active/20 text-fw-link font-medium whitespace-nowrap">Cloud Connect</span>
                   <ArrowRight className="h-3.5 w-3.5 text-fw-bodyLight shrink-0" />
                   <span className="px-2 py-1 rounded-md bg-fw-primary text-white font-medium whitespace-nowrap">Flow 04 — AWS-first</span>
                 </div>
@@ -1735,7 +1735,7 @@ export function ProductDesignStrategy() {
             <div className="space-y-2.5">
               {[
                 { label: 'Role', value: 'Enterprise network engineers or cloud infrastructure owners' },
-                { label: 'Account type', value: 'Existing NetBond Advanced customers or named Preview accounts' },
+                { label: 'Account type', value: 'Existing Cloud Connect customers or named Preview accounts' },
                 { label: 'AWS experience', value: 'Familiarity with AWS Interconnect – last mile or VPC networking (screener required)' },
                 { label: 'Sample size', value: '5 participants per flow per round (10 total per cohort stage)' },
                 { label: 'Recruitment', value: 'AT&T Customer Success team — Preview cohort first' },

@@ -33,8 +33,8 @@ export function AWSPartnerZone() {
     setKickoffConnection(null);
     window.addToast?.({
       type: 'success',
-      title: 'NetBond Advanced Max Live',
-      message: metro ? `NetBond Advanced Max in ${metro} is live across 4 paths.` : 'Connection is now live.',
+      title: 'Cloud Connect Live',
+      message: metro ? `Cloud Connect in ${metro} is live across 4 paths.` : 'Connection is now live.',
       duration: 5000,
     });
   };
@@ -107,7 +107,7 @@ export function AWSPartnerZone() {
       {activeConnections.length > 0 && (
         <div>
           <h3 className="text-figma-lg font-semibold text-fw-heading tracking-[-0.03em] mb-4">
-            Active NetBond Advanced Max Connections
+            Active Cloud Connect
             <span className="ml-2 px-2 py-1 bg-fw-cobalt-100 text-fw-link rounded-full text-figma-sm font-semibold">
               {activeConnections.length}
             </span>
@@ -146,7 +146,7 @@ export function AWSPartnerZone() {
       {pendingConnections.length > 0 && (
         <div>
           <h3 className="text-figma-lg font-semibold text-fw-heading tracking-[-0.03em] mb-4">
-            Pending NetBond Advanced Max Connections
+            Pending Cloud Connect
             <span className="ml-2 px-2 py-1 bg-fw-accent text-fw-link rounded-full text-figma-sm font-semibold">
               {pendingConnections.length}
             </span>
@@ -298,7 +298,7 @@ export function AWSPartnerZone() {
       <SideDrawer
         isOpen={showManagementDrawer}
         onClose={() => setShowManagementDrawer(false)}
-        title="AT&T NetBond® Advanced Max"
+        title="AT&T Cloud Connect"
         size="md"
         footer={
           <button
@@ -352,7 +352,7 @@ export function AWSPartnerZone() {
       <SideDrawer
         isOpen={showInitiateModal}
         onClose={() => { setShowInitiateModal(false); setSelectedMetro(null); setAwsAccountId(''); }}
-        title="Initiate NetBond Advanced Max"
+        title="Initiate Cloud Connect"
         size="lg"
         footer={
           <div className="flex items-center justify-between">

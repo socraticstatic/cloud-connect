@@ -54,7 +54,7 @@ export function StudyEditor({ study, onChange, onImport }: {
 
   const invitationBlurb = (code: string) => {
     const base = `${window.location.origin}${window.location.pathname}`;
-    return `You're invited to test ${study.feature} in AT&T NetBond Advanced.\n\n1. Open ${base}#/test-lab in a desktop browser\n2. Enter your invite code: ${code}\n3. The session takes about 15 minutes.\n\nThere are no wrong answers — we're testing the product, not you.`;
+    return `You're invited to test ${study.feature} in AT&T Cloud Connect.\n\n1. Open ${base}#/test-lab in a desktop browser\n2. Enter your invite code: ${code}\n3. The session takes about 15 minutes.\n\nThere are no wrong answers — we're testing the product, not you.`;
   };
 
   return (

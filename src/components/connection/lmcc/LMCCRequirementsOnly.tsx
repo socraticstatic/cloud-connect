@@ -190,7 +190,7 @@ export function LMCCRequirementsOnly({ isOpen, onClose, onStartSetup, onBuildFor
                   {stage === 'confirm' && 'Confirm Connection Details'}
                   {stage === 'error' && 'Cannot Activate Connection'}
                 </h2>
-                <p className="text-figma-xs text-fw-bodyLight">AT&T NetBond Advanced Max — Maximum Resiliency</p>
+                <p className="text-figma-xs text-fw-bodyLight">AT&T Cloud Connect — Maximum Resiliency</p>
               </div>
             </div>
           </div>

@@ -93,7 +93,7 @@ export interface BrandingConfig {
 }
 
 export const DEFAULT_BRANDING: BrandingConfig = {
-  productName: 'NetBond® Advanced',
+  productName: 'Cloud Connect',
   primaryColor: '#0057B8',
   accentColor: '#009FDB',
   fontFamily: 'Inter',

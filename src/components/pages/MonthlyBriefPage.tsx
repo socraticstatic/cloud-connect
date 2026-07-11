@@ -9,7 +9,7 @@ import { useStore } from '../../store/useStore';
 // except the two "live" product counts (active hubs / connections), which read
 // straight from the store so they always match the app.
 //
-// Product KPIs are DESIGN TARGETS, not live telemetry — NetBond Advanced is a
+// Product KPIs are DESIGN TARGETS, not live telemetry — Cloud Connect is a
 // stakeholder mock. They are labeled as such on the page. Do not present them
 // as measured numbers.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -262,7 +262,7 @@ export function MonthlyBriefPage() {
         <div className="flex items-center gap-3">
           <AttIcon name="hub" className="w-5 h-5" style={{ color: CYAN }} />
           <span className="text-[13px] font-bold" style={{ color: INK }}>
-            AT&amp;T NetBond® Advanced
+            AT&amp;T Cloud Connect
           </span>
           <span className="text-[12px] font-medium px-2 py-0.5 rounded" style={{ background: '#f0f4ff', color: BLUE }}>
             Monthly Brief
@@ -288,7 +288,7 @@ export function MonthlyBriefPage() {
           <div className="flex items-center gap-2 mb-5">
             <AttIcon name="hub" className="w-4 h-4" style={{ color: CYAN }} />
             <span className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.45)' }}>
-              AT&amp;T NetBond® Advanced · Experience Team
+              AT&amp;T Cloud Connect · Experience Team
             </span>
           </div>
 

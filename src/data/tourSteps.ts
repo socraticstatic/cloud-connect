@@ -3,7 +3,7 @@ import { TourStep } from '../components/tour/ProductTour';
 export const mainAppTour: TourStep[] = [
   {
     id: 'welcome',
-    title: 'Welcome to NetBond Advanced',
+    title: 'Welcome to Cloud Connect',
     description: 'This quick tour will help you understand the core concepts and navigation. You can skip this anytime or restart it later from the Help menu.',
     placement: 'center',
     scrollIntoView: false
@@ -108,11 +108,11 @@ export const mainAppTour: TourStep[] = [
   {
     id: 'complete',
     title: 'You\'re All Set!',
-    description: 'You now understand the core concepts: Connections contain Hubs, which have Links (VLANs), which can have VNFs attached. All running on physical IPE hardware. Start exploring and remember - help is always available! For a deeper dive, listen to our AI-generated podcast explaining the NetBond Advanced platform.',
+    description: 'You now understand the core concepts: Connections contain Hubs, which have Links (VLANs), which can have VNFs attached. All running on physical IPE hardware. Start exploring and remember - help is always available! For a deeper dive, listen to our AI-generated podcast explaining the Cloud Connect platform.',
     placement: 'center',
     scrollIntoView: false,
     action: {
-      label: 'Listen to NetBond Advanced Podcast',
+      label: 'Listen to Cloud Connect Podcast',
       onClick: () => window.open('https://notebooklm.google.com/notebook/cce60bb8-f532-4daf-a2d8-1fc2e4b3cf42?artifactId=65664b81-a3e4-491d-8a01-1e1f41dbff16', '_blank')
     }
   }

@@ -1,5 +1,5 @@
 {
-  "name": "netbond-advanced",
+  "name": "cloud-connect",
   "productName": "AT&T NetBond Advanced",
   "private": true,
   "version": "1.0.0",
@@ -60,6 +60,7 @@
     "electron": "^33.4.11",
     "electron-builder": "^25.1.8",
     "gh-pages": "^6.3.0",
+    "glob": "^13.0.6",
     "jsdom": "^29.0.1",
     "postcss": "^8.4.35",
     "rollup-plugin-visualizer": "^5.12.0",

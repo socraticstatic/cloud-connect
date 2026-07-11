@@ -98,7 +98,7 @@ export function LMCCOnboardingDrawer({
           </div>
           <div>
             <p className="text-figma-base font-semibold text-fw-heading">AWS Interconnect – last mile â Maximum Resiliency</p>
-            <p className="text-figma-xs text-fw-bodyLight">AT&T NetBond Advanced Max · {connection.metro.name}</p>
+            <p className="text-figma-xs text-fw-bodyLight">AT&T Cloud Connect · {connection.metro.name}</p>
           </div>
         </div>
 

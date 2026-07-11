@@ -34,7 +34,7 @@ export const mockTenants: Tenant[] = [
     connectionCount: 48,
     createdAt: '2023-01-15',
     lastActivity: '2025-11-12',
-    branding: { productName: 'NetBond® Advanced', primaryColor: '#0057B8', accentColor: '#009FDB', fontFamily: 'Inter' },
+    branding: { productName: 'Cloud Connect', primaryColor: '#0057B8', accentColor: '#009FDB', fontFamily: 'Inter' },
   },
   {
     id: 'TNT-002',

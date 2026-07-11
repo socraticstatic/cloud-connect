@@ -14,7 +14,7 @@ export function AwsMaxLocationStep({ selectedMetroId, onSelect }: AwsMaxLocation
           Select your AWS Interconnect – last mile metro
         </h3>
         <p className="text-figma-base text-fw-bodyLight">
-          AT&T NetBond Advanced Max connects via 4 hosted connections per metro.
+          AT&T Cloud Connect connects via 4 hosted connections per metro.
         </p>
       </div>
 

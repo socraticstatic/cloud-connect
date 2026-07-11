@@ -327,7 +327,7 @@ export function APIConfiguration() {
             <div>
               <h3 className="text-figma-lg font-bold text-fw-heading tracking-[-0.04em]">API Documentation</h3>
               <p className="text-figma-sm text-fw-bodyLight">
-                Learn how to integrate with NetBond Advanced APIs and webhooks
+                Learn how to integrate with Cloud Connect APIs and webhooks
               </p>
             </div>
           </div>

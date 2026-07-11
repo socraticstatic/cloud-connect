@@ -141,7 +141,7 @@ export function AdaptiveNavigation({
             <div className="p-4 border-b border-fw-secondary flex justify-between items-center sticky top-0 bg-fw-base z-10">
               <div className="flex items-center">
                 <span className="text-xl font-bold text-fw-heading">AT&T</span>
-                <span className="ml-3 text-xl font-bold text-fw-att-blue">NetBond® Advanced</span>
+                <span className="ml-3 text-xl font-bold text-fw-att-blue">Cloud Connect</span>
               </div>
               <button
                 onClick={onToggleMode}

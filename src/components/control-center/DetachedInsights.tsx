@@ -17,7 +17,7 @@ export function DetachedInsights() {
 
   // Update tab title to reflect widget count
   useEffect(() => {
-    document.title = `Insights — NetBond Advanced`;
+    document.title = `Insights — Cloud Connect`;
   }, []);
 
   useEffect(() => {
@@ -76,7 +76,7 @@ export function DetachedInsights() {
             Insights
           </span>
           <span className="text-[11px] text-fw-secondary">|</span>
-          <span className="text-[11px] text-fw-bodyLight">NetBond Advanced</span>
+          <span className="text-[11px] text-fw-bodyLight">Cloud Connect</span>
           {widgetCount > 0 && (
             <span className="inline-flex items-center gap-1 text-[10px] font-medium text-fw-bodyLight">
               <LayoutGrid className="h-3 w-3" />

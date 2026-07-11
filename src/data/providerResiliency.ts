@@ -1,5 +1,5 @@
 /**
- * NetBond Advanced Resiliency Tiers
+ * Cloud Connect Resiliency Tiers
  *
  * Three tiers (High removed per product requirements):
  *
