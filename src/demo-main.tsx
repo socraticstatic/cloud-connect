@@ -17,7 +17,7 @@ function DesignDisclaimer({ onDismiss }: { onDismiss: () => void }) {
             <div>
               <p className="text-figma-xs font-semibold text-fw-link uppercase tracking-[0.08em] mb-1.5">Product Design Assets</p>
               <h2 className="text-figma-2xl font-bold text-fw-heading tracking-[-0.03em] leading-tight">
-                Not part of the AT&T NetBond<sup className="text-sm font-semibold">®</sup> Advanced portal
+                Not part of the AT&T Cloud Connect portal
               </h2>
             </div>
           </div>
@@ -55,7 +55,7 @@ function DemoApp() {
       <div className="h-12 bg-fw-base border-b border-fw-secondary flex items-center px-6 gap-3 shrink-0 no-print">
         <span className="text-base font-bold tracking-[-0.03em] text-brand-accent">AT&T</span>
         <span className="text-base font-bold text-fw-heading tracking-[-0.03em]">
-          NetBond<sup className="text-[10px]">®</sup> Advanced
+          Cloud Connect
         </span>
         <span className="h-4 border-l border-fw-secondary" />
         <span className="text-figma-xs text-fw-bodyLight">LMCC Product Design Assets</span>

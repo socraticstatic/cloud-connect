@@ -29,7 +29,7 @@ export function LoginPage() {
 
           {/* Branding */}
           <h1 className="text-[48px] font-bold text-fw-heading tracking-[-0.03em] mb-10">
-            AT&T NetBond<span className="text-[32px] align-super">&reg;</span> Advanced
+            AT&T Cloud Connect
           </h1>
 
           {/* SSO Login buttons */}

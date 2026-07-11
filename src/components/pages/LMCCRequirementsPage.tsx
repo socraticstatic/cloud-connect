@@ -286,7 +286,7 @@ function FlowBWizard({
                   </span>
                 </span>
               </div>
-              <p className="text-figma-xs text-fw-bodyLight">AT&T NetBond<sup className="text-[8px]">®</sup> Advanced Max · 4-path resiliency</p>
+              <p className="text-figma-xs text-fw-bodyLight">AT&T Cloud Connect · 4-path resiliency</p>
             </div>
           </div>
           <div className="flex gap-1">

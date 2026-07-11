@@ -119,7 +119,7 @@ export function ReviewConfiguration({
 
   const [keyCopied, setKeyCopied] = useState(false);
   const [editingReviewName, setEditingReviewName] = useState(false);
-  const [localName, setLocalName] = useState(connectionName || 'NetBond Max — San Jose');
+  const [localName, setLocalName] = useState(connectionName || 'Cloud Connect — San Jose');
 
   /* ─────────────────────────────────────────────────────────────────
      AWS MAX LMCC — completely separate review experience
@@ -181,7 +181,7 @@ export function ReviewConfiguration({
                 <ExternalLink className="w-3 h-3" />
                 Next step: paste in AWS
               </span>
-              <span className="text-figma-xs text-fw-body">AT&amp;T NetBond<sup>®</sup> Advanced Max · Awaiting activation</span>
+              <span className="text-figma-xs text-fw-body">AT&amp;T Cloud Connect · Awaiting activation</span>
             </div>
           </div>
         </div>

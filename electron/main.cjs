@@ -7,7 +7,7 @@ function createWindow() {
     height: 900,
     minWidth: 1024,
     minHeight: 700,
-    title: 'AT&T NetBond Advanced',
+    title: 'AT&T Cloud Connect',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,

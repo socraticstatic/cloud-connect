@@ -12,7 +12,7 @@ export function MaintenancePage() {
         {/* Branding */}
         <div className="mb-10">
           <h2 className="text-[20px] font-bold text-fw-heading tracking-[-0.03em]">
-            AT&T NetBond<span className="text-[13px] align-super">&reg;</span> Advanced
+            AT&T Cloud Connect
           </h2>
         </div>
 

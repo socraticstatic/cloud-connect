@@ -185,7 +185,7 @@ function EmailPreview({
                 <div className="flex items-baseline gap-2 min-w-0">
                   <span className="text-[22px] font-bold tracking-[-0.03em] leading-none shrink-0" style={{ color: '#009fdb' }}>AT&T</span>
                   <span className="text-[22px] font-semibold text-gray-800 tracking-[-0.02em] leading-none whitespace-nowrap">
-                    NetBond<sup className="text-[11px]">®</sup> Advanced
+                    Cloud Connect
                   </span>
                 </div>
               </div>
@@ -673,7 +673,7 @@ const REQUIREMENT_SECTIONS: RequirementSection[] = [
     items: [
       { id: 'r-kpi01', label: 'Time-to-provision (TTP) < 5 minutes end-to-end', detail: 'From customer confirmation to BGP Active state — less than 5 minutes. Architecture card shows this as a design constraint.', where: 'Architecture card → TTP target stat' },
       { id: 'r-kpi02', label: '98% provisioning success rate', detail: '98% of automated workflows completed without generating a system error. Source: 04092026 PRD KPIs.', where: 'Not surfaced in demo — engineering SLA target, not customer-facing', status: 'pending', addedDate: '2026-05-11' },
-      { id: 'r-kpi03', label: '10% maximum resiliency attach rate target (12 months post-GA)', detail: '10% of new NetBond Standard and Advanced VNCs utilizing maximum resiliency within 12 months after GA. Source: 04092026 PRD KPIs.', where: 'Not surfaced in demo — business KPI tracked by AT&T product', status: 'pending', addedDate: '2026-05-11' },
+      { id: 'r-kpi03', label: '10% maximum resiliency attach rate target (12 months post-GA)', detail: '10% of new Cloud Connect Standard and Advanced VNCs utilizing maximum resiliency within 12 months after GA. Source: 04092026 PRD KPIs.', where: 'Not surfaced in demo — business KPI tracked by AT&T product', status: 'pending', addedDate: '2026-05-11' },
     ],
   },
   {
@@ -1932,7 +1932,7 @@ export function ProductDesignStrategy() {
             {
               metric: '10%',
               label: 'Maximum resiliency attach rate',
-              detail: '10% of new NetBond Standard and Advanced VNCs using maximum resiliency within 12 months of GA. A business KPI — not customer-facing, but it shapes what AT&T needs to make prominent vs. easy to discover.',
+              detail: '10% of new Cloud Connect Standard and Advanced VNCs using maximum resiliency within 12 months of GA. A business KPI — not customer-facing, but it shapes what AT&T needs to make prominent vs. easy to discover.',
               source: 'PRD Section 14',
             },
           ].map((kpi, i) => (

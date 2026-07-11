@@ -12,7 +12,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       <div className="h-12 bg-fw-base border-b border-fw-secondary flex items-center px-6 gap-3">
         <span className="text-base font-bold tracking-[-0.03em] text-brand-accent">AT&T</span>
         <span className="text-base font-bold text-fw-heading tracking-[-0.03em]">
-          NetBond<sup className="text-[10px]">®</sup> Advanced
+          Cloud Connect
         </span>
         <span className="h-4 border-l border-fw-secondary" />
         <span className="text-figma-xs text-fw-bodyLight">Test Lab</span>

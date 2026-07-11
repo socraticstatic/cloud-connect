@@ -126,7 +126,7 @@ export function OffboardingWizard() {
           <div className="flex items-center">
             <span className="text-base font-bold text-brand-accent tracking-[-0.03em]">AT&T</span>
             <span className="ml-2 text-base font-bold text-black tracking-[-0.03em]">
-              NetBond<sup className="text-[10px]">&reg;</sup> Advanced
+              Cloud Connect
             </span>
           </div>
           <span className="text-fw-bodyLight text-figma-sm">/</span>

@@ -82,7 +82,7 @@ export default function MagicLinkLogin() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-[#1d2329] tracking-[-0.03em]">
-                AT&T NetBond<sup className="text-xs">®</sup> Advanced
+                AT&T Cloud Connect
               </h1>
               <p className="text-sm text-[#686e74] mt-1">Sign in with your AT&T email</p>
             </div>

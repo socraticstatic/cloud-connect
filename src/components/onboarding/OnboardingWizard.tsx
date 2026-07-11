@@ -180,7 +180,7 @@ function OnboardingLayout({
       <header className="flex items-center justify-between px-8 py-4">
         <div className="flex items-center">
           <span className="text-base font-bold text-brand-accent tracking-[-0.03em]">AT&T</span>
-          <span className="ml-2 text-base font-bold text-black tracking-[-0.03em]">NetBond<sup className="text-[10px]">®</sup> Advanced</span>
+          <span className="ml-2 text-base font-bold text-black tracking-[-0.03em]">Cloud Connect</span>
         </div>
       </header>
 

@@ -58,7 +58,7 @@ export function AWSPartnerZone() {
               <AttIcon name="cloud" className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h2 className="text-figma-xl font-bold text-fw-heading tracking-[-0.03em]">AT&T NetBond<sup className="text-sm">®</sup> Advanced Max</h2>
+              <h2 className="text-figma-xl font-bold text-fw-heading tracking-[-0.03em]">AT&T Cloud Connect</h2>
               <p className="text-figma-base text-fw-bodyLight">4-path automated interconnect via AWS Interconnect – last mile</p>
             </div>
           </div>
@@ -78,7 +78,7 @@ export function AWSPartnerZone() {
         <div className="px-8 py-8 flex items-center justify-between gap-6">
           <div className="flex-1 min-w-0">
             <h3 className="text-2xl font-bold text-white tracking-[-0.03em] mb-1">
-              AT&T NetBond<sup className="text-sm">®</sup> Advanced Max
+              AT&T Cloud Connect
             </h3>
             <p className="text-figma-base mb-4" style={{ color: '#89A8D0' }}>
               Maximum Resiliency Â· AWS Interconnect – last mile Â· 4 Private Paths Â· Auto-negotiated L3
@@ -270,7 +270,7 @@ export function AWSPartnerZone() {
       <div className="bg-fw-wash border border-fw-secondary rounded-lg p-6">
         <div className="mb-4">
           <h3 className="text-figma-lg font-semibold text-fw-heading tracking-[-0.03em]">Getting Started — Flow 03 (AT&T-first)</h3>
-          <p className="text-figma-xs text-fw-bodyLight mt-0.5">Start here in the AT&T NetBond portal, then take the ActivationKey to AWS.</p>
+          <p className="text-figma-xs text-fw-bodyLight mt-0.5">Start here in the AT&T Cloud Connect portal, then take the ActivationKey to AWS.</p>
         </div>
         <ol className="space-y-3">
           {[
@@ -392,7 +392,7 @@ export function AWSPartnerZone() {
               />
             </div>
             <div>
-              <p className="text-figma-base font-semibold text-fw-heading">AT&T NetBond<sup className="text-[10px]">®</sup> Advanced Max — Maximum Resiliency</p>
+              <p className="text-figma-base font-semibold text-fw-heading">AT&T Cloud Connect — Maximum Resiliency</p>
               <p className="text-figma-xs text-fw-bodyLight">AWS Interconnect – last mile Â· 4 paths Â· 2 diverse sites</p>
             </div>
           </div>

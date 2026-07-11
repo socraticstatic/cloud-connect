@@ -1762,7 +1762,7 @@ export function StandardReports() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center mb-5">
                           <span className="text-base font-bold text-white tracking-[-0.03em]">AT&amp;T</span>
-                          <span className="ml-2 text-base font-bold text-white tracking-[-0.03em]">NetBond<sup className="text-[10px]">®</sup> Advanced</span>
+                          <span className="ml-2 text-base font-bold text-white tracking-[-0.03em]">Cloud Connect</span>
                         </div>
                         <h2 className="text-white text-[22px] font-bold leading-snug tracking-[-0.02em] mb-4 max-w-[540px]">
                           {previewReport.name}

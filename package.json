@@ -1,6 +1,6 @@
 {
   "name": "cloud-connect",
-  "productName": "AT&T NetBond Advanced",
+  "productName": "AT&T Cloud Connect",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "build:gh-pages": "vite build --base=/NetBond_Advanced/ --mode production",
+    "build:gh-pages": "vite build --base=/Cloud_Connect/ --mode production",
     "build:skip-typecheck": "vite build",
     "build:analyze": "vite build && npx vite-bundle-analyzer dist/stats.html",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
@@ -74,8 +74,8 @@
     "vitest": "^1.3.1"
   },
   "build": {
-    "appId": "com.att.netbond-advanced",
-    "productName": "AT&T NetBond Advanced",
+    "appId": "com.att.cloud-connect",
+    "productName": "AT&T Cloud Connect",
     "directories": {
       "output": "release"
     },
