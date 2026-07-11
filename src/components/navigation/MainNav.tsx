@@ -144,14 +144,14 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
       role="navigation"
       aria-label="Main navigation"
     >
-      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1600px] mx-auto w-full px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Left Side: Logo and Navigation */}
           <div className="flex items-center min-w-0">
             {/* Hamburger Menu Button - Now next to the logo */}
             <button
               onClick={() => setIsVerticalNav(!isVerticalNav)}
-              className="lg:hidden flex items-center justify-center h-9 w-9 rounded-full text-fw-bodyLight hover:text-fw-body hover:bg-fw-wash"
+              className="min-[1280px]:hidden flex items-center justify-center h-9 w-9 rounded-full text-fw-bodyLight hover:text-fw-body hover:bg-fw-wash"
               data-nav-toggle="true"
             >
               <Menu className="h-5 w-5" />
@@ -181,7 +181,7 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
             </div>
 
             {/* Desktop Navigation */}
-            <div className="hidden lg:ml-6 lg:flex lg:items-center lg:h-full lg:gap-4 xl:gap-8 2xl:gap-[61px]">
+            <div className="hidden min-[1280px]:flex min-[1280px]:items-center min-[1280px]:h-full ml-4 gap-1">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const disabled = isNavDisabled(item.href);
@@ -209,7 +209,7 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
                     `}
                   >
                     <Icon className={`
-                      h-5 w-5 lg:h-6 lg:w-6 mr-1.5 lg:mr-2 transition-transform duration-200 flex-shrink-0
+                      h-5 w-5 mr-1.5 transition-transform duration-200 flex-shrink-0
                       ${!disabled && hoveredItem === item.href ? 'scale-110' : ''}
                       ${disabled ? 'text-fw-disabled' : isActive ? 'text-fw-link' : 'text-fw-heading'}
                     `}
@@ -245,19 +245,17 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
           </div>
 
           {/* Right Side: Actions */}
-          <div className="flex items-center space-x-2 lg:space-x-4 flex-shrink-0 pr-2">
+          <div className="flex items-center gap-1 xl:gap-1.5 flex-shrink-0 pr-2">
             {!isMenuOpen && !isMobile && (
               <>
                 <SearchBar onSearch={onSearch} />
-                <div className="h-5 w-px bg-fw-secondary hidden xl:block" />
-                <HelpButton />
-                <div className="h-5 w-px bg-fw-secondary hidden xl:block" />
+                <div className="h-5 w-px bg-fw-secondary hidden xl:block mx-0.5" />
+                {/* demo controls, grouped */}
                 <UndoControl />
-                <div className="h-5 w-px bg-fw-secondary hidden xl:block" />
                 <TourLauncher />
-                <div className="h-5 w-px bg-fw-secondary hidden xl:block" />
+                <HelpButton />
+                <div className="h-5 w-px bg-fw-secondary hidden xl:block mx-0.5" />
                 <NotificationsButton count={notifications} />
-                <div className="h-5 w-px bg-fw-secondary hidden xl:block" />
                 <TenantSelector onProfileClick={() => navigate('/profile')} />
               </>
             )}

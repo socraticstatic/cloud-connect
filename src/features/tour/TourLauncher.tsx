@@ -29,10 +29,11 @@ export function TourLauncher() {
       <button
         type="button"
         onClick={startTour}
-        className="inline-flex items-center h-9 px-3 rounded-full text-figma-xs font-medium border border-fw-secondary text-fw-body hover:bg-fw-wash transition-colors"
+        aria-label="Start guided tour"
+        title="Guided tour"
+        className="inline-flex items-center justify-center h-9 w-9 rounded-full text-fw-bodyLight hover:text-fw-body hover:bg-fw-wash transition-colors"
       >
-        <Play className="h-4 w-4 mr-1.5" />
-        Tour
+        <Play className="h-[18px] w-[18px]" />
       </button>
 
       <ProductTour
