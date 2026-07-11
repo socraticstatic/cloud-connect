@@ -10,6 +10,7 @@ import { UserMenu } from './UserMenu';
 import { MobileMenu } from './MobileMenu';
 import { AdaptiveNavigation } from './AdaptiveNavigation';
 import { TenantSelector } from './TenantSelector';
+import { NAV_ITEMS } from './navItems';
 import { TabItem } from '../../types/navigation';
 import { Button } from '../common/Button';
 import { useStore } from '../../store/useStore';
@@ -63,32 +64,12 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
   });
 
-  const defaultItems: NavItem[] = [
-    {
-      label: 'Create',
-      icon: ({ className }: { className?: string }) => <AttIcon name="plus" className={className} />,
-      href: '/create',
-      description: 'Create a New Connection Here'
-    },
-    {
-      label: 'Manage',
-      icon: ({ className }: { className?: string }) => <AttIcon name="grid" className={className} />,
-      href: '/manage',
-      description: 'Manage Your Individual Connections Here'
-    },
-    {
-      label: 'Monitor',
-      icon: ({ className }: { className?: string }) => <AttIcon name="high-meter" className={className} />,
-      href: '/monitor',
-      description: 'Monitor and Report on Your Connections Here'
-    },
-    {
-      label: 'Configure',
-      icon: ({ className }: { className?: string }) => <AttIcon name="gear" className={className} />,
-      href: '/configure',
-      description: 'Configure your Global Settings Here'
-    }
-  ];
+  const defaultItems: NavItem[] = NAV_ITEMS.map(navItem => ({
+    label: navItem.label,
+    icon: ({ className }: { className?: string }) => <AttIcon name={navItem.icon} className={className} />,
+    href: navItem.to,
+    description: navItem.description
+  }));
 
   const navItems = items.length ? items : defaultItems;
 

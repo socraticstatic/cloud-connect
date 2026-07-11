@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Settings, BarChart2, PlusCircle, Sliders, User, Bell, HelpCircle, LogOut, Search, ChevronRight, PenTool as Tool } from 'lucide-react';
+import { X, User, Bell, HelpCircle, LogOut, Search, ChevronRight, PenTool as Tool } from 'lucide-react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useAuth } from '../../contexts/AuthContext';
+import { AttIcon } from '../icons/AttIcon';
+import { NAV_ITEMS } from './navItems';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -28,34 +30,13 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
 
   // Define navigation items with enabled/disabled state
   const navItems = [
-    {
-      label: 'Create',
-      icon: PlusCircle,
-      href: '/create',
-      description: 'Create a New Connection',
-      disabled: true
-    },
-    {
-      label: 'Manage',
-      icon: Settings,
-      href: '/manage',
-      description: 'Manage Your Connections',
-      disabled: true
-    },
-    {
-      label: 'Monitor',
-      icon: BarChart2,
-      href: '/monitor',
-      description: 'Monitor and Report',
+    ...NAV_ITEMS.map(navItem => ({
+      label: navItem.label,
+      icon: ({ className }: { className?: string }) => <AttIcon name={navItem.icon} className={className} />,
+      href: navItem.to,
+      description: navItem.description,
       disabled: false
-    },
-    {
-      label: 'Configure',
-      icon: Sliders,
-      href: '/configure',
-      description: 'Configure Settings',
-      disabled: true
-    },
+    })),
     {
       label: 'Utilities',
       icon: Tool,

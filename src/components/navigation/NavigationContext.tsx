@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { PlusCircle, Settings, BarChart2, Sliders, Bell, User, HelpCircle } from 'lucide-react';
+import { Settings, Bell, User, HelpCircle } from 'lucide-react';
+import { AttIcon } from '../icons/AttIcon';
+import { NAV_ITEMS } from './navItems';
 
 interface NavigationSection {
   id: string;
@@ -77,32 +79,12 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
       id: 'main',
       title: 'Main Navigation',
       icon: <Settings className="h-5 w-5" />,
-      items: [
-        { 
-          id: 'create', 
-          label: 'Create', 
-          icon: <PlusCircle className="h-5 w-5" />, 
-          path: '/create' 
-        },
-        { 
-          id: 'manage', 
-          label: 'Manage', 
-          icon: <Settings className="h-5 w-5" />, 
-          path: '/manage' 
-        },
-        { 
-          id: 'monitor', 
-          label: 'Monitor', 
-          icon: <BarChart2 className="h-5 w-5" />, 
-          path: '/monitor' 
-        },
-        { 
-          id: 'configure', 
-          label: 'Configure', 
-          icon: <Sliders className="h-5 w-5" />, 
-          path: '/configure' 
-        }
-      ]
+      items: NAV_ITEMS.map(navItem => ({
+        id: navItem.to.slice(1),
+        label: navItem.label,
+        icon: <AttIcon name={navItem.icon} className="h-5 w-5" />,
+        path: navItem.to
+      }))
     },
     {
       id: 'settings',
