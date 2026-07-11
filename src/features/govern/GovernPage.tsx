@@ -4,6 +4,8 @@ import { TabGroup } from '../../components/navigation/TabGroup';
 import { AttIcon } from '../../components/icons/AttIcon';
 import { useCloudControl } from '../../engine/react/useCloudControl';
 import { RulesPanel } from './RulesPanel';
+import { PosturePanel } from './PosturePanel';
+import { ServiceInsertion } from './ServiceInsertion';
 
 type GovernTab = 'policies' | 'posture';
 
@@ -29,13 +31,14 @@ export function GovernPage() {
       >
         <TabGroup tabs={tabs} activeTab={activeTab} onChange={id => setActiveTab(id as GovernTab)} />
 
-        {activeTab === 'policies' && <RulesPanel />}
-
-        {activeTab === 'posture' && (
-          <div className="rounded-2xl border border-fw-secondary bg-fw-base px-5 py-8 text-center text-fw-bodyLight">
-            Posture &amp; service insertion — coming in Task 3.2.
+        {activeTab === 'policies' && (
+          <div className="space-y-4">
+            <RulesPanel />
+            <ServiceInsertion />
           </div>
         )}
+
+        {activeTab === 'posture' && <PosturePanel />}
       </PageSection>
     </div>
   );
