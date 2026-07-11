@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main, 'claude/wonderful-vaughan']
+    branches: [main]
     paths-ignore:
       - '**.md'
       - '.gitignore'
@@ -48,7 +48,7 @@ jobs:
       - name: Build
         run: |
           echo "🚀 Building for GitHub Pages deployment..."
-          echo "Base path: /NetBond_Advanced/"
+          echo "Base path: /cloud-connect/"
           npm run build:gh-pages
         env:
           NODE_ENV: production
