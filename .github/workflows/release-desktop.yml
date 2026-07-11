@@ -54,7 +54,7 @@ jobs:
         with:
           name: windows-exe
           path: artifacts/
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ github.event.inputs.version }}
           name: NetBond Advanced v${{ github.event.inputs.version }}
