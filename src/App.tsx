@@ -203,6 +203,12 @@ const LazyVNFDetailPage = lazy(() =>
   }))
 );
 
+const LazyDiscoverPage = lazy(() =>
+  import('./features/discover/DiscoverPage').then(module => ({
+    default: module.DiscoverPage
+  }))
+);
+
 // Only load these when actually needed
 const LazyControlCenterManager = lazy(() =>
   import('./components/control-center/ControlCenterManager').then(module => ({
@@ -569,6 +575,12 @@ function App() {
                   </AsyncBoundary>
                 } />
 
+                <Route path="/discover" element={
+                  <Suspense fallback={<LoadingFallback />}>
+                    <LazyDiscoverPage />
+                  </Suspense>
+                } />
+
                 <Route path="/manage" element={
                   isMobile ? (
                     <MobileManagePage
@@ -823,7 +835,7 @@ function App() {
                   </div>
                 } />
 
-                <Route path="/" element={<Navigate to="/manage" />} />
+                <Route path="/" element={<Navigate to="/discover" />} />
                 
                 <Route path="*" element={
                   <div className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-fw-wash">

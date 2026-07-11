@@ -8,7 +8,7 @@ interface PageSectionProps {
   children: ReactNode;
 }
 
-function PageSection({
+export function PageSection({
   title,
   description,
   action,
