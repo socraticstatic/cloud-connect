@@ -215,6 +215,12 @@ const LazyConnectPage = lazy(() =>
   }))
 );
 
+const LazyGovernPage = lazy(() =>
+  import('./features/govern/GovernPage').then(module => ({
+    default: module.GovernPage
+  }))
+);
+
 // Only load these when actually needed
 const LazyControlCenterManager = lazy(() =>
   import('./components/control-center/ControlCenterManager').then(module => ({
@@ -590,6 +596,12 @@ function App() {
                 <Route path="/connect" element={
                   <Suspense fallback={<LoadingFallback />}>
                     <LazyConnectPage />
+                  </Suspense>
+                } />
+
+                <Route path="/govern" element={
+                  <Suspense fallback={<LoadingFallback />}>
+                    <LazyGovernPage />
                   </Suspense>
                 } />
 
