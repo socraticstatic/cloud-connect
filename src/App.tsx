@@ -17,7 +17,6 @@ import { ThemeProvider } from './components/ThemeProvider';
 import { MobileMenu } from './components/navigation/MobileMenu';
 // SmartAssistant removed per user request
 import { FeedbackWidget } from './components/feedback/FeedbackWidget';
-import { TaskHUD } from './components/test-lab/TaskHUD';
 import { NavigationStateProvider } from './components/common/layouts/NavigationStateProvider';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { GroupGrid } from './components/GroupGrid';
@@ -111,17 +110,9 @@ const LazyConnectionWizard = lazy(() =>
   }))
 );
 
-const LazyAPIToolbox = lazy(() =>
-  import('./components/api-toolbox/APIToolbox').then(module => ({
-    default: module.APIToolbox
-  }))
-);
-
 const LazyLMCCRequirementsPage = lazy(() =>
   import('./components/pages/LMCCRequirementsPage')
 );
-const LazyTestLabPage = lazy(() => import('./components/test-lab/TestLabPage'));
-const LazyTestLabBuilderPage = lazy(() => import('./components/test-lab/builder/TestLabBuilderPage'));
 const LazyConnectionDetails = lazy(() =>
   import('./components/connection/ConnectionDetails').then(module => ({ 
     default: module.ConnectionDetails 
@@ -237,18 +228,6 @@ const LazyDetachedInsights = lazy(() =>
   }))
 );
 
-const LazyPlatformAdminPage = lazy(() =>
-  import('./components/platform-admin/PlatformAdminPage').then(module => ({
-    default: module.PlatformAdminPage
-  }))
-);
-
-const LazyTenantDetailPage = lazy(() =>
-  import('./components/platform-admin/TenantDetailPage').then(module => ({
-    default: module.TenantDetailPage
-  }))
-);
-
 const LazyTicketingIndex = lazy(() =>
   import('./components/ticketing/TicketingIndex').then(module => ({
     default: module.TicketingIndex
@@ -289,12 +268,6 @@ const LazyOnboardingWizard = lazy(() =>
   }))
 );
 
-const LazyOffboardingWizard = lazy(() =>
-  import('./components/offboarding/OffboardingWizard').then(module => ({
-    default: module.OffboardingWizard
-  }))
-);
-
 const LazyNoInternetPage = lazy(() =>
   import('./components/pages/NoInternetPage').then(module => ({
     default: module.NoInternetPage
@@ -322,12 +295,6 @@ const LazyExecutiveBriefPage = lazy(() =>
 const LazyMonthlyBriefPage = lazy(() =>
   import('./components/pages/MonthlyBriefPage').then(module => ({
     default: module.MonthlyBriefPage
-  }))
-);
-
-const LazyResellerDashboard = lazy(() =>
-  import('./components/reseller/ResellerDashboard').then(module => ({
-    default: module.ResellerDashboard
   }))
 );
 
@@ -399,7 +366,7 @@ function App() {
 
   // Check if current route is a detached window or standalone page
   const isDetachedWindow = location.pathname.startsWith('/detached/');
-  const isStandalonePage = location.pathname === '/login' || location.pathname === '/onboarding' || location.pathname === '/offboarding' || location.pathname === '/no-internet' || location.pathname === '/maintenance' || location.pathname === '/demo' || location.pathname === '/brief' || location.pathname === '/scorecard';
+  const isStandalonePage = location.pathname === '/login' || location.pathname === '/onboarding' || location.pathname === '/no-internet' || location.pathname === '/maintenance' || location.pathname === '/demo' || location.pathname === '/brief' || location.pathname === '/scorecard';
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -512,13 +479,6 @@ function App() {
               </Suspense>
             } />
 
-            {/* Offboarding - standalone, no layout */}
-            <Route path="/offboarding" element={
-              <Suspense fallback={<LoadingFallback />}>
-                <LazyOffboardingWizard />
-              </Suspense>
-            } />
-
             {/* No Internet - standalone, no layout */}
             <Route path="/no-internet" element={
               <Suspense fallback={<LoadingFallback />}>
@@ -531,34 +491,6 @@ function App() {
               <Suspense fallback={<LoadingFallback />}>
                 <LazyMaintenancePage />
               </Suspense>
-            } />
-
-            {/* Test Lab Study Builder - authoring surface. Desktop only. */}
-            <Route path="/test-lab/builder" element={
-              isMobile ? (
-                <MobileDesktopOnly
-                  feature="Test Lab Builder"
-                  description="Study authoring needs a desktop or laptop screen."
-                />
-              ) : (
-                <Suspense fallback={<LoadingFallback />}>
-                  <LazyTestLabBuilderPage />
-                </Suspense>
-              )
-            } />
-
-            {/* Test Lab - persona-driven task testing; participants sign in at Begin. Desktop only. */}
-            <Route path="/test-lab" element={
-              isMobile ? (
-                <MobileDesktopOnly
-                  feature="Test Lab"
-                  description="Task-testing sessions run against the full desktop experience and need a desktop or laptop screen."
-                />
-              ) : (
-                <Suspense fallback={<LoadingFallback />}>
-                  <LazyTestLabPage />
-                </Suspense>
-              )
             } />
 
             {/* LMCC Product Design Assets - standalone, no auth, with disclaimer */}
@@ -637,16 +569,6 @@ function App() {
                   </AsyncBoundary>
                 } />
 
-                <Route path="/api-toolbox" element={
-                  <AsyncBoundary fallback={<LoadingFallback />}>
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-8">
-                      <Suspense fallback={<LoadingFallback />}>
-                        <LazyAPIToolbox />
-                      </Suspense>
-                    </div>
-                  </AsyncBoundary>
-                } />
-                
                 <Route path="/manage" element={
                   isMobile ? (
                     <MobileManagePage
@@ -726,14 +648,6 @@ function App() {
                       </SubNav>
                     </AsyncBoundary>
                   )
-                } />
-
-                <Route path="/reseller" element={
-                  <AsyncBoundary fallback={<LoadingFallback />}>
-                    <Suspense fallback={<LoadingFallback />}>
-                      <LazyResellerDashboard />
-                    </Suspense>
-                  </AsyncBoundary>
                 } />
 
                 <Route path="/profile" element={
@@ -909,19 +823,6 @@ function App() {
                   </div>
                 } />
 
-                <Route path="/configure/platform/tenants/:id/*" element={
-                  <AsyncBoundary fallback={<LoadingFallback />}>
-                    <SubNav
-                      title="Tenant Details"
-                      description="View and manage tenant configuration"
-                    >
-                      <Suspense fallback={<LoadingFallback />}>
-                        <LazyTenantDetailPage />
-                      </Suspense>
-                    </SubNav>
-                  </AsyncBoundary>
-                } />
-
                 <Route path="/" element={<Navigate to="/manage" />} />
                 
                 <Route path="*" element={
@@ -958,7 +859,6 @@ function App() {
             />
             {/* SmartAssistant removed */}
             <FeedbackWidget onStartTour={tour.startTour} />
-            <TaskHUD />
             <DemoBar />
             {/* LMCC ordering flows through Marketplace / Create dropdown into the wizard —
                 the NetBondMax auto-demo modal was retired at GA (2026-07-10). */}

@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useStore } from '../../store/useStore';
 import { UserRole } from '../../store/slices/roleSlice';
@@ -8,7 +8,7 @@ import { Shield, Users, Wrench } from 'lucide-react';
 
 const SCENARIOS = [
   { id: 'platform-admin', label: 'AT&T Platform', icon: Shield, tenantId: 'TNT-001', role: 'super-admin' as UserRole, navigateTo: '/manage' },
-  { id: 'reseller', label: 'Reseller', icon: Users, tenantId: 'TNT-004', role: 'admin' as UserRole, navigateTo: '/reseller' },
+  { id: 'reseller', label: 'Reseller', icon: Users, tenantId: 'TNT-004', role: 'admin' as UserRole, navigateTo: '/manage' },
 ];
 
 const PERSONAS: { id: RoleName; short: string }[] = [
@@ -27,7 +27,6 @@ const pill = (active: boolean) =>
 
 export function DemoBar() {
   const navigate = useNavigate();
-  const location = useLocation();
   const activeTenantId = useStore(s => s.activeTenantId);
   const setActiveTenant = useStore(s => s.setActiveTenant);
   const activePersona = useStore(s => s.activePersona);
@@ -52,7 +51,7 @@ export function DemoBar() {
 
   if (!demoBarVisible) return null;
 
-  const activeScenario = activeTenantId === 'TNT-004' || location.pathname === '/reseller' ? 'reseller' : 'platform-admin';
+  const activeScenario = activeTenantId === 'TNT-004' ? 'reseller' : 'platform-admin';
 
   return (
     <div

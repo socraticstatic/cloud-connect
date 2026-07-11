@@ -2,7 +2,7 @@ import { ChevronRight, X, Info } from 'lucide-react';
 import { AttIcon } from '../../icons/AttIcon';
 
 interface ModeSelectionProps {
-  onModeSelect: (mode: 'step-by-step' | 'visual' | 'api') => void;
+  onModeSelect: (mode: 'step-by-step' | 'visual') => void;
   onCancel: () => void;
 }
 
@@ -25,15 +25,6 @@ export function ModeSelection({ onModeSelect, onCancel }: ModeSelectionProps) {
       iconBg: 'bg-[#009FDB]',
       ctaColor: 'text-[#009FDB]',
       disabled: false
-    },
-    {
-      id: 'api' as const,
-      name: 'API Builder',
-      description: 'Configure your connection using JSON and API endpoints',
-      attIcon: 'apis' as const,
-      iconBg: 'bg-[#003D82]',
-      ctaColor: 'text-[#003D82]',
-      disabled: false
     }
   ];
 
@@ -47,7 +38,7 @@ export function ModeSelection({ onModeSelect, onCancel }: ModeSelectionProps) {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {modes.map((mode) => {
             return (
               <button

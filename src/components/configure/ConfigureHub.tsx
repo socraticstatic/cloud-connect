@@ -13,7 +13,6 @@ import { PoliciesConfiguration } from './policies/PoliciesConfiguration';
 import { GroupManagement } from './groups/GroupManagement';
 import { AgenticAISettings } from './AgenticAISettings';
 import { TabGroup } from '../navigation/TabGroup';
-import { PlatformAdminPage } from '../platform-admin/PlatformAdminPage';
 import { useStore } from '../../store/useStore';
 
 interface ConfigureHubProps {
@@ -23,7 +22,6 @@ interface ConfigureHubProps {
 export function ConfigureHub({ defaultTab = 'connections' }: ConfigureHubProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentRole } = useStore();
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
 
   // Set active tab based on URL path
@@ -50,9 +48,6 @@ export function ConfigureHub({ defaultTab = 'connections' }: ConfigureHubProps) 
     { id: 'agentic', label: 'Agentic AI', icon: <AttIcon name="high-meter" className="h-5 w-5 mr-2" /> },
     { id: 'partners', label: 'Partners', icon: <AttIcon name="shopping-bag" className="h-5 w-5 mr-2" /> },
     { id: 'policies', label: 'Policies', icon: <AttIcon name="check-shield" className="h-5 w-5 mr-2" /> },
-    ...(currentRole === 'super-admin' ? [
-      { id: 'platform', label: 'Platform Admin', icon: <AttIcon name="hub" className="h-5 w-5 mr-2" /> }
-    ] : [])
   ];
 
   return (
@@ -73,9 +68,6 @@ export function ConfigureHub({ defaultTab = 'connections' }: ConfigureHubProps) 
         <Route path="system/*" element={<SystemSettings />} />
         <Route path="partners" element={<PartnersConfiguration />} />
         <Route path="policies/*" element={<PoliciesConfiguration />} />
-        {currentRole === 'super-admin' && (
-          <Route path="platform" element={<PlatformAdminPage />} />
-        )}
         <Route path="/*" element={<Navigate to="/configure/connections" />} />
       </Routes>
     </div>
