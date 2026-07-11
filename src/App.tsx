@@ -233,6 +233,12 @@ const LazyAiFabricPage = lazy(() =>
   }))
 );
 
+const LazyNetOpsPage = lazy(() =>
+  import('./features/netops/NetOpsPage').then(module => ({
+    default: module.NetOpsPage
+  }))
+);
+
 // Only load these when actually needed
 const LazyControlCenterManager = lazy(() =>
   import('./components/control-center/ControlCenterManager').then(module => ({
@@ -626,6 +632,12 @@ function App() {
                 <Route path="/ai-fabric" element={
                   <Suspense fallback={<LoadingFallback />}>
                     <LazyAiFabricPage />
+                  </Suspense>
+                } />
+
+                <Route path="/netops" element={
+                  <Suspense fallback={<LoadingFallback />}>
+                    <LazyNetOpsPage />
                   </Suspense>
                 } />
 
