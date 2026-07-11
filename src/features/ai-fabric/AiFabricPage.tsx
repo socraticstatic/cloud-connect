@@ -5,6 +5,8 @@ import { AttIcon } from '../../components/icons/AttIcon';
 import { TokenPolicies } from './TokenPolicies';
 import { ModelCatalog } from './ModelCatalog';
 import { AgentsPanel } from './AgentsPanel';
+import { PromptTrace } from './PromptTrace';
+import { GovernanceDecisions } from './GovernanceDecisions';
 
 type AiFabricTab = 'policies-models' | 'agents' | 'trace';
 
@@ -43,10 +45,9 @@ export function AiFabricPage() {
         {activeTab === 'agents' && <AgentsPanel />}
 
         {activeTab === 'trace' && (
-          <div className="rounded-2xl border border-fw-secondary bg-fw-base px-5 py-8 text-center">
-            <p className="text-figma-sm text-fw-bodyLight">
-              Prompt trace &amp; governance decisions land here in Task 4.2.
-            </p>
+          <div className="space-y-4">
+            <PromptTrace />
+            <GovernanceDecisions />
           </div>
         )}
       </PageSection>
