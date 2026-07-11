@@ -10,12 +10,9 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { useCloudControl } from '../../engine/react/useCloudControl';
+import { seriesColor, COMPARE } from '../_shared/palette';
 
 const N = 56;
-
-// Literal Flywheel/Okabe-Ito hex values — SVG/Recharts stroke props don't
-// resolve `stroke-fw-*` Tailwind classes, so series colors are literal here.
-const FALLBACK_COLORS = ['#0072B2', '#D55E00', '#CC79A7', '#009E73', '#E69F00', '#56B4E9'];
 
 interface TelemetryRegion {
   key: string;
@@ -56,12 +53,12 @@ export function TelemetryCharts() {
             <li key={r.key} className="inline-flex items-center gap-1.5 text-figma-xs text-fw-body">
               <span
                 className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: r.color || FALLBACK_COLORS[i % FALLBACK_COLORS.length] }}
+                style={{ backgroundColor: seriesColor(i) }}
               />
               {r.name}
               <span className="text-fw-bodyLight">· {r.cloudName}</span>
               {r.attached && (
-                <span className="inline-flex items-center h-4 px-1.5 rounded-full bg-fw-successLight text-fw-success text-[10px] font-medium">
+                <span className="inline-flex items-center h-4 px-1.5 rounded-full bg-[#e6f0fa] text-[#0057b8] text-[10px] font-medium">
                   private
                 </span>
               )}
@@ -88,7 +85,7 @@ export function TelemetryCharts() {
                   type="monotone"
                   dataKey={r.key}
                   name={r.name}
-                  stroke={r.color || FALLBACK_COLORS[i % FALLBACK_COLORS.length]}
+                  stroke={seriesColor(i)}
                   strokeWidth={2}
                   dot={false}
                   isAnimationActive={false}
@@ -107,11 +104,11 @@ export function TelemetryCharts() {
 
         <ul className="flex flex-wrap gap-x-4 gap-y-1.5 px-5 pt-3" aria-label="Egress series">
           <li className="inline-flex items-center gap-1.5 text-figma-xs text-fw-body">
-            <span className="inline-block h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: '#D55E00' }} />
+            <span className="inline-block h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: COMPARE.public }} />
             Public transit
           </li>
           <li className="inline-flex items-center gap-1.5 text-figma-xs text-fw-body">
-            <span className="inline-block h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: '#009E73' }} />
+            <span className="inline-block h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: COMPARE.controlled }} />
             Committed private
           </li>
         </ul>
@@ -133,8 +130,8 @@ export function TelemetryCharts() {
                 type="monotone"
                 dataKey="pub"
                 name="Public transit"
-                stroke="#D55E00"
-                fill="#D55E00"
+                stroke={COMPARE.public}
+                fill={COMPARE.public}
                 fillOpacity={0.12}
                 strokeWidth={2}
                 dot={false}
@@ -145,9 +142,9 @@ export function TelemetryCharts() {
                 type="monotone"
                 dataKey="priv"
                 name="Committed private"
-                stroke="#009E73"
-                fill="#009E73"
-                fillOpacity={0.12}
+                stroke={COMPARE.controlled}
+                fill={COMPARE.controlled}
+                fillOpacity={0.14}
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive={false}

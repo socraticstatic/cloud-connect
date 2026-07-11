@@ -26,10 +26,10 @@ export function DiscoverPage() {
         </div>
 
         {publicVpcs > 0 && (
-          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-figma-sm text-amber-800">
-              <span className="font-semibold text-amber-900">
+          <div className="flex items-start gap-3 rounded-xl border border-fw-secondary bg-fw-wash px-4 py-3">
+            <AlertTriangle className="w-4 h-4 text-[#d98a00] shrink-0 mt-0.5" />
+            <p className="text-figma-sm text-fw-body">
+              <span className="font-semibold text-fw-heading">
                 {publicVpcs} of {counts.vpcs} VPCs
               </span>{' '}
               are reachable only over public internet — no private on-ramp attached yet.

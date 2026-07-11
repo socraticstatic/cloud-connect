@@ -1,9 +1,7 @@
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useCloudControl } from '../../engine/react/useCloudControl';
 
-// Literal Flywheel/Okabe-Ito hex values — SVG/Recharts fill props don't
-// resolve `fill-fw-*` Tailwind classes, so bar colors are literal here.
-const FALLBACK_COLORS = ['#0072B2', '#D55E00', '#CC79A7', '#009E73', '#E69F00', '#56B4E9'];
+import { seriesColor } from '../_shared/palette';
 
 interface TokenMeter {
   tag: string;
@@ -20,7 +18,7 @@ export function TokenCharts() {
     tag: m.tag,
     today: m.today,
     budget: m.budget,
-    color: FALLBACK_COLORS[i % FALLBACK_COLORS.length],
+    color: seriesColor(i),
   }));
 
   return (

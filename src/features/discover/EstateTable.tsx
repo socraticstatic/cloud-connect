@@ -1,5 +1,6 @@
 import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
 import { ProviderLogo } from '../../components/connection/ProviderLogo';
+import { STATUS_DOT } from '../_shared/palette';
 
 // Maps engine cloud ids to the provider keys ProviderLogo knows how to render
 // a bundled brand mark for. Providers with no bundled SVG (CoreWeave, Nebius)
@@ -77,11 +78,14 @@ export function EstateTable() {
                       </td>
                       <td className="px-5 py-3 text-fw-body">{region.subnets}</td>
                       <td className="px-5 py-3">
-                        {region.attached ? (
-                          <span className="text-fw-success font-medium">Private · attached</span>
-                        ) : (
-                          <span className="text-amber-700 font-medium">Public internet only</span>
-                        )}
+                        <span className="inline-flex items-center gap-2 text-fw-body">
+                          <span
+                            className={`inline-block h-2 w-2 rounded-full shrink-0 ${
+                              region.attached ? STATUS_DOT.ok : STATUS_DOT.warn
+                            }`}
+                          />
+                          {region.attached ? 'Private path' : 'Public internet'}
+                        </span>
                       </td>
                       <td className="px-5 py-3 text-right">
                         {!region.attached && onramp && (

@@ -172,14 +172,15 @@ export function RulesPanel() {
       </div>
 
       {violations.length > 0 && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3">
-          <div className="font-medium text-amber-900 text-figma-sm mb-1.5">
+        <div className="rounded-2xl border border-fw-secondary bg-fw-wash px-5 py-3">
+          <div className="flex items-center gap-2 font-medium text-fw-heading text-figma-sm mb-1.5">
+            <span className="inline-block h-2 w-2 rounded-full bg-[#d98a00] shrink-0" />
             {violations.length} open violation{violations.length === 1 ? '' : 's'}
           </div>
           <ul className="space-y-1">
             {violations.map((v, i) => (
-              <li key={i} className="text-figma-xs text-amber-800">
-                {v.tag ? <span className="font-medium">{v.tag}</span> : null}
+              <li key={i} className="text-figma-xs text-fw-body">
+                {v.tag ? <span className="font-medium text-fw-heading">{v.tag}</span> : null}
                 {v.tag ? ' — ' : ''}
                 {v.msg}
                 {v.vpc ? ` (${v.vpc})` : ''}
