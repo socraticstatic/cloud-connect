@@ -209,6 +209,12 @@ const LazyDiscoverPage = lazy(() =>
   }))
 );
 
+const LazyConnectPage = lazy(() =>
+  import('./features/connect/ConnectPage').then(module => ({
+    default: module.ConnectPage
+  }))
+);
+
 // Only load these when actually needed
 const LazyControlCenterManager = lazy(() =>
   import('./components/control-center/ControlCenterManager').then(module => ({
@@ -578,6 +584,12 @@ function App() {
                 <Route path="/discover" element={
                   <Suspense fallback={<LoadingFallback />}>
                     <LazyDiscoverPage />
+                  </Suspense>
+                } />
+
+                <Route path="/connect" element={
+                  <Suspense fallback={<LoadingFallback />}>
+                    <LazyConnectPage />
                   </Suspense>
                 } />
 
