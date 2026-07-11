@@ -1,0 +1,130 @@
+// @ts-nocheck
+/* Cloud Control - grounded answers + shareable sessions.
+   Loads LAST of the state modules: hydrate() replays a shared session
+   through the real mutations, so every engine it touches (rules,
+   custom policies, fixes, sim) must already exist - and it must run
+   before any UI script renders. Script order guarantees both. */
+(function(CC){
+const _=CC._;
+const {onramps,fixes,sim}=CC;
+
+/* ---------------- grounded answer engine ----------------
+   Shared by the Discovery rail and the Insights ask bar. Every answer
+   is computed from live state at ask time. */
+const fmtK=n=>'$'+(n/1000).toFixed(1)+'k';
+function answerFor(text){
+  const key=(text||'').toLowerCase();
+  const onr=id=>onramps.find(o=>o.id===id);
+  const e=CC.egress();
+  if(key.includes('egress cost')||key.includes('cost up')){
+    if(onr('nb2').active)return `<b>The growth line is contained.</b> AI inference egress moved to committed private pricing when NetBond Adv attached — public-path spend is down to ${fmtK(e.pub)}/mo and the forecast has turned ${e.forecast.startsWith('-')?'negative (good)':'flat'}. Private-path savings are running ${fmtK(e.savings)}/mo.`;
+    return `<b>AI inference egress is the driver.</b> CoreWeave and Nebius egress over public internet rose 22% week over week — $11.4k of the ${fmtK(e.pub)} public-path total. NetBond Adv · PE-DAL-01 is already provisioned to reach both and would move this traffic to private pricing.`;
+  }
+  if(key.includes('coreweave')||key.includes('nebius')||key.includes('gpu')){
+    if(onr('nb2').active)return `<b>Already done.</b> NetBond Adv · PE-DAL-01 is live — CoreWeave US-EAST-04A, Nebius eu-north1, and OCI us-ashburn-1 all ride private paths. That cleared the top findings in Reach, Exposure, and Cost in one action.`;
+    return `Provisioning <b>NetBond Adv · PE-DAL-01</b> would attach CoreWeave US-EAST-04A and Nebius eu-north1 — both currently unreached. This resolves the top finding in <b>Reach &amp; attachment</b> and the top finding in <b>Cost &amp; egress</b> in one action, and removes the ungoverned-AI-traffic endpoints in <b>Exposure &amp; posture</b>.`;
+  }
+  if(key.includes('isolate finance')||key.includes('finance-invoices')){
+    if(fixes.isolateFinance)return `<b>Enforced.</b> vpc-data-02's public subnets are re-associated to private route tables — egress is S3 endpoint + Direct Connect only. The violation is cleared and the route-table chips in Discovery are gone.`;
+    return `This creates a policy matching the <b>finance-invoices</b> tag: remove the public-subnet association on <b>vpc-data-02</b>'s rtb-public, leaving only the private route table (S3 endpoint + Direct Connect, no IGW). Closes the one direct-internet-path violation in <b>Policy &amp; segmentation</b>.`;
+  }
+  if(key.includes('inspection')||key.includes('classified')){
+    if(fixes.fwInspection)return `<b>Enforced.</b> fw-inspect-01 sits inline on vpc-dmz-03 (AWS) and nb-gpu-net (Nebius) — every classified-helion route table points 0.0.0.0/0 through it. Open either resource map in Discovery to see the rewired path.`;
+    return `This creates a policy matching the <b>classified-helion</b> tag across clouds: insert <code>fw-inspect-01</code> inline on the egress path for <b>vpc-dmz-03</b> (AWS) and <b>nb-gpu-net</b> (Nebius), and re-point each private route table's <code>0.0.0.0/0</code> route through it.`;
+  }
+  if(key.includes('attach order')||key.includes('plan')){
+    const p=CC.plan();
+    if(!p.steps.length)return `<b>Nothing left to sequence.</b> Every step in the remediation plan has been applied — posture is holding at ${CC.posture()}.`;
+    return `<b>Recommended order, greedy by posture gain (${p.from} → ${p.to} across ${p.steps.length} steps):</b><br>`+p.steps.map((st,i)=>`${i+1}. ${st.label} <span style="color:var(--text3)">→ posture ${st.projected}</span>`).join('<br>');
+  }
+  if(key.includes('forecast')){
+    return `<b>90-day projection from current state:</b> public-path egress at ${fmtK(e.pub)}/mo trending ${e.forecast} monthly. ${e.pub>6000?`Attaching the remaining on-ramps shifts the public spend to committed private pricing — modeled savings reach ${fmtK(Math.round(e.pub*0.15+e.savings))}/mo at full attach.`:`At full attach the model holds savings at ${fmtK(e.savings)}/mo against public rates.`}`;
+  }
+  if(key.includes('cidr')||key.includes('address')||key.includes('overlap')||key.includes('renumber')){
+    const a=CC.addressPlan();
+    if(!a.conflicts)return `<b>The address plan is clean</b> — ${a.rows.length} ranges, no overlaps. Next free range if you need one: <code>${a.nextFree}</code>.`;
+    const c=a.rows.find(r=>r.conflict.length);
+    return `<b>${a.conflicts} CIDR collision in the estate.</b> <code>${c.cidr}</code> is claimed by ${c.name} (${c.cloud}) and ${c.conflict.map(x=>x.name+' ('+x.cloud+')').join(', ')} — routing between them is ambiguous and they can never peer. <code>${a.nextFree}</code> is free; renumbering vpc-svc-02 resolves it.`;
+  }
+  if(key.includes('app')||key.includes('workload layer')){
+    const al=CC.appList();
+    const risky=al.filter(a=>a.health==='at-risk'||a.health==='degraded');
+    return `<b>${al.length} applications</b> run on this estate (plus ${CC.untaggedWorkloads()} untagged workloads). ${risky.length?`<b style="color:#ff9db4">${risky.length} need attention:</b> ${risky.map(a=>`${a.app.name} (${a.health})`).join(', ')}.`:'All healthy on the current substrate.'} ${al.filter(a=>a.aiDeps.length).length} consume AI endpoints — the workload layer is what connects the bytes you attach to the tokens they spend.`;
+  }
+  if(key.includes('fail')||key.includes('down')||key.includes('what if')){
+    const active=onramps.filter(o=>o.active);
+    return `<b>Run a what-if:</b> every active on-ramp card in the Discovery fabric rail has a "Simulate failure" control. ${active.length?`Right now ${active.map(o=>o.name).join(', ')} ${active.length>1?'are':'is'} carrying traffic — failing one shows exactly which VPCs lose their private path and what egress falls back to public rates.`:''}`;
+  }
+  return null;
+}
+
+/* ---------------- shareable session state ----------------
+   Only DELTAS from the pristine model travel: attached on-ramp ids,
+   fix flags, custom policies, active sim. Compact JSON -> base64url
+   in location.hash so a pasted link replays the session. */
+function serialize(){
+  const d={
+    o:onramps.filter(o=>o.active&&o.id!=='nb1').map(o=>o.id),
+    f:Object.keys(fixes).filter(k=>fixes[k]),
+    p:_.customPolicies.map(p=>({n:p.name,t:p.tag,r:p.requirement,e:p.enforced,c:p.cloud,m:p.param})),
+    r:_.rules.filter(r=>!r.system).map(r=>({n:r.name,s:r.src,d:r.dst,po:r.ports,a:r.action,ch:r.chain,e:r.enforced})),
+    tp:Object.entries(_.tokenPolicies||{}).filter(([,p])=>p.enforced||p.scope!==undefined).map(([t,p])=>({t,s:p.scope,b:p.budget,g:p.guardrail?1:0,e:p.enforced?1:0})),
+    s:sim.onrampId||undefined,
+  };
+  if(!d.r.length)delete d.r;
+  if(!d.tp.length)delete d.tp;
+  if(!d.o.length&&!d.f.length&&!d.p.length&&!d.r&&!d.s)return '';
+  return btoa(JSON.stringify(d)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function shareUrl(){
+  const s=serialize();
+  return location.origin+location.pathname+(s?'#s='+s:'');
+}
+function hydrate(){
+  const m=location.hash.match(/#s=([A-Za-z0-9_-]+)/);
+  if(!m)return false;
+  try{
+    const d=JSON.parse(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')));
+    if(!d||typeof d!=='object'||Array.isArray(d))throw new Error('share payload is not an object');
+    (d.o||[]).forEach(id=>CC.activateOnramp(id,true));
+    (d.o||[]).forEach(id=>{const o=onramps.find(x=>x.id===id);if(o)o.targets.forEach(([cid,rid])=>{const k=cid+'/'+rid;if(!_.sessionAttached.includes(k))_.sessionAttached.push(k);});});
+    (d.f||[]).forEach(k=>CC.applyFix(k,true));
+    (d.p||[]).forEach(x=>{
+      if(!CC.REQUIREMENTS[x.r]||!CC.TAGS[x.t])return;
+      _.customPolicies.push({id:_.nextPolId(),name:x.n||(CC.REQUIREMENTS[x.r].label+' · '+x.t),tag:x.t,requirement:x.r,cloud:x.c||'any',param:x.m||null,enforced:!!x.e,custom:true});
+    });
+    (d.r||[]).forEach(x=>{
+      if(!CC.DSTS[x.d])return;
+      _.rules.push({id:_.nextRuleId(),pri:_.rules.length+1,name:x.n,src:x.s||{tag:'any',cloud:'any'},
+        dst:x.d,ports:x.po||'any',action:x.a||'allow',chain:x.ch||[],enforced:!!x.e,system:false});
+    });
+    (d.tp||[]).forEach(x=>{
+      const p=(_.tokenPolicies||{})[x.t];
+      if(p)Object.assign(p,{scope:x.s||p.scope,budget:x.b||p.budget,guardrail:!!x.g,enforced:!!x.e});
+    });
+    if(d.s){const o=onramps.find(x=>x.id===d.s);if(o&&o.active)sim.onrampId=d.s;}
+    _.hist.push({label:'Restored shared session',posture:CC.posture()});
+    return true;
+  }catch(e){console.warn('bad share hash',e);return false;}
+}
+hydrate(); // before any page renders - script order guarantees this
+
+/* emulated-AI streaming: think, then type. Strips to text while
+   streaming, swaps in the full html at the end. */
+function stream(elm,html,done){
+  const tmp=document.createElement('div');tmp.innerHTML=html;
+  const text=tmp.textContent||'';
+  elm.innerHTML='<span class="thinkdots" style="letter-spacing:2px;color:var(--text3)">·&nbsp;·&nbsp;·</span>';
+  const chunk=Math.max(2,Math.round(text.length/55)); // ~1.2s total
+  setTimeout(()=>{
+    let i=0;
+    const t=setInterval(()=>{
+      i+=chunk;
+      if(i>=text.length){clearInterval(t);elm.innerHTML=html;if(done)done();return;}
+      elm.textContent=text.slice(0,i);
+    },22);
+  },420);
+}
+
+Object.assign(CC,{answerFor,serialize,shareUrl,stream});
+})(window.CC);
