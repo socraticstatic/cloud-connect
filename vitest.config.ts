@@ -7,14 +7,18 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
-    // Only run tests in the shipped app. src_old/ is a legacy snapshot and
-    // .claude/worktrees/ holds other agents' checkouts — scanning them OOMs the runner.
+    // Only run tests in the shipped app. src_old/ is a legacy snapshot,
+    // .claude/worktrees/ holds other agents' checkouts (scanning them OOMs
+    // the runner), and e2e/**, tests/e2e/** are Playwright specs (they
+    // import @playwright/test, not vitest, and are run via `npm run test:e2e`).
     exclude: [
       'node_modules/**',
       'dist/**',
       'src_old/**',
       '**/src_old/**',
-      '.claude/**'
+      '.claude/**',
+      'e2e/**',
+      'tests/e2e/**'
     ],
     coverage: {
       provider: 'v8',

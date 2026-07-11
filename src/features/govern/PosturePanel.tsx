@@ -1,5 +1,6 @@
 import { AttIcon } from '../../components/icons/AttIcon';
 import { useCloudControl } from '../../engine/react/useCloudControl';
+import { postureIcon } from './postureIcon';
 
 interface PostureFinding {
   level: 'crit' | 'warn' | 'ok';
@@ -104,7 +105,7 @@ export function PosturePanel() {
             className="rounded-2xl border border-fw-secondary bg-fw-base overflow-hidden"
           >
             <div className="flex items-center gap-3 px-5 py-3 border-b border-fw-secondary bg-fw-wash">
-              <AttIcon name={cat.iconKey as never} className="h-5 w-5 text-fw-body" />
+              <AttIcon name={postureIcon(cat.iconKey)} className="h-5 w-5 text-fw-body" />
               <span className="font-medium text-fw-heading">{cat.name}</span>
               <span className="ml-auto text-figma-xs text-fw-bodyLight">/ 100</span>
             </div>

@@ -8,7 +8,10 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: [['html', { open: 'never' }]],
   use: {
-    baseURL: 'http://localhost:5173',
+    // Unusual port on purpose — 5173 is the default Vite port and is
+    // frequently occupied by another repo's dev server on this machine.
+    // Never assume 5173 is this project's server.
+    baseURL: 'http://localhost:5199',
     trace: 'on-first-retry',
   },
   projects: [
@@ -18,8 +21,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
+    command: 'npm run dev -- --port 5199 --strictPort',
+    url: 'http://localhost:5199',
     reuseExistingServer: !process.env.CI,
     timeout: 30000,
   },
