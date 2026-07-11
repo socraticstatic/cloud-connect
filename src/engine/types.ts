@@ -83,6 +83,11 @@ export interface CloudControl {
   setTokenPolicy(tag: string, patch: Record<string, unknown>): void;
   tokenPolicy?(tag: string): any;
   tokenPolicyList?(...args: any[]): any;
+  modelCatalog?(...args: any[]): any;
+  agentList?(...args: any[]): any;
+  toggleAgent?(id: string): boolean;
+  promptTrace?(...args: any[]): any;
+  decisionLog?(...args: any[]): any;
 
   // --- actions catalog (state-actions.js) ---
   postureCatalog: any[];

@@ -227,6 +227,12 @@ const LazyObservePage = lazy(() =>
   }))
 );
 
+const LazyAiFabricPage = lazy(() =>
+  import('./features/ai-fabric/AiFabricPage').then(module => ({
+    default: module.AiFabricPage
+  }))
+);
+
 // Only load these when actually needed
 const LazyControlCenterManager = lazy(() =>
   import('./components/control-center/ControlCenterManager').then(module => ({
@@ -614,6 +620,12 @@ function App() {
                 <Route path="/observe" element={
                   <Suspense fallback={<LoadingFallback />}>
                     <LazyObservePage />
+                  </Suspense>
+                } />
+
+                <Route path="/ai-fabric" element={
+                  <Suspense fallback={<LoadingFallback />}>
+                    <LazyAiFabricPage />
                   </Suspense>
                 } />
 
