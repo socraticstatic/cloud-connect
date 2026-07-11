@@ -11,6 +11,7 @@ import { MobileMenu } from './MobileMenu';
 import { AdaptiveNavigation } from './AdaptiveNavigation';
 import { TenantSelector } from './TenantSelector';
 import { TourLauncher } from '../../features/tour/TourLauncher';
+import { CommandPalette } from '../../features/command/CommandPalette';
 import { NAV_ITEMS } from './navItems';
 import { TabItem } from '../../types/navigation';
 import { Button } from '../common/Button';
@@ -271,12 +272,15 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
       />
 
       {/* Mobile Menu */}
-      <MobileMenu 
+      <MobileMenu
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
         userInfo={userInfo}
         notifications={notifications}
       />
+
+      {/* ⌘K / Ctrl+K command palette — engine-derived, works from anywhere */}
+      <CommandPalette />
     </nav>
   );
 }
