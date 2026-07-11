@@ -43,7 +43,7 @@ describe('Node', () => {
   describe('status-based rendering', () => {
     it('renders unconfigured node with dashed border and gray dot', () => {
       const node = makeNode({ status: 'unconfigured' });
-      const { hub } = render(<Node node={node} {...defaultProps} />);
+      const { container: hub } = render(<Node node={node} {...defaultProps} />);
 
       const wrapper = hub.firstElementChild as HTMLElement;
       expect(wrapper).toHaveStyle({ borderStyle: 'dashed' });
@@ -57,7 +57,7 @@ describe('Node', () => {
 
     it('renders configured-inactive node with solid type-colored border and gray dot', () => {
       const node = makeNode({ status: 'configured-inactive' });
-      const { hub } = render(<Node node={node} {...defaultProps} />);
+      const { container: hub } = render(<Node node={node} {...defaultProps} />);
 
       const wrapper = hub.firstElementChild as HTMLElement;
       expect(wrapper).toHaveStyle({ borderStyle: 'solid' });
@@ -70,7 +70,7 @@ describe('Node', () => {
 
     it('renders active node with colored background and green dot', () => {
       const node = makeNode({ status: 'active' });
-      const { hub } = render(<Node node={node} {...defaultProps} />);
+      const { container: hub } = render(<Node node={node} {...defaultProps} />);
 
       const wrapper = hub.firstElementChild as HTMLElement;
       expect(wrapper).toHaveStyle({ borderStyle: 'solid' });
@@ -83,7 +83,7 @@ describe('Node', () => {
 
     it('renders active-down node with colored background and red dot', () => {
       const node = makeNode({ status: 'active-down' });
-      const { hub } = render(<Node node={node} {...defaultProps} />);
+      const { container: hub } = render(<Node node={node} {...defaultProps} />);
 
       const wrapper = hub.firstElementChild as HTMLElement;
       expect(wrapper).toHaveStyle({ backgroundColor: '#fdf4ff' });
@@ -96,19 +96,19 @@ describe('Node', () => {
   describe('node type colors', () => {
     it('uses blue border for cloud destination nodes', () => {
       const node = makeNode({ type: 'destination', functionType: 'aws', status: 'configured-inactive' });
-      const { hub } = render(<Node node={node} {...defaultProps} />);
+      const { container: hub } = render(<Node node={node} {...defaultProps} />);
       expect(hub.firstElementChild).toHaveStyle({ borderColor: '#3b82f6' });
     });
 
     it('uses gray border for datacenter nodes', () => {
       const node = makeNode({ type: 'datacenter', functionType: 'equinix', status: 'configured-inactive' });
-      const { hub } = render(<Node node={node} {...defaultProps} />);
+      const { container: hub } = render(<Node node={node} {...defaultProps} />);
       expect(hub.firstElementChild).toHaveStyle({ borderColor: '#6b7280' });
     });
 
     it('uses purple border for AT&T Core (ipe) network nodes', () => {
       const node = makeNode({ type: 'network', functionType: 'ipe', status: 'configured-inactive', icon: 'CircleDot' });
-      const { hub } = render(<Node node={node} {...defaultProps} />);
+      const { container: hub } = render(<Node node={node} {...defaultProps} />);
       expect(hub.firstElementChild).toHaveStyle({ borderColor: '#7c3aed' });
     });
   });
@@ -116,13 +116,13 @@ describe('Node', () => {
   describe('interaction state overrides', () => {
     it('overrides border color when selected', () => {
       const node = makeNode({ status: 'active' });
-      const { hub } = render(<Node node={node} {...defaultProps} isSelected={true} />);
+      const { container: hub } = render(<Node node={node} {...defaultProps} isSelected={true} />);
       expect(hub.firstElementChild).toHaveStyle({ borderColor: '#3b82f6' });
     });
 
     it('overrides border color for validation error', () => {
       const node = makeNode({ status: 'active' });
-      const { hub } = render(<Node node={node} {...defaultProps} hasValidationError={true} />);
+      const { container: hub } = render(<Node node={node} {...defaultProps} hasValidationError={true} />);
       expect(hub.firstElementChild).toHaveStyle({ borderColor: '#ef4444' });
     });
   });
@@ -136,13 +136,13 @@ describe('Node', () => {
 
     it('renders AT&T icon for hub', () => {
       const node = makeNode({ icon: 'hub' });
-      const { hub } = render(<Node node={node} {...defaultProps} />);
+      const { container: hub } = render(<Node node={node} {...defaultProps} />);
       expect(hub.querySelector('svg')).toBeInTheDocument();
     });
 
     it('renders Lucide icon for non-AT&T icons', () => {
       const node = makeNode({ icon: 'Cloud' });
-      const { hub } = render(<Node node={node} {...defaultProps} />);
+      const { container: hub } = render(<Node node={node} {...defaultProps} />);
       expect(hub.querySelector('svg')).toBeInTheDocument();
     });
   });
@@ -150,13 +150,13 @@ describe('Node', () => {
   describe('data attributes', () => {
     it('sets data-status attribute', () => {
       const node = makeNode({ status: 'active' });
-      const { hub } = render(<Node node={node} {...defaultProps} />);
+      const { container: hub } = render(<Node node={node} {...defaultProps} />);
       expect(hub.firstElementChild).toHaveAttribute('data-status', 'active');
     });
 
     it('sets data-node-type attribute', () => {
       const node = makeNode({ functionType: 'router' });
-      const { hub } = render(<Node node={node} {...defaultProps} />);
+      const { container: hub } = render(<Node node={node} {...defaultProps} />);
       expect(hub.firstElementChild).toHaveAttribute('data-node-type', 'router');
     });
   });

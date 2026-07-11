@@ -30,11 +30,13 @@ describe('useStore', () => {
     });
 
     it('updates a connection', async () => {
+      // Status must be non-Active: the store now guards config changes on
+      // live connections (governance rule — deactivate before modifying).
       const connection: Connection = {
         id: '1',
         name: 'Test Connection',
         type: 'AWS Interconnect – last mile',
-        status: 'Active',
+        status: 'Pending',
         bandwidth: '10 Gbps',
         location: 'US East'
       };
@@ -46,11 +48,13 @@ describe('useStore', () => {
     });
 
     it('removes a connection', async () => {
+      // Status must be non-Active: the store now blocks deleting a live
+      // connection (governance rule — deactivate before removing).
       const connection: Connection = {
         id: '1',
         name: 'Test Connection',
         type: 'AWS Interconnect – last mile',
-        status: 'Active',
+        status: 'Pending',
         bandwidth: '10 Gbps',
         location: 'US East'
       };

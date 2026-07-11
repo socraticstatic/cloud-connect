@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { HubCard } from '../HubCard';
 import type { Hub } from '../../../../types/hub';
@@ -54,7 +54,13 @@ const connections: Connection[] = [
 ];
 
 describe('HubCard', () => {
-  it('renders router name and vendor in full (state 2)', () => {
+  // The full (non-minimized) card was redesigned: it no longer has a
+  // connection-count pill or an expand/collapse toggle. Connections are now
+  // shown by default, grouped by type, up to a small cap (4), with a "See
+  // Hub detail" / "See all N connections" link at the bottom. Vendor is a
+  // configurable meta-chip field that isn't in the default visible set for
+  // 'gw-card', so it's not asserted here.
+  it('renders router name and status in full (state 2)', () => {
     render(
       <MemoryRouter>
         <HubCard
@@ -67,10 +73,12 @@ describe('HubCard', () => {
       </MemoryRouter>
     );
     expect(screen.getByText('AT&T Core East')).toBeDefined();
-    expect(screen.getByText('Cisco')).toBeDefined();
+    // 'Active' also appears on the (now always-visible) connection rows below,
+    // so assert the health badge instead, which is unique to the header.
+    expect(screen.getByText('GOOD')).toBeDefined();
   });
 
-  it('renders connection count pill', () => {
+  it('shows connections by default, grouped by type (state 2)', () => {
     render(
       <MemoryRouter>
         <HubCard
@@ -82,63 +90,10 @@ describe('HubCard', () => {
         />
       </MemoryRouter>
     );
-    expect(screen.getByText('2 connections')).toBeDefined();
-  });
-
-  it('connections are hidden by default (state 2)', () => {
-    render(
-      <MemoryRouter>
-        <HubCard
-          router={router}
-          connections={connections}
-          isMinimized={false}
-          onMinimize={vi.fn()}
-          onMaximize={vi.fn()}
-        />
-      </MemoryRouter>
-    );
-    expect(screen.queryByText('Corporate Cloud Hub')).toBeNull();
-    expect(screen.getByText('Show connections (2)')).toBeDefined();
-  });
-
-  it('reveals connections after clicking expand handle (state 3)', async () => {
-    render(
-      <MemoryRouter>
-        <HubCard
-          router={router}
-          connections={connections}
-          isMinimized={false}
-          onMinimize={vi.fn()}
-          onMaximize={vi.fn()}
-        />
-      </MemoryRouter>
-    );
-    await act(async () => {
-      screen.getByText('Show connections (2)').click();
-    });
+    // No expand interaction needed — connections render immediately.
     expect(screen.getByText('Corporate Cloud Hub')).toBeDefined();
     expect(screen.getByText('AWS Interconnect')).toBeDefined();
-  });
-
-  it('hides connections after clicking collapse handle', async () => {
-    render(
-      <MemoryRouter>
-        <HubCard
-          router={router}
-          connections={connections}
-          isMinimized={false}
-          onMinimize={vi.fn()}
-          onMaximize={vi.fn()}
-        />
-      </MemoryRouter>
-    );
-    await act(async () => {
-      screen.getByText('Show connections (2)').click();
-    });
-    await act(async () => {
-      screen.getByText('Hide connections').click();
-    });
-    expect(screen.queryByText('Corporate Cloud Hub')).toBeNull();
+    expect(screen.getByText('See Hub detail')).toBeDefined();
   });
 
   it('renders minimized state (state 1)', () => {

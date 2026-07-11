@@ -30,55 +30,55 @@ function renderEdge(edge: NetworkEdge, isSelected = false) {
 
 describe('Edge', () => {
   it('renders an SVG path between two nodes', () => {
-    const { hub } = renderEdge(makeEdge());
+    const { container: hub } = renderEdge(makeEdge());
     const paths = hub.querySelectorAll('path');
     expect(paths.length).toBeGreaterThanOrEqual(2); // hit area + visible line
   });
 
   it('uses service color for active edges', () => {
-    const { hub } = renderEdge(makeEdge({ status: 'active', type: 'Ethernet' }));
+    const { container: hub } = renderEdge(makeEdge({ status: 'active', type: 'Ethernet' }));
     const visiblePath = hub.querySelectorAll('path')[1];
     expect(visiblePath.getAttribute('stroke')).toBe('#06b6d4'); // Ethernet color
   });
 
   it('uses gray for inactive edges', () => {
-    const { hub } = renderEdge(makeEdge({ status: 'inactive' }));
+    const { container: hub } = renderEdge(makeEdge({ status: 'inactive' }));
     const visiblePath = hub.querySelectorAll('path')[1];
     expect(visiblePath.getAttribute('stroke')).toBe('#d1d5db');
   });
 
   it('uses red for down edges', () => {
-    const { hub } = renderEdge(makeEdge({ status: 'down' }));
+    const { container: hub } = renderEdge(makeEdge({ status: 'down' }));
     const visiblePath = hub.querySelectorAll('path')[1];
     expect(visiblePath.getAttribute('stroke')).toBe('#ef4444');
   });
 
   it('uses dashed stroke for inactive edges', () => {
-    const { hub } = renderEdge(makeEdge({ status: 'inactive' }));
+    const { container: hub } = renderEdge(makeEdge({ status: 'inactive' }));
     const visiblePath = hub.querySelectorAll('path')[1];
     expect(visiblePath.getAttribute('stroke-dasharray')).toBe('6,4');
   });
 
   it('uses dashed stroke for down edges', () => {
-    const { hub } = renderEdge(makeEdge({ status: 'down' }));
+    const { container: hub } = renderEdge(makeEdge({ status: 'down' }));
     const visiblePath = hub.querySelectorAll('path')[1];
     expect(visiblePath.getAttribute('stroke-dasharray')).toBe('6,4');
   });
 
   it('uses solid stroke for active edges (non-VPN)', () => {
-    const { hub } = renderEdge(makeEdge({ status: 'active', type: 'Ethernet' }));
+    const { container: hub } = renderEdge(makeEdge({ status: 'active', type: 'Ethernet' }));
     const visiblePath = hub.querySelectorAll('path')[1];
     expect(visiblePath.getAttribute('stroke-dasharray')).toBeNull();
   });
 
   it('uses blue highlight when selected', () => {
-    const { hub } = renderEdge(makeEdge({ status: 'active' }), true);
+    const { container: hub } = renderEdge(makeEdge({ status: 'active' }), true);
     const visiblePath = hub.querySelectorAll('path')[1];
     expect(visiblePath.getAttribute('stroke')).toBe('#3b82f6');
   });
 
   it('uses thicker stroke when selected', () => {
-    const { hub } = renderEdge(makeEdge(), true);
+    const { container: hub } = renderEdge(makeEdge(), true);
     const visiblePath = hub.querySelectorAll('path')[1];
     expect(visiblePath.getAttribute('stroke-width')).toBe('3');
   });

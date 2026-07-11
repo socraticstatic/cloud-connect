@@ -35,7 +35,7 @@ describe('NetworkSimulation', () => {
   });
 
   it('does not render when simulation is idle', () => {
-    const { hub } = render(<NetworkSimulation />);
+    const { container: hub } = render(<NetworkSimulation />);
     expect(hub.innerHTML).toBe('');
   });
 
