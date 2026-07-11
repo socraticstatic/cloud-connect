@@ -221,6 +221,12 @@ const LazyGovernPage = lazy(() =>
   }))
 );
 
+const LazyObservePage = lazy(() =>
+  import('./features/observe/ObservePage').then(module => ({
+    default: module.ObservePage
+  }))
+);
+
 // Only load these when actually needed
 const LazyControlCenterManager = lazy(() =>
   import('./components/control-center/ControlCenterManager').then(module => ({
@@ -602,6 +608,12 @@ function App() {
                 <Route path="/govern" element={
                   <Suspense fallback={<LoadingFallback />}>
                     <LazyGovernPage />
+                  </Suspense>
+                } />
+
+                <Route path="/observe" element={
+                  <Suspense fallback={<LoadingFallback />}>
+                    <LazyObservePage />
                   </Suspense>
                 } />
 
