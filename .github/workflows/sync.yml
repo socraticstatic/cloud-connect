@@ -1,0 +1,36 @@
+name: Sync from Bolt.new
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [bolt-sync]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Configure Git
+      run: |
+        git config --global user.name "Bolt.new Sync"
+        git config --global user.email "sync@bolt.new"
+        
+    - name: Sync changes
+      run: |
+        echo "Syncing changes from Bolt.new environment"
+        echo "Timestamp: $(date)" > .bolt-sync-timestamp
+        
+    - name: Commit and push changes
+      run: |
+        git add .
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "Sync changes from Bolt.new [$(date +'%Y-%m-%d %H:%M:%S')]"
+          git push origin main
+        fi

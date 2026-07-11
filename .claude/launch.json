@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sdci-dev",
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["-c", "export PATH=/Users/micahbos/.nvm/versions/node/v20.20.2/bin:$PATH && npm run dev -- --port ${PORT:-5173} --strictPort"],
+      "autoPort": true
+    }
+  ]
+}

@@ -1,0 +1,150 @@
+@import './styles/fonts.css';
+@import './styles/tokens.css';
+@import './styles/buttons.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Font scaling support */
+  :root {
+    --font-scale: 1;
+  }
+
+  html {
+    font-size: calc(16px * var(--font-scale));
+    transition: font-size 0.3s ease;
+  }
+
+  body {
+    @apply text-gray-900 font-sans;
+    font-family: var(--font-family-base);
+  }
+
+  p, h1, h2, h3, h4, h5, h6 {
+    @apply leading-relaxed;
+  }
+
+  a {
+    @apply underline-offset-2;
+  }
+
+  .text-gray-500 {
+    @apply text-gray-600;
+  }
+  
+  /* Ensure all buttons are rounded EXCEPT nav buttons */
+  button:not(nav button, .no-rounded, .mode-selection-card) {
+    @apply rounded-full;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-lg border border-gray-200;
+  }
+
+  .card-header {
+    @apply p-4 border-b border-gray-200;
+  }
+
+  .card-body {
+    @apply p-4;
+  }
+
+  .card-footer {
+    @apply p-4 border-t border-gray-200;
+  }
+
+  .card-gradient {
+    @apply bg-white hover:scale-[1.02] transition-all duration-300;
+    box-shadow: 
+      0 1px 2px rgba(0,0,0,0.04),
+      0 2px 4px rgba(0,0,0,0.04),
+      0 4px 8px rgba(0,0,0,0.04),
+      0 8px 16px rgba(0,0,0,0.04);
+  }
+
+  .card-gradient:hover {
+    box-shadow: 
+      0 2px 4px rgba(0,0,0,0.05),
+      0 4px 8px rgba(0,0,0,0.05),
+      0 8px 16px rgba(0,0,0,0.05),
+      0 16px 32px rgba(0,0,0,0.05);
+  }
+
+  .form-control {
+    @apply rounded-full border-gray-300 shadow-sm focus:border-brand-blue focus:ring-brand-blue;
+  }
+
+  .console-line {
+    @apply font-mono text-sm leading-relaxed;
+    text-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
+  }
+  
+  .no-rounded {
+    @apply rounded-none !important;
+    border-radius: 0 !important;
+  }
+  
+  .widget-card {
+    border-radius: 0.5rem !important;
+  }
+  
+  .flex.overflow-x-auto.hide-scrollbar button,
+  div[class*="sticky top-0"] div[class*="flex overflow-x-auto"] button {
+    @apply rounded-none !important;
+    border-radius: 0 !important;
+  }
+}
+
+/* Optimized animations - only essential ones */
+@keyframes matrix-rain {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+
+.matrix-character {
+  animation: matrix-rain 2s linear infinite;
+  color: #00ff00;
+  opacity: 0;
+}
+
+/* Critical button styles */
+button,
+.button,
+[type="button"],
+.flex.items-center.px-4.py-2,
+button.flex.items-center.px-4.py-2 {
+  border-radius: 9999px !important;
+}
+
+/* Navigation exceptions */
+nav button,
+button.flex.items-center.whitespace-nowrap.py-4.px-1.border-b-2,
+.flex.items-center.whitespace-nowrap.py-4.px-1.border-b-2,
+.border-b-2.text-sm.font-medium,
+.flex.overflow-x-auto.hide-scrollbar button,
+div.sticky.top-0 div.flex.overflow-x-auto button,
+button.flex-1.flex.flex-col.items-center,
+div.flex.overflow-x-auto.hide-scrollbar.border-t.border-gray-200 button,
+button[class*="flex-1 flex flex-col items-center py-3 px-1"] {
+  border-radius: 0 !important;
+}
+
+.mode-selection-card {
+  border-radius: 0.75rem !important;
+}
+
+/* Reduced motion for better performance */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

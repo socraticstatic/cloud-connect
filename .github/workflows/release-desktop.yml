@@ -1,0 +1,66 @@
+name: Release Desktop App
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. 1.1.0)'
+        required: true
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build:skip-typecheck
+      - run: npx electron-builder --mac --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-dmg
+          path: release/*.dmg
+
+  build-win:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build:skip-typecheck
+      - run: npx electron-builder --win --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: release/*.exe
+
+  release:
+    needs: [build-mac, build-win]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: mac-dmg
+          path: artifacts/
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-exe
+          path: artifacts/
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.event.inputs.version }}
+          name: NetBond Advanced v${{ github.event.inputs.version }}
+          files: artifacts/*
+          body: |
+            Desktop app for AT&T NetBond Advanced.
+
+            **Mac**: Download the .dmg, drag to Applications, double-click.
+            **Windows**: Download the .exe, run installer, launch from Start.

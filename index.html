@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <!-- PWA Primary Meta Tags -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    <title>AT&T NetBond® Advanced</title>
+    <meta name="description" content="Software-Defined Cloud Interconnect - Manage network connections across clouds and data centers" />
+
+    <!-- Block Search Engine Indexing -->
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex" />
+    <meta name="bingbot" content="noindex, nofollow, noarchive" />
+    <meta name="referrer" content="no-referrer" />
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="./icon-192x192.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="./icon-192x192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./icon-192x192.png" />
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="./manifest.json" />
+
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#0057b8" />
+    <!-- Dark mode disabled - light only -->
+
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="NetBond SDCI" />
+
+    <!-- Microsoft Tiles -->
+    <meta name="msapplication-TileColor" content="#0057b8" />
+    <meta name="msapplication-TileImage" content="./icon-144x144.png" />
+    <meta name="msapplication-config" content="./browserconfig.xml" />
+      <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+
+    <!-- Maze.co User Testing -->
+    <script>
+    (function (m, a, z, e) {
+      var s, t, u, v;
+      try { t = m.sessionStorage.getItem('maze-us'); } catch (err) {}
+      if (!t) { t = new Date().getTime(); try { m.sessionStorage.setItem('maze-us', t); } catch (err) {} }
+      u = document.currentScript || (function () { var w = document.getElementsByTagName('script'); return w[w.length - 1]; })();
+      v = u && u.nonce;
+      s = a.createElement('script');
+      s.src = z + '?apiKey=' + e;
+      s.async = true;
+      if (v) s.setAttribute('nonce', v);
+      a.getElementsByTagName('head')[0].appendChild(s);
+      m.mazeUniversalSnippetApiKey = e;
+    })(window, document, 'https://snippet.maze.co/maze-universal-loader.js', 'd6c6826a-ad97-4c4a-9e64-746a7042ff5b');
+    </script>
+  </body>
+</html>
