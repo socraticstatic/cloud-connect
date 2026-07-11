@@ -2,6 +2,7 @@ import { PageSection } from '../../components/common/layouts';
 import { useCloudControl } from '../../engine/react/useCloudControl';
 import { OnrampPanel } from './OnrampPanel';
 import { RouteTopology } from './RouteTopology';
+import { PathTable } from './PathTable';
 
 export function ConnectPage() {
   const counts = useCloudControl(cc => cc.counts());
@@ -23,7 +24,7 @@ export function ConnectPage() {
 
         <RouteTopology />
 
-        {/* Task 2.3 mounts the path table here. */}
+        <PathTable />
       </PageSection>
     </div>
   );
