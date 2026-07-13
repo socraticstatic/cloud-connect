@@ -2,16 +2,20 @@ import { useState } from 'react';
 import { PageSection } from '../../components/common/layouts';
 import { TabGroup } from '../../components/navigation/TabGroup';
 import { AttIcon } from '../../components/icons/AttIcon';
+import { useCloudControl } from '../../engine/react/useCloudControl';
+import { ObservabilityShell } from '../observe/ObservabilityShell';
+import { aiBinding } from '../observe/aiBinding';
 import { TokenPolicies } from './TokenPolicies';
 import { ModelCatalog } from './ModelCatalog';
 import { AgentsPanel } from './AgentsPanel';
 import { PromptTrace } from './PromptTrace';
 import { GovernanceDecisions } from './GovernanceDecisions';
 
-type AiFabricTab = 'policies-models' | 'agents' | 'trace';
+type AiFabricTab = 'policies-models' | 'agents' | 'trace' | 'observability';
 
 export function AiFabricPage() {
   const [activeTab, setActiveTab] = useState<AiFabricTab>('policies-models');
+  const observability = useCloudControl(aiBinding);
 
   const tabs = [
     {
@@ -25,6 +29,11 @@ export function AiFabricPage() {
       icon: <AttIcon name="apps" className="h-4 w-4 mr-1.5" />,
     },
     { id: 'trace', label: 'Trace' },
+    {
+      id: 'observability',
+      label: 'Observability',
+      icon: <AttIcon name="high-meter" className="h-4 w-4 mr-1.5" />,
+    },
   ];
 
   return (
@@ -50,6 +59,8 @@ export function AiFabricPage() {
             <GovernanceDecisions />
           </div>
         )}
+
+        {activeTab === 'observability' && <ObservabilityShell binding={observability} />}
       </PageSection>
     </div>
   );

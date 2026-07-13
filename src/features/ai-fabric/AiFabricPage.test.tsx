@@ -14,3 +14,10 @@ test('lists token policies and enforcing one mutates engine state', () => {
     expect(CC.tokenPolicyList().filter(p => p.enforced).length).toBeGreaterThan(before);
   }
 });
+
+test('Observability tab renders the shared observability shell bound to AI Fabric', () => {
+  render(<MemoryRouter><AiFabricPage /></MemoryRouter>);
+  fireEvent.click(screen.getByRole('button', { name: /observability/i }));
+  expect(screen.getAllByTestId('kpi-tile')).toHaveLength(5);
+  expect(screen.getByText(/Fabric briefing/i)).toBeInTheDocument();
+});
