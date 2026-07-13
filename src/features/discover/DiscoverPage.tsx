@@ -1,8 +1,5 @@
 import { UnifiedDiscovery } from './UnifiedDiscovery';
 
-// EstateTable remains importable for network-detail views (e.g. a future
-// per-cloud drill-down) but is no longer the primary Discover body — the
-// unified network+AI inventory view (UnifiedDiscovery) is.
 
 export function DiscoverPage() {
   return (
