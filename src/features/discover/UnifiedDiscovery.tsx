@@ -30,7 +30,7 @@ export function UnifiedDiscovery() {
             onClick={() => setLens(c.id)}
             className={`h-8 px-3 rounded-full border text-figma-xs font-medium transition-colors ${
               lens === c.id
-                ? 'bg-fw-heading text-white border-fw-heading'
+                ? 'bg-fw-heading text-white border-transparent'
                 : 'bg-fw-base text-fw-body border-fw-secondary hover:bg-fw-wash'
             }`}
           >

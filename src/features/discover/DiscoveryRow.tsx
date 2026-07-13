@@ -18,7 +18,7 @@ export function DiscoveryRow({ row, lens }: { row: InventoryRow; lens: 'all' | '
   const dimAi = lens === 'network' ? 'opacity-40' : '';
   return (
     <div className="rounded-2xl border border-fw-secondary bg-fw-base overflow-hidden">
-      <button type="button" onClick={() => setOpen(o => !o)} aria-label={row.name}
+      <button type="button" onClick={() => setOpen(o => !o)} aria-label={row.name} aria-expanded={open}
         className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-fw-wash/60 transition-colors">
         <span className="inline-flex items-center justify-center h-7 w-7 rounded-md text-[10px] font-bold text-white" style={{ background: row.mark.color }}>{row.mark.label}</span>
         <span className="font-medium text-fw-heading flex-1">{row.name}</span>
