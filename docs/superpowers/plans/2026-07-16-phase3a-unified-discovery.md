@@ -14,6 +14,7 @@
 - Deterministic: NO `Date.now()` / `Math.random()` in selectors or render.
 - Light Flywheel theme only: reuse existing classes — `rounded-2xl border border-fw-secondary bg-fw-base`, `bg-fw-wash`, `text-fw-heading`, `text-fw-body`, `text-fw-bodyLight`, `text-figma-xs`/`text-figma-sm`, uppercase `tracking-wide` headers. No dark-navy palette. No new green/amber unless it is an existing `fw-*` status token.
 - Reuse cloud marks: each `CC.clouds` entry has `color` and `mk`; use those for the row mark (match `EstateTable`). AI-only providers (no cloud) use a neutral mark + provider name.
+- **Verified repo facts (use exactly):** the engine hook is `import { useCloudControl } from '../../engine/react/useCloudControl'`. Tests import the engine singleton `import { CC } from '../../engine'` and render components with a plain `render(<Component/>)` — there is NO provider wrapper (see `src/features/connect/RouteTopology.test.tsx`). Status tokens that EXIST: `fw-success`, `fw-successLight`, `fw-warn`, `fw-warnLight`, `fw-base`, `fw-body`, `fw-bodyLight`, `fw-heading`, `fw-secondary`. `fw-successWash` does NOT exist — never use it. `text-figma-2xl` exists.
 - Keep `src/__tests__/rebrand.test.ts` green (no "NetBond"/legacy strings). `npm run build` + `npx tsc --noEmit` clean. Run vitest with the repo's existing config (no `--project` flags).
 - Do NOT modify `~/Developer/cloud-control` (old repo) or `att-netbond-sdci`.
 
@@ -57,10 +58,10 @@ export function useUnifiedInventory(): InventoryRow[];         // = useCloudCont
 ```ts
 import { describe, it, expect } from 'vitest';
 import { buildInventory } from './useUnifiedInventory';
-import { createEngine } from '../../engine'; // adjust to the repo's engine factory/import
+import { CC } from '../../engine'; // engine singleton, same import the other tests use
 
 describe('buildInventory', () => {
-  const cc = createEngine();               // fresh engine (day-zero state)
+  const cc = CC;
   const rows = buildInventory(cc);
 
   it('covers every cloud that has a network on-ramp or estate, plus AI-only providers, with no dupes', () => {
@@ -95,7 +96,7 @@ Expected: FAIL — module not found / `buildInventory` undefined.
 - [ ] **Step 3: Implement the selector**
 
 ```ts
-import { useCloudControl } from '../../engine'; // adjust import to the repo's hook location
+import { useCloudControl } from '../../engine/react/useCloudControl';
 
 export interface NetworkFacet { onrampId: string | null; onrampName: string | null; attached: boolean; workloads: number; path: 'private' | 'public'; }
 export interface AiFacet { status: 'connected' | 'pending'; provider: string; models: { id: string; name: string; ready: boolean }[]; readyCount: number; }
@@ -147,7 +148,7 @@ export function useUnifiedInventory(): InventoryRow[] {
 }
 ```
 
-> Note for the implementer: confirm the exact engine import (`createEngine`/`useCloudControl` path) from an existing feature (e.g. `src/features/discover/EstateTable.tsx` and `src/features/connect/RouteTopology.tsx`) and match it. If `createEngine()` is not the test factory used elsewhere, use whatever the existing `*.test.tsx` files use to obtain a `cc` instance.
+> Engine imports are pinned in Global Constraints: `useCloudControl` from `'../../engine/react/useCloudControl'`; the test uses the singleton `import { CC } from '../../engine'` and passes `CC` to `buildInventory`. Match `src/features/connect/RouteTopology.tsx`/`.test.tsx` for the exact pattern.
 
 - [ ] **Step 4: Run to verify it passes**
 
@@ -224,11 +225,11 @@ import type { InventoryRow } from './useUnifiedInventory';
 
 function Chip({ tone, children }: { tone: 'private' | 'public' | 'connected' | 'pending' | 'na'; children: React.ReactNode }) {
   const map: Record<string, string> = {
-    private: 'bg-fw-successWash text-fw-success border-fw-success/30',
+    private: 'bg-fw-successLight text-fw-success border-fw-success',
     public: 'bg-fw-wash text-fw-bodyLight border-fw-secondary',
-    connected: 'bg-fw-successWash text-fw-success border-fw-success/30',
-    pending: 'bg-fw-wash text-fw-bodyLight border-fw-secondary',
-    na: 'bg-fw-wash text-fw-bodyLight/60 border-fw-secondary',
+    connected: 'bg-fw-successLight text-fw-success border-fw-success',
+    pending: 'bg-fw-warnLight text-fw-warn border-fw-warn',
+    na: 'bg-fw-wash text-fw-bodyLight border-fw-secondary',
   };
   return <span className={`inline-flex items-center h-6 px-2 rounded-full border text-figma-xs font-medium ${map[tone]}`}>{children}</span>;
 }
@@ -312,13 +313,11 @@ git commit -m "feat: DiscoveryRow — collapsed network/AI chips, expandable dua
 import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { UnifiedDiscovery } from './UnifiedDiscovery';
-// Use the same engine Provider wrapper the other feature tests use (copy from EstateTable.test or AiFabricPage.test).
-
-function renderWithEngine(ui: React.ReactNode) { /* wrap in the repo's engine provider */ return render(<>{ui}</>); }
+// No provider wrapper — the engine is a singleton read via useCloudControl (see RouteTopology.test.tsx).
 
 describe('UnifiedDiscovery', () => {
   it('renders one row per inventory entry and the three lens chips', () => {
-    renderWithEngine(<UnifiedDiscovery />);
+    render(<UnifiedDiscovery />);
     expect(screen.getByRole('button', { name: /^all$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^network$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^ai$/i })).toBeInTheDocument();
@@ -327,7 +326,7 @@ describe('UnifiedDiscovery', () => {
   });
 
   it('selecting the Network lens marks it active', () => {
-    renderWithEngine(<UnifiedDiscovery />);
+    render(<UnifiedDiscovery />);
     const net = screen.getByRole('button', { name: /^network$/i });
     fireEvent.click(net);
     expect(net.getAttribute('aria-pressed')).toBe('true');
@@ -376,7 +375,7 @@ export function UnifiedDiscovery() {
 }
 ```
 
-> Confirm `text-figma-2xl` exists (grep the config/existing pages for the heading size used on other pages, e.g. the current DiscoverPage) and match it. Wrap the test in the same engine provider the other `*.test.tsx` files use.
+> `text-figma-2xl` exists (verified). No provider wrapper needed in the test — plain `render()` (the engine is a singleton). If the current DiscoverPage uses a different heading size, match it for consistency.
 
 - [ ] **Step 4: Mount on the Discover route**
 
@@ -417,7 +416,7 @@ If AI Fabric currently asserts a "discovery"/"providers" heading that should now
 
 ```tsx
 it('AI Fabric points provider discovery to the Discover surface (no duplicate onboarding here)', () => {
-  renderWithEngine(<AiFabricPage />);
+  render(<AiFabricPage />);
   // ModelCatalog still shows governed models, but the provider-onboarding/discovery affordance is gone from AI Fabric
   expect(screen.queryByText(/add provider/i)).toBeNull();
 });
