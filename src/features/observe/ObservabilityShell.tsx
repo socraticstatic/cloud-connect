@@ -64,7 +64,7 @@ export function ObservabilityShell({ binding }: { binding: ObservabilityBinding 
               ))}
             </div>
             <div data-testid="flow-panel" data-tab={tab} className="p-4">
-              {/* deterministic mini bar series (reuse TelemetryCharts/TokenCharts later; inline SVG keeps it dep-free + testable) */}
+              {/* deterministic mini bar series — inline SVG keeps it dep-free + testable */}
               <svg viewBox={`0 0 ${Math.max(series.length * 10, 10)} 40`} className="w-full h-24">
                 {series.map((p, i) => {
                   const max = Math.max(...series.map(s => s.v), 1);
