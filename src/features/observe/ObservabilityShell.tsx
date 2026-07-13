@@ -64,14 +64,20 @@ export function ObservabilityShell({ binding }: { binding: ObservabilityBinding 
               ))}
             </div>
             <div data-testid="flow-panel" data-tab={tab} className="p-4">
-              {/* deterministic mini bar series — inline SVG keeps it dep-free + testable */}
-              <svg viewBox={`0 0 ${Math.max(series.length * 10, 10)} 40`} className="w-full h-24">
-                {series.map((p, i) => {
-                  const max = Math.max(...series.map(s => s.v), 1);
-                  const h = (p.v / max) * 36;
-                  return <rect key={i} x={i * 10 + 1} y={40 - h} width="8" height={h} rx="1" fill="#009FDB" />;
-                })}
-              </svg>
+              {series.length === 0 || series.every(p => p.v === 0) ? (
+                <div data-testid="flow-empty" className="h-24 flex items-center justify-center text-figma-sm text-fw-bodyLight text-center px-4">
+                  {binding.emptyHint ?? 'No flow in this window yet.'}
+                </div>
+              ) : (
+                /* deterministic mini bar series — inline SVG keeps it dep-free + testable */
+                <svg viewBox={`0 0 ${Math.max(series.length * 10, 10)} 40`} className="w-full h-24">
+                  {series.map((p, i) => {
+                    const max = Math.max(...series.map(s => s.v), 1);
+                    const h = (p.v / max) * 36;
+                    return <rect key={i} x={i * 10 + 1} y={40 - h} width="8" height={h} rx="1" fill="#009FDB" />;
+                  })}
+                </svg>
+              )}
             </div>
           </div>
 

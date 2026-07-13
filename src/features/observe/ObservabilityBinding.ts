@@ -8,6 +8,7 @@ export interface ObservabilityBinding {
   layer: 'network' | 'ai';
   title: string;
   columns: string[];                 // records-table headers
+  emptyHint?: string;                // shown in the flow panel when the series is all-zero (e.g. AI at day-zero)
   kpis(): Kpi[];
   flowTabs(): FlowTab[];
   flowSeries(tabId: string): SeriesPoint[];

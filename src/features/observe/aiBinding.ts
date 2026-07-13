@@ -345,6 +345,7 @@ export function aiBinding(cc: CloudControl): ObservabilityBinding {
     layer: 'ai',
     title: 'AI Fabric Observability',
     columns: ['Identity', 'Tokens', 'Model', 'Route', 'Status'],
+    emptyHint: 'No token flow yet — attach a GPU substrate in Connect to light up the fabric.',
     kpis: () => buildKpis(cc),
     flowTabs: () => FLOW_TABS,
     flowSeries: (tabId: string) => buildFlowSeries(cc, tabId),

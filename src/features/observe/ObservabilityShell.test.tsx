@@ -54,4 +54,11 @@ describe('ObservabilityShell', () => {
     const hasInlineStyle = row.style.borderLeftColor === '#ea712f' || row.style.borderLeftColor === 'rgb(234, 113, 47)';
     expect(hasClass || hasInlineStyle).toBe(true);
   });
+
+  it('shows emptyHint in the flow panel when the series is all-zero', () => {
+    const empty: ObservabilityBinding = { ...fake, emptyHint: 'No token flow yet', flowSeries: () => [{ t: 't0', v: 0 }, { t: 't1', v: 0 }] };
+    render(<ObservabilityShell binding={empty} />);
+    expect(screen.getByTestId('flow-empty')).toHaveTextContent('No token flow yet');
+  });
+
 });
