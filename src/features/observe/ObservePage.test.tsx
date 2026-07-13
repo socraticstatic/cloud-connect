@@ -1,12 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { CC } from '../../engine';
 import { ObservePage } from './ObservePage';
 
-test('renders telemetry-derived content from the engine', () => {
+test('renders the network observability shell', () => {
   render(<MemoryRouter><ObservePage /></MemoryRouter>);
-  const t = CC.telemetry(56);
-  expect(t.regions.length).toBeGreaterThan(0);
-  // a region name from the engine appears in the rendered dashboard
-  expect(screen.getByText(new RegExp(t.regions[0].name, 'i'))).toBeInTheDocument();
+  expect(screen.getAllByTestId('kpi-tile')).toHaveLength(5);
+  expect(screen.getAllByTestId('record-row').length).toBeGreaterThan(0);
+  expect(screen.getByText(/Network briefing/i)).toBeInTheDocument();
 });

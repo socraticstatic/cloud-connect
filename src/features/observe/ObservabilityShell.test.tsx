@@ -42,4 +42,16 @@ describe('ObservabilityShell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Trend' }));
     expect(screen.getByTestId('flow-panel').getAttribute('data-tab')).toBe('trend');
   });
+
+  it('renders a left-border tone indicator for a row with tone: bad', () => {
+    const toneBinding: ObservabilityBinding = {
+      ...fake,
+      records: () => [{ id: 'r1', label: 'bad-flow', cells: ['bad-flow', '5', 'public'], tone: 'bad' }],
+    };
+    render(<ObservabilityShell binding={toneBinding} />);
+    const row = screen.getByTestId('record-row');
+    const hasClass = row.className.includes('border-l-fw-warn');
+    const hasInlineStyle = row.style.borderLeftColor === '#ea712f' || row.style.borderLeftColor === 'rgb(234, 113, 47)';
+    expect(hasClass || hasInlineStyle).toBe(true);
+  });
 });

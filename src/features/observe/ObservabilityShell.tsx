@@ -1,5 +1,22 @@
 import { useState } from 'react';
-import type { ObservabilityBinding } from './ObservabilityBinding';
+import type { ObservabilityBinding, RecordRow } from './ObservabilityBinding';
+
+// Left-border tone indicator per record row. Uses Tailwind classes that
+// resolve against tailwind.config.js's `borderColor.fw-success` /
+// `borderColor.fw-warn` tokens (verified via a direct Tailwind CLI build —
+// `.border-l-fw-success` / `.border-l-fw-warn` compile to real
+// `border-left-color` declarations).
+function toneClass(tone: RecordRow['tone']): string {
+  switch (tone) {
+    case 'ok':
+      return 'border-l-2 border-l-fw-success';
+    case 'warn':
+    case 'bad':
+      return 'border-l-2 border-l-fw-warn';
+    default:
+      return '';
+  }
+}
 
 export function ObservabilityShell({ binding }: { binding: ObservabilityBinding }) {
   const tabs = binding.flowTabs();
@@ -76,7 +93,7 @@ export function ObservabilityShell({ binding }: { binding: ObservabilityBinding 
               </thead>
               <tbody className="divide-y divide-fw-secondary">
                 {rows.map(r => (
-                  <tr key={r.id} data-testid="record-row">
+                  <tr key={r.id} data-testid="record-row" className={toneClass(r.tone)}>
                     {r.cells.map((cell, i) => <td key={i} className="px-5 py-2.5 text-fw-body">{cell}</td>)}
                   </tr>
                 ))}
