@@ -1,20 +1,19 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
-import { CC } from '../../engine';
 import { DiscoverPage } from './DiscoverPage';
 
 describe('DiscoverPage', () => {
-  it('renders the estate and attach raises attached count', () => {
+  it('mounts the unified discovery view with lens chips and joined inventory rows', () => {
     render(
       <MemoryRouter>
         <DiscoverPage />
       </MemoryRouter>
     );
-    expect(screen.getByText(/6 clouds/i)).toBeInTheDocument();
-
-    const before = CC.counts().attached;
-    fireEvent.click(screen.getAllByRole('button', { name: /attach/i })[0]);
-    expect(CC.counts().attached).toBeGreaterThan(before);
+    expect(screen.getByRole('button', { name: /^all$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^network$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^ai$/i })).toBeInTheDocument();
+    expect(screen.getByText('CoreWeave')).toBeInTheDocument();
+    expect(screen.getByText('AWS')).toBeInTheDocument();
   });
 });
