@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { Globe } from 'lucide-react';
 import { useUnifiedInventory } from './useUnifiedInventory';
 import { DiscoveryRow } from './DiscoveryRow';
 import { useRevealStagger } from './useRevealStagger';
+import { FlowBar } from '../../components/flow/FlowBar';
 
 type Lens = 'all' | 'network' | 'ai';
 
@@ -9,7 +11,7 @@ export function UnifiedDiscovery() {
   const rows = useUnifiedInventory();
   const [lens, setLens] = useState<Lens>('all');
   const visible = rows.filter(r => (lens === 'all' ? true : lens === 'network' ? r.network : r.ai));
-  // +1 slot reserved for the amber public-internet finding, which always lands last.
+  // +1 slot reserved for the public-internet finding, which always lands last.
   const stagger = useRevealStagger(visible.length + 1);
   const publicWorkloads = rows
     .filter(r => r.network?.path === 'public')
@@ -27,6 +29,13 @@ export function UnifiedDiscovery() {
           One inventory — network on-ramps and AI endpoints across every cloud and provider.
         </p>
       </div>
+      <FlowBar
+        cta={
+          publicWorkloads > 0
+            ? { label: `Attach ${publicWorkloads} public workloads`, to: '/connect?from=discover' }
+            : undefined
+        }
+      />
       <div className="flex items-center gap-2">
         {chips.map(c => (
           <button
@@ -55,8 +64,9 @@ export function UnifiedDiscovery() {
         <div
           role="alert"
           style={stagger(visible.length)}
-          className="flex items-center gap-2 rounded-2xl border border-fw-warn bg-fw-warnLight px-4 py-3 text-figma-sm font-medium text-fw-warn"
+          className="flex items-center gap-2 rounded-2xl border border-l-2 border-[#cbd5e1] border-l-[#94a3b8] bg-[#f8fafc] px-4 py-3 text-figma-sm font-medium text-[#475569]"
         >
+          <Globe size={15} className="shrink-0 text-[#64748b]" aria-hidden="true" />
           {publicWorkloads} workload{publicWorkloads === 1 ? '' : 's'} reachable over the public internet
         </div>
       )}

@@ -10,14 +10,14 @@ export function EgressSplit({ priv, pub }: { priv: number; pub: number }) {
     <div>
       <div className="flex gap-[2px]">
         {priv > 0 && seg(priv, '#00a862', 'Private committed', priv)}
-        {pub > 0 && seg(pub, '#b45309', 'Public uncommitted', pub)}
+        {pub > 0 && seg(pub, '#94a3b8', 'Public uncommitted', pub)}
       </div>
       <div className="mt-2 flex gap-4 text-xs text-slate-600">
         <span className="inline-flex items-center gap-1.5">
           <i className="h-2 w-2 rounded-full bg-[#00a862]" /> Private committed · <b className="tabular-nums">{fmt(priv)}</b>
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <i className="h-2 w-2 rounded-full bg-[#b45309]" /> Public uncommitted · <b className="tabular-nums">{fmt(pub)}</b>
+          <i className="h-2 w-2 rounded-full bg-[#94a3b8]" /> Public uncommitted · <b className="tabular-nums">{fmt(pub)}</b>
         </span>
       </div>
     </div>

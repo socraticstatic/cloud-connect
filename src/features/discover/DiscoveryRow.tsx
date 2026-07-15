@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { Clock } from 'lucide-react';
 import type { InventoryRow } from './useUnifiedInventory';
+import { ProviderLogo } from '../../components/brand/ProviderLogo';
 
 /**
  * Provider marks carry brand colors from the data layer (AWS orange, Azure
@@ -29,10 +31,16 @@ function Chip({ tone, children }: { tone: 'private' | 'public' | 'connected' | '
     private: 'bg-fw-successLight text-fw-success border-fw-success',
     public: 'bg-fw-wash text-fw-bodyLight border-fw-secondary',
     connected: 'bg-fw-successLight text-fw-success border-fw-success',
-    pending: 'bg-fw-warnLight text-fw-warn border-fw-warn',
+    // Pending → neutral attention: slate with a leading clock icon (no warm tone).
+    pending: 'bg-[#f8fafc] text-[#475569] border-[#cbd5e1]',
     na: 'bg-fw-wash text-fw-bodyLight border-fw-secondary',
   };
-  return <span className={`inline-flex items-center h-6 px-2 rounded-full border text-figma-xs font-medium ${map[tone]}`}>{children}</span>;
+  return (
+    <span className={`inline-flex items-center gap-1 h-6 px-2 rounded-full border text-figma-xs font-medium ${map[tone]}`}>
+      {tone === 'pending' && <Clock size={12} className="text-[#64748b]" aria-hidden="true" />}
+      {children}
+    </span>
+  );
 }
 
 export function DiscoveryRow({ row, lens }: { row: InventoryRow; lens: 'all' | 'network' | 'ai' }) {
@@ -43,7 +51,11 @@ export function DiscoveryRow({ row, lens }: { row: InventoryRow; lens: 'all' | '
     <div className="rounded-2xl border border-fw-secondary bg-fw-base overflow-hidden">
       <button type="button" onClick={() => setOpen(o => !o)} aria-label={row.name} aria-expanded={open}
         className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-fw-wash/60 transition-colors">
-        <span className="inline-flex items-center justify-center h-7 w-7 rounded-md text-[10px] font-bold" style={{ background: row.mark.color, color: readableOn(row.mark.color) }}>{row.mark.label}</span>
+        {row.mark.id ? (
+          <ProviderLogo id={row.mark.id} size={28} />
+        ) : (
+          <span className="inline-flex items-center justify-center h-7 w-7 rounded-md text-[10px] font-bold" style={{ background: row.mark.color, color: readableOn(row.mark.color) }}>{row.mark.label}</span>
+        )}
         <span className="font-medium text-fw-heading flex-1">{row.name}</span>
         <span className={`flex items-center gap-2 ${dimNet}`}>
           <span className="text-figma-xs uppercase tracking-wide text-fw-bodyLight">Network</span>

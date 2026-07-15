@@ -174,7 +174,7 @@ export function RulesPanel() {
       {violations.length > 0 && (
         <div className="rounded-2xl border border-fw-secondary bg-fw-wash px-5 py-3">
           <div className="flex items-center gap-2 font-medium text-fw-heading text-figma-sm mb-1.5">
-            <span className="inline-block h-2 w-2 rounded-full bg-[#d98a00] shrink-0" />
+            <span className="inline-block h-2 w-2 rounded-full bg-[#94a3b8] shrink-0" />
             {violations.length} open violation{violations.length === 1 ? '' : 's'}
           </div>
           <ul className="space-y-1">

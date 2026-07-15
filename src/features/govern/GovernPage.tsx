@@ -3,6 +3,7 @@ import { PageSection } from '../../components/common/layouts';
 import { TabGroup } from '../../components/navigation/TabGroup';
 import { AttIcon } from '../../components/icons/AttIcon';
 import { useCloudControl } from '../../engine/react/useCloudControl';
+import { FlowBar } from '../../components/flow/FlowBar';
 import { RulesPanel } from './RulesPanel';
 import { PosturePanel } from './PosturePanel';
 import { ServiceInsertion } from './ServiceInsertion';
@@ -29,6 +30,8 @@ export function GovernPage() {
         title="Govern"
         description="Govern · policy & segmentation — rules, enforcement, violations, and impact on the live engine."
       >
+        <FlowBar cta={{ label: 'Observe the impact', to: '/observe' }} />
+
         <TabGroup tabs={tabs} activeTab={activeTab} onChange={id => setActiveTab(id as GovernTab)} />
 
         {activeTab === 'policies' && (

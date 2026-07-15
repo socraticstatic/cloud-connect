@@ -19,7 +19,9 @@ export interface AiFacet {
 export interface InventoryRow {
   key: string;
   name: string;
-  mark: { color: string; label: string };
+  /** `id` maps to a <ProviderLogo> brand mark (aws/azure/gcp/oci/cw/neb);
+   *  AI-only providers have no mark id and fall back to a monogram tile. */
+  mark: { id: string | null; color: string; label: string };
   network: NetworkFacet | null;
   ai: AiFacet | null;
 }
@@ -68,7 +70,7 @@ export function buildInventory(cc: CloudControl): InventoryRow[] {
     return {
       key: c.id,
       name: c.name,
-      mark: { color: c.color, label: c.mk },
+      mark: { id: c.id, color: c.color, label: c.mk },
       network,
       ai: list ? aiFacet(list, c.name) : null,
     };
@@ -79,7 +81,7 @@ export function buildInventory(cc: CloudControl): InventoryRow[] {
     rows.push({
       key: provider,
       name: provider,
-      mark: { color: '#6E82A4', label: provider.slice(0, 2).toUpperCase() },
+      mark: { id: null, color: '#6E82A4', label: provider.slice(0, 2).toUpperCase() },
       network: null,
       ai: aiFacet(list, provider),
     });

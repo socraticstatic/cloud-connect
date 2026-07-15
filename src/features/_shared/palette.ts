@@ -28,8 +28,8 @@ export const FW = {
   wash: '#f8fafb', // page/panel wash
   success: '#2d7e24', // AT&T green — status only
   successWash: '#e9f5e7',
-  warn: '#8a6d00', // muted amber text — status only
-  warnWash: '#fbf6e3',
+  warn: '#475569', // slate-600 — neutral "attention" text (de-amber), status only
+  warnWash: '#f8fafc', // slate-50 wash
   danger: '#b42318',
 } as const;
 
@@ -42,12 +42,12 @@ export const SERIES = [
   '#0057b8', // cobalt
   '#009e8e', // teal
   '#7b61ff', // violet
-  '#d98a00', // amber (single warm accent)
-  '#c2426b', // rose
+  '#c2426b', // rose (single warm accent — de-amber)
   '#2aa0d8', // sky
   '#3f8f3a', // green
   '#8a5bd6', // plum
   '#5b6b7b', // slate
+  '#0e7490', // cyan-700
 ] as const;
 
 /** Deterministic series color by index (wraps if there are more series). */
@@ -73,14 +73,14 @@ export type StatusTone = 'ok' | 'warn' | 'neutral' | 'info';
 
 export const STATUS_DOT: Record<StatusTone, string> = {
   ok: 'bg-[#2d7e24]',
-  warn: 'bg-[#d98a00]',
+  warn: 'bg-[#94a3b8]', // slate — neutral attention (de-amber)
   neutral: 'bg-[#bdc2c7]',
   info: 'bg-[#0057b8]',
 };
 
 export const STATUS_BADGE: Record<StatusTone, string> = {
   ok: 'bg-[#e9f5e7] text-[#2d7e24]',
-  warn: 'bg-[#fbf6e3] text-[#8a6d00]',
+  warn: 'bg-[#f8fafc] text-[#475569]', // slate — neutral attention (de-amber)
   neutral: 'bg-fw-wash text-fw-bodyLight',
   info: 'bg-[#e6f0fa] text-[#0057b8]',
 };

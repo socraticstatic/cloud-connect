@@ -20,4 +20,30 @@ describe('ConnectPage', () => {
     fireEvent.click(btn);
     expect(CC.onramps.some((o: { active: boolean }) => o.active)).toBe(true);
   });
+
+  it('shows the "from Discover" intent banner only when arriving via ?from=discover', () => {
+    const { unmount } = render(
+      <MemoryRouter initialEntries={['/connect?from=discover']}>
+        <ConnectPage />
+      </MemoryRouter>
+    );
+    expect(screen.getByText(/attaching the workloads flagged on discover/i)).toBeInTheDocument();
+    unmount();
+
+    render(
+      <MemoryRouter initialEntries={['/connect']}>
+        <ConnectPage />
+      </MemoryRouter>
+    );
+    expect(screen.queryByText(/attaching the workloads flagged on discover/i)).toBeNull();
+  });
+
+  it('renders a forward CTA to Govern', () => {
+    render(
+      <MemoryRouter initialEntries={['/connect']}>
+        <ConnectPage />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('link', { name: /govern these paths/i })).toHaveAttribute('href', '/govern');
+  });
 });

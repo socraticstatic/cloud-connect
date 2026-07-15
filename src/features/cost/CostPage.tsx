@@ -1,5 +1,6 @@
 import { useCloudControl } from '../../engine/react/useCloudControl';
 import { StatTile } from '../../components/viz';
+import { FlowBar } from '../../components/flow/FlowBar';
 import { EgressSplit } from './EgressSplit';
 import { EgressTrend } from './EgressTrend';
 import { InvoiceTable } from './InvoiceTable';
@@ -29,6 +30,8 @@ export function CostPage() {
           What the fabric costs, what it saves, and what is still on the table.
         </p>
       </header>
+
+      <FlowBar cta={{ label: 'Review the estate', to: '/discover' }} />
 
       <div data-tour="cost-hero" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Savings identified" value={`$${identified.toLocaleString()}/mo`}

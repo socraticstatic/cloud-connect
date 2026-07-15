@@ -25,7 +25,7 @@ interface PostureCategory {
 // Tailwind classes, so the score ring is colored directly.
 const SCORE_COLOR = {
   good: '#2d7e24', // fw-success
-  fair: '#ea712f', // fw-warn
+  fair: '#64748b', // slate-500 — neutral "needs attention", no warm tone
   poor: '#c70032', // fw-error
 };
 
@@ -37,7 +37,7 @@ function scoreColor(score: number): string {
 
 const FINDING_BADGE: Record<PostureFinding['level'], string> = {
   crit: 'bg-fw-errorLight text-fw-error',
-  warn: 'bg-fw-warnLight text-fw-warn',
+  warn: 'bg-[#f8fafc] text-[#475569] border border-[#cbd5e1]',
   ok: 'bg-fw-successLight text-fw-success',
 };
 

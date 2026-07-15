@@ -3,6 +3,7 @@ import { PageSection } from '../../components/common/layouts';
 import { TabGroup } from '../../components/navigation/TabGroup';
 import { AttIcon } from '../../components/icons/AttIcon';
 import { useCloudControl } from '../../engine/react/useCloudControl';
+import { FlowBar } from '../../components/flow/FlowBar';
 import { ObservabilityShell } from '../observe/ObservabilityShell';
 import { aiBinding } from '../observe/aiBinding';
 import { TokenPolicies } from './TokenPolicies';
@@ -42,6 +43,10 @@ export function AiFabricPage() {
         title="AI Fabric · the tokens layer"
         description="AI Fabric · token policies, model catalog, and agents — governance for every request the engine routes through AI."
       >
+        {/* AI Fabric is the coda, off the Discover→Cost spine: the rail keeps
+            flow context but carries no forward CTA. */}
+        <FlowBar />
+
         <TabGroup tabs={tabs} activeTab={activeTab} onChange={id => setActiveTab(id as AiFabricTab)} />
 
         {activeTab === 'policies-models' && (
