@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useUnifiedInventory } from './useUnifiedInventory';
 import { DiscoveryRow } from './DiscoveryRow';
+import { useRevealStagger } from './useRevealStagger';
 
 type Lens = 'all' | 'network' | 'ai';
 
@@ -8,6 +9,11 @@ export function UnifiedDiscovery() {
   const rows = useUnifiedInventory();
   const [lens, setLens] = useState<Lens>('all');
   const visible = rows.filter(r => (lens === 'all' ? true : lens === 'network' ? r.network : r.ai));
+  // +1 slot reserved for the amber public-internet finding, which always lands last.
+  const stagger = useRevealStagger(visible.length + 1);
+  const publicWorkloads = rows
+    .filter(r => r.network?.path === 'public')
+    .reduce((sum, r) => sum + (r.network?.workloads ?? 0), 0);
   const chips: { id: Lens; label: string }[] = [
     { id: 'all', label: 'All' },
     { id: 'network', label: 'Network' },
@@ -39,10 +45,21 @@ export function UnifiedDiscovery() {
         ))}
       </div>
       <div className="space-y-2">
-        {visible.map(r => (
-          <DiscoveryRow key={r.key} row={r} lens={lens} />
+        {visible.map((r, i) => (
+          <div key={r.key} style={stagger(i)}>
+            <DiscoveryRow row={r} lens={lens} />
+          </div>
         ))}
       </div>
+      {publicWorkloads > 0 && (
+        <div
+          role="alert"
+          style={stagger(visible.length)}
+          className="flex items-center gap-2 rounded-2xl border border-fw-warn bg-fw-warnLight px-4 py-3 text-figma-sm font-medium text-fw-warn"
+        >
+          {publicWorkloads} workload{publicWorkloads === 1 ? '' : 's'} reachable over the public internet
+        </div>
+      )}
     </div>
   );
 }
