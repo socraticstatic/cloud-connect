@@ -38,6 +38,29 @@ it('invoice renders one row per billing line', () => {
   for (const l of lines) expect(screen.getByText(l.item)).toBeInTheDocument();
 });
 
+it('numbers reconcile after steering: This month == billing.total, and captured is the realized delta', async () => {
+  page();
+  const rec = CC.routeAdvisor().recommendations.find(r => r.action === 'steer');
+  if (!rec) return; // engine state already fully steered
+  steeredThisFile.add(rec.flowId);
+
+  const totalBefore = CC.billing().total;
+  fireEvent.click(screen.getAllByRole('button', { name: /steer to save/i })[0]);
+  await waitFor(() =>
+    expect(CC.routeAdvisor().recommendations.some(r => r.id === rec.id)).toBe(false));
+
+  const totalAfter = CC.billing().total;
+  // The bill actually moved (steer is economically real, not a no-op).
+  expect(totalAfter).toBeLessThan(totalBefore);
+  // "This month" headline == billing.total == egress-derived invoice total.
+  const monthText = screen.getByText('This month').nextElementSibling?.textContent ?? '';
+  expect(Number(monthText.replace(/[^0-9]/g, ''))).toBe(Math.round(CC.billing().total));
+  expect(Math.round(CC.billing().total)).toBe(Math.round(CC.egress().total + CC.billing().lines.filter(l => l.kind === 'circuit').reduce((s, l) => s + l.amount, 0)));
+  // Captured headline equals the realized total delta.
+  const captured = totalBefore - totalAfter;
+  expect(screen.getByText(new RegExp(`\\$${Math.round(captured).toLocaleString()}/mo captured`, 'i'))).toBeInTheDocument();
+});
+
 it('steering from a recommendation removes it and narrates the capture', async () => {
   page();
   const recs = CC.routeAdvisor().recommendations.filter(r => r.action === 'steer');

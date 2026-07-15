@@ -49,15 +49,19 @@ export const ATTACH_TYPES: AttachType[] = [
 ];
 
 /**
- * Which catalog entry the currently-active on-ramps represent. The seed fabric
- * attaches over NetBond / Direct Connect / ExpressRoute — all dedicated
- * circuits — so an active dedicated on-ramp lights the `dedicated` type.
+ * Which catalog entry the currently-active on-ramps represent.
+ *
+ * The `dedicated` card is the hyperscaler-circuit family: AWS Direct Connect,
+ * Azure ExpressRoute, GCP/OCI Interconnect. NetBond (incl. NetBond Adv) is an
+ * AT&T MPLS/IP-VPN service — a routed IP hand-off onto the mid-mile, NOT a
+ * dedicated hyperscaler circuit — so it lights the `ip` card, not `dedicated`.
  */
 export function activeAttachTypeId(
   onramps: { type: string; active: boolean }[]
 ): string {
   const hasDedicated = onramps.some(
-    o => o.active && /netbond|direct connect|expressroute/i.test(o.type)
+    o => o.active && /direct connect|expressroute|interconnect/i.test(o.type)
   );
+  // NetBond (MPLS/IP-VPN) and any other active routed hand-off resolve to `ip`.
   return hasDedicated ? 'dedicated' : 'ip';
 }

@@ -122,3 +122,7 @@ release/
 
 # Claude Code agent worktrees (never commit)
 .claude/worktrees/
+
+# Playwright artifacts
+playwright-report/
+test-results/

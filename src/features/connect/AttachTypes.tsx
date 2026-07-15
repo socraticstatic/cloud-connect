@@ -16,8 +16,14 @@ interface Onramp {
  */
 export function AttachTypes() {
   const onramps = useCloudControl(cc => cc.onramps) as Onramp[];
+  // `activeId` is recomputed live from the engine every render, so the "Active"
+  // badge follows real on-ramp state. Selection is the user's local intent:
+  // null until they pick a card, so before any pick it tracks `activeId` live
+  // (never frozen at mount). Once they choose, their choice sticks.
   const activeId = activeAttachTypeId(onramps);
-  const [selected, setSelected] = useState<string>(activeId);
+  const [picked, setPicked] = useState<string | null>(null);
+  const selected = picked ?? activeId;
+  const setSelected = setPicked;
 
   return (
     <section aria-label="Attach types" data-tour="connect-attach-types" className="space-y-2">

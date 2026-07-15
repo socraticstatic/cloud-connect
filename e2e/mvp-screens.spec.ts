@@ -90,20 +90,23 @@ test('cause-and-effect: steering on Connect moves the Cost savings headline', as
   const before = (await savingsValue.innerText()).trim();
   expect(before).toMatch(/\$[\d,]+\/mo/);
 
-  await page.getByRole('link', { name: 'Connect' }).click();
+  // "Connect" is a link in both the top nav and the flow stepper — use the
+  // nav (first in DOM) to avoid a strict-mode collision.
+  await page.getByRole('link', { name: 'Connect' }).first().click();
   // Wait for the lazy ConnectPage + path table to render before probing for
   // steerable flows — otherwise the count races the route transition.
   await expect(page.getByText('Flows & paths')).toBeVisible();
-  const steer = page.getByRole('button', { name: /^Steer$/i }).first();
+  // A steer lever MUST exist — the demo's core proof depends on it. Asserting
+  // (not guarding) here means a regression that removes every steer control
+  // fails this test instead of silently passing as a no-op.
+  const steer = page.getByRole('button', { name: /^Steer$/i });
+  await expect(steer.first()).toBeVisible();
+  expect(await steer.count()).toBeGreaterThan(0);
 
-  if (await steer.count()) {
-    await steer.click();
-    await page.getByRole('link', { name: 'Cost' }).click();
-    await expect(savingsValue).toBeVisible();
-    await expect
-      .poll(async () => (await savingsValue.innerText()).trim())
-      .not.toEqual(before);
-  } else {
-    test.info().annotations.push({ type: 'note', description: 'No steerable flow in seed — cross-screen assertion skipped.' });
-  }
+  await steer.first().click();
+  await page.getByRole('link', { name: 'Cost' }).first().click();
+  await expect(savingsValue).toBeVisible();
+  await expect
+    .poll(async () => (await savingsValue.innerText()).trim())
+    .not.toEqual(before);
 });

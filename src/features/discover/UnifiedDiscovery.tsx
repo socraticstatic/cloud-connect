@@ -103,7 +103,7 @@ export function UnifiedDiscovery() {
       />
 
       {/* Estate header */}
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+      <div data-tour="discover-estate" className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7">
         {stats.map(s => (
           <div key={s.key} className="rounded-xl border border-fw-secondary bg-fw-base px-3 py-2.5">
             <div className="text-figma-lg font-semibold text-fw-heading tabular-nums">{s.value}</div>
@@ -174,6 +174,9 @@ export function UnifiedDiscovery() {
 
                   {cOpen && (
                     <div className="space-y-2 border-t border-fw-secondary py-2 pl-4 pr-2 sm:pl-6">
+                      {regionsOf(cc, c.id).length === 0 && (
+                        <div className="px-3 py-2 text-[11px] text-fw-bodyLight">No regions discovered in this cloud yet.</div>
+                      )}
                       {regionsOf(cc, c.id).map((r: Region) => {
                         const rk = regionKey(c.id, r.id);
                         const rOpen = open.has(rk);
@@ -206,6 +209,9 @@ export function UnifiedDiscovery() {
 
                             {rOpen && (
                               <div className="space-y-2 border-t border-fw-secondary px-2 py-2 sm:px-3">
+                                {vpcsOf(cc, r.id).length === 0 && (
+                                  <div className="px-3 py-2 text-[11px] text-fw-bodyLight">No VPCs or VNets in this region yet.</div>
+                                )}
                                 {vpcsOf(cc, r.id).map((v: Vpc) => {
                                   const vk = vpcKey(c.id, r.id, v.id);
                                   const vOpen = open.has(vk);

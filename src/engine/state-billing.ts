@@ -102,8 +102,11 @@ function virtualPorts(){
     consumptionMo:ports.reduce((s,p)=>s+p.ratePerMo,0)+e.priv+e.pub};
 }
 
-/* Egress model - $/mo buckets that shift public -> private as paths attach */
-function egress(){
+/* Egress model - $/mo buckets that shift public -> private as paths attach.
+   The raw buckets react to on-ramp attach (a bucket flips public->private);
+   the steer overlay (below) then moves a share of the ORIGINAL public spend
+   to committed pricing when the operator STEERS a public flow. */
+function rawBuckets(){
   const buckets=[
     {k:'gpu',amt:11400,priv:()=>onramps.find(o=>o.id==='nb2').active},
     {k:'aws-west-eu',amt:9500,priv:()=>onramps.find(o=>o.id==='dx1').active},
@@ -113,6 +116,45 @@ function egress(){
   ];
   let pub=0,priv=0;
   buckets.forEach(b=>{if(b.priv())priv+=b.amt;else pub+=b.amt;});
+  return {pub,priv};
+}
+
+/* ---- steer baselines, frozen once at module load ----
+   Captured with zero steers and only the seed on-ramp active, so they are
+   deterministic (no Date.now / Math.random). The steer economics value a
+   steered public flow as its SHARE of this baseline public spend - the same
+   share-of-public-spend model costMath uses - so the invoice, the egress
+   split, and "captured this session" all reconcile on one scale. */
+const BASELINE_PUB=rawBuckets().pub;              // public $/mo with zero steers
+let BASELINE_PUBLIC_GBPS=1;                        // sum of gbps over seed public flows
+let BASELINE_PUBLIC_IDS=new Set();                 // ids of the seed public flows
+try{
+  const seed=CC.routeFlows();
+  const pubRows=seed.filter(r=>!r.current.attControlled);
+  BASELINE_PUBLIC_IDS=new Set(pubRows.map(r=>r.id));
+  BASELINE_PUBLIC_GBPS=pubRows.reduce((s,r)=>s+r.gbps,0)||1;
+}catch(e){/* routing not ready at load; share stays 0 until first egress() */}
+
+/* Fraction of the baseline public Gbps that is currently STEERED onto an
+   AT&T-controlled path (a flow the operator overrode public->private). */
+function steeredShare(){
+  let g=0;
+  try{
+    CC.routeFlows().forEach(r=>{
+      if(r.steered&&r.current.attControlled&&BASELINE_PUBLIC_IDS.has(r.id))g+=r.gbps;
+    });
+  }catch(e){}
+  return Math.min(1,Math.max(0,g/BASELINE_PUBLIC_GBPS));
+}
+
+function egress(){
+  const {pub:rawPub,priv:rawPriv}=rawBuckets();
+  // a steered public flow moves its share of the ORIGINAL public spend into
+  // committed pricing; capped at what's actually still public so priv is
+  // never over-credited (floor pub at 0).
+  const pubReduction=Math.min(rawPub,BASELINE_PUB*steeredShare());
+  const pub=Math.max(0,rawPub-pubReduction);
+  const priv=rawPriv+pubReduction;                 // folded into committed buckets
   // private paths carry committed pricing - 15% under public rates
   const savings=Math.round((priv-18300)*0.15);
   return {total:pub+priv-savings,pub,priv:priv-savings,savings,

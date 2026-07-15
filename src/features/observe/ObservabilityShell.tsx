@@ -53,7 +53,7 @@ export function ObservabilityShell({ binding }: { binding: ObservabilityBinding 
         {/* main column */}
         <div className="lg:col-span-2 space-y-4">
           {/* flow panel */}
-          <div className="rounded-2xl border border-fw-secondary bg-fw-base overflow-hidden">
+          <div data-tour="observe-telemetry" className="rounded-2xl border border-fw-secondary bg-fw-base overflow-hidden">
             <div className="flex items-center gap-1 px-3 py-2 border-b border-fw-secondary bg-fw-wash">
               {tabs.map(t => (
                 <button key={t.id} type="button" onClick={() => setTab(t.id)}

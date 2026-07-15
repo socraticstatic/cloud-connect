@@ -20,9 +20,12 @@ test('walks all six sections with real state changes, plus Tour and ⌘K', async
   for (const l of ['Discover', 'Connect', 'Govern', 'Observe', 'Cost', 'AI Fabric']) {
     await expect(page.getByRole('link', { name: l })).toBeVisible();
   }
-  for (const chip of ['All', 'Network', 'AI']) {
-    await expect(page.getByRole('button', { name: new RegExp(`^${chip}$`, 'i') })).toBeVisible();
+  // The rebuilt Discover tree exposes Expand/Collapse controls and a real cloud
+  // row (AWS) — the old All/Network/AI lens chips were removed in the rebuild.
+  for (const ctrl of ['Expand all', 'Collapse all']) {
+    await expect(page.getByRole('button', { name: new RegExp(`^${ctrl}$`, 'i') })).toBeVisible();
   }
+  await expect(page.getByRole('button', { name: 'AWS' })).toBeVisible();
   await expect(page.getByText(/^(Private|Public)$/).first()).toBeVisible();
 
   // --- Connect: Attach activates an on-ramp, raising the active count ---

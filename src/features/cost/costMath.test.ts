@@ -1,4 +1,43 @@
-import { estimateMonthlySavings, publicGbps, PUBLIC_EXPOSURE_ALERT_USD } from './costMath';
+import { estimateMonthlySavings, publicGbps, toSavingsRec, PUBLIC_EXPOSURE_ALERT_USD } from './costMath';
+
+describe('toSavingsRec', () => {
+  const flows = [
+    { id: 'f1', gbps: 6.3, current: { attControlled: false, egressPerGb: 0.09 } },
+    { id: 'f2', gbps: 2.4, current: { attControlled: false } }, // no egressPerGb → fallback
+  ];
+
+  it('parses "$X/GB" out of the engine rec detail', () => {
+    const rec = { id: 'r1', flowId: 'f1', action: 'steer' as const, detail: 'steer to AT&T — −12ms, −$0.07/GB' };
+    const out = toSavingsRec(rec, flows);
+    expect(out.dCostPerGb).toBeCloseTo(0.07);
+    expect(out.perGbCurrent).toBeCloseTo(0.09);
+    expect(out.gbps).toBeCloseTo(6.3);
+  });
+
+  it('falls back to 0.09 perGbCurrent when the flow lacks egressPerGb', () => {
+    const rec = { id: 'r2', flowId: 'f2', action: 'steer' as const, detail: '−$0.05/GB' };
+    expect(toSavingsRec(rec, flows).perGbCurrent).toBe(0.09);
+  });
+
+  it('degrades to dCostPerGb=0 (not NaN) when the detail has no "$X/GB" token', () => {
+    const rec = { id: 'r3', flowId: 'f1', action: 'steer' as const, detail: 'diversify this flow — add a second on-ramp' };
+    const out = toSavingsRec(rec, flows);
+    expect(out.dCostPerGb).toBe(0);
+    expect(Number.isNaN(out.dCostPerGb)).toBe(false);
+  });
+
+  it('degrades to gbps=0 and dCostPerGb=0 when the flow id is unknown', () => {
+    const rec = { id: 'r4', flowId: 'missing', action: 'steer' as const, detail: '' };
+    const out = toSavingsRec(rec, flows);
+    expect(out.gbps).toBe(0);
+    expect(out.dCostPerGb).toBe(0);
+    expect(out.perGbCurrent).toBe(0.09);
+    // and estimateMonthlySavings stays finite (0), never NaN, on the degraded rec
+    const est = estimateMonthlySavings([out], 29_900, 8.7);
+    expect(Number.isNaN(est)).toBe(false);
+    expect(est).toBe(0);
+  });
+});
 
 it('estimates a steer rec as its share of public spend scaled by the per-GB discount', () => {
   // Single public flow carrying all public gbps: share = 1.

@@ -28,9 +28,19 @@ describe('ProviderLogo', () => {
     expect(svg?.getAttribute('fill')).toBe(COLOR.aws);
   });
 
-  it('applies the brand color to the monogram text', () => {
+  it('darkens the monogram text below the pale brand hue so it clears WCAG AA on the faint wash', () => {
     render(<ProviderLogo id="neb" />);
     const mono = screen.getByText('NB');
-    expect(mono).toHaveStyle({ color: COLOR.neb });
+    // Not the raw pale brand color (#42d6c8 fails 4.5:1 on the wash) — a darker,
+    // same-hue variant. Assert it is darker than the brand color on every channel.
+    const raw = COLOR.neb.replace('#', '');
+    const [br, bg, bb] = [0, 2, 4].map(i => parseInt(raw.slice(i, i + 2), 16));
+    const style = getComputedStyle(mono).color; // rgb(r, g, b)
+    const [mr, mg, mb] = style.match(/\d+/g)!.map(Number);
+    expect(mr).toBeLessThan(br);
+    expect(mg).toBeLessThan(bg);
+    expect(mb).toBeLessThan(bb);
+    // And genuinely dark (each channel well under mid) so contrast holds.
+    expect(Math.max(mr, mg, mb)).toBeLessThan(128);
   });
 });

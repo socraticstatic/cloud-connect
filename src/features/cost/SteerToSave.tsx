@@ -1,12 +1,9 @@
 import { useRef, useState } from 'react';
 import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
-import { estimateMonthlySavings, publicGbps, toSavingsRec } from './costMath';
 
 export function SteerToSave() {
   const cc = useCloudControlActions();
   const advisor = useCloudControl(c => c.routeAdvisor());
-  const flows = useCloudControl(c => c.routeFlows());
-  const egress = useCloudControl(c => c.egress());
   const [captured, setCaptured] = useState(0);
   // Double-click guard: a flow's savings are captured at most once per
   // session, even if a stale rec is clicked twice before re-render.
@@ -15,13 +12,15 @@ export function SteerToSave() {
 
   const steer = (rec: (typeof steers)[number]) => {
     if (capturedFlowIds.current.has(rec.flowId)) return;
-    // Value the rec at click time, against the CURRENT public spend/gbps
-    // (both shrink as flows steer off public paths).
-    const value = estimateMonthlySavings(
-      [toSavingsRec(rec, flows)], egress.pub, publicGbps(flows));
+    // "Captured" must equal the ACTUAL realized bill delta, not a re-normalized
+    // estimate: read the engine's total before and after the steer. The billing
+    // engine (egress) is now steer-aware, so a steered public flow really drops
+    // egress.total — this reconciles the headline with the invoice by construction.
+    const before = cc.egress().total;
     if (rec.pathId && cc.steerFlow(rec.flowId, rec.pathId)) {
       capturedFlowIds.current.add(rec.flowId);
-      setCaptured(c => c + value);
+      const after = cc.egress().total;
+      setCaptured(c => c + (before - after));
     }
   };
 
