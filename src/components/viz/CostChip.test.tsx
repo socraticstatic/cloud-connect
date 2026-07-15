@@ -13,4 +13,9 @@ describe('CostChip', () => {
     render(<CostChip perGb={0.09} tone="public" />);
     expect(screen.getByText('$0.09/GB')).toHaveClass('text-[#b45309]');
   });
+
+  it('saving tone renders green', () => {
+    render(<CostChip perGb={0.01} tone="saving" />);
+    expect(screen.getByText('$0.01/GB')).toHaveClass('text-[#00a862]');
+  });
 });

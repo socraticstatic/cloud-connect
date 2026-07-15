@@ -15,4 +15,23 @@ describe('StatTile', () => {
     const meter = screen.getByRole('meter');
     expect(meter).toHaveAttribute('aria-valuenow', '91');
   });
+
+  it('clamps negative pct to 0 for both aria-valuenow and bar width', () => {
+    render(<StatTile label="Commit draw" value="$0" meter={{ pct: -5, label: 'below floor' }} />);
+    const meter = screen.getByRole('meter');
+    expect(meter).toHaveAttribute('aria-valuenow', '0');
+    const bar = meter.firstElementChild as HTMLElement;
+    expect(bar.style.width).toBe('0%');
+  });
+
+  it('clamps pct above 100 to 100 for aria-valuenow', () => {
+    render(<StatTile label="Commit draw" value="$45,000" meter={{ pct: 150, label: 'over commit' }} />);
+    const meter = screen.getByRole('meter');
+    expect(meter).toHaveAttribute('aria-valuenow', '100');
+  });
+
+  it('bad delta renders amber', () => {
+    render(<StatTile label="Egress spend" value="$9,100/mo" delta={{ text: '+$1,200 this month', tone: 'bad' }} />);
+    expect(screen.getByText('+$1,200 this month')).toHaveClass('text-[#b45309]');
+  });
 });
