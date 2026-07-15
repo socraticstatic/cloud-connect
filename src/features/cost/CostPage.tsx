@@ -32,10 +32,10 @@ export function CostPage() {
 
       <div data-tour="cost-hero" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Savings identified" value={`$${identified.toLocaleString()}/mo`}
-                  delta={{ text: `${billing.forecast} forecast`, tone: egress.pub > PUBLIC_EXPOSURE_ALERT_USD ? 'bad' : 'good' }} />
+                  delta={{ text: `${billing.forecast} forecast`, tone: egress.pub > PUBLIC_EXPOSURE_ALERT_USD ? 'neutral' : 'good' }} />
         <StatTile label="This month" value={`$${billing.total.toLocaleString()}`} />
         <StatTile label="Public exposure" value={`$${billing.uncommitted.toLocaleString()}/mo`}
-                  delta={{ text: billing.uncommitted > 0 ? 'uncommitted, no SLA' : 'fully committed', tone: billing.uncommitted > 0 ? 'bad' : 'good' }} />
+                  delta={{ text: billing.uncommitted > 0 ? 'uncommitted, no SLA' : 'fully committed', tone: billing.uncommitted > 0 ? 'neutral' : 'good' }} />
         <StatTile label="Commit draw" value={`$${billing.commitDraw.toLocaleString()}`}
                   meter={{ pct: billing.commitPct, label: `Commit draw ${billing.commitPct}% of $${billing.commit.toLocaleString()}` }} />
       </div>

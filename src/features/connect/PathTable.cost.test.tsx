@@ -4,7 +4,8 @@ import { PathTable } from './PathTable';
 
 // CostChip tone classes (see src/components/viz/CostChip.tsx)
 const CONTROLLED_CLASS = 'text-[#0057b8]';
-const PUBLIC_CLASS = 'text-[#b45309]';
+// De-amber: public egress now renders the neutral slate treatment, not amber.
+const PUBLIC_CLASS = 'text-[#475569]';
 
 afterEach(() => {
   // Undo any steers so tests stay order-independent.
@@ -21,7 +22,7 @@ it('chip rates correspond exactly per tone to engine control state', () => {
   expect(screen.queryAllByText('$0.09/GB')).toHaveLength(publicCount);
 });
 
-it('steering a public flow flips its chip from public amber to controlled cobalt in place', () => {
+it('steering a public flow flips its chip from public neutral to controlled cobalt in place', () => {
   render(<PathTable />);
   const publicFlow = CC.routeFlows().find(
     f => !f.current.attControlled && f.paths.some(p => p.attControlled && p.available)

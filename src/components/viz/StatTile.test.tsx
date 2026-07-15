@@ -30,8 +30,15 @@ describe('StatTile', () => {
     expect(meter).toHaveAttribute('aria-valuenow', '100');
   });
 
-  it('bad delta renders amber', () => {
-    render(<StatTile label="Egress spend" value="$9,100/mo" delta={{ text: '+$1,200 this month', tone: 'bad' }} />);
-    expect(screen.getByText('+$1,200 this month')).toHaveClass('text-[#b45309]');
+  it('neutral delta renders slate, never amber', () => {
+    render(<StatTile label="Egress spend" value="$9,100/mo" delta={{ text: '+$1,200 this month', tone: 'neutral' }} />);
+    const delta = screen.getByText('+$1,200 this month');
+    expect(delta).toHaveClass('text-[#475569]');
+    expect(delta.className).not.toMatch(/b45309|ea712f|amber|warn/);
+  });
+
+  it('critical delta renders red (reserved for true errors)', () => {
+    render(<StatTile label="Path health" value="down" delta={{ text: 'circuit down', tone: 'critical' }} />);
+    expect(screen.getByText('circuit down')).toHaveClass('text-[#dc2626]');
   });
 });

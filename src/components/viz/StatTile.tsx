@@ -1,7 +1,10 @@
+// De-amber semantics: 'good' stays green, 'neutral' replaces the old warm
+// 'bad' with slate-600 (no amber), and 'critical' is red — reserved for true
+// errors only, never a routine "needs attention" state.
 const DELTA_TONE = {
   good: 'text-[#00a862]',
-  bad: 'text-[#b45309]',
-  neutral: 'text-slate-500',
+  neutral: 'text-[#475569]',
+  critical: 'text-[#dc2626]',
 } as const;
 
 export function StatTile({ label, value, delta, meter }: {

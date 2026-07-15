@@ -9,9 +9,12 @@ describe('CostChip', () => {
     expect(chip).toHaveClass('text-[#0057b8]');
   });
 
-  it('public tone renders amber', () => {
-    render(<CostChip perGb={0.09} tone="public" />);
-    expect(screen.getByText('$0.09/GB')).toHaveClass('text-[#b45309]');
+  it('public tone renders the neutral slate treatment with a globe icon (no amber)', () => {
+    const { container } = render(<CostChip perGb={0.09} tone="public" />);
+    const chip = screen.getByText(/\$0\.09\/GB/);
+    expect(chip).toHaveClass('text-[#475569]');
+    expect(chip.className).not.toMatch(/b45309|ea712f|amber|warn/);
+    expect(container.querySelector('svg.lucide-globe')).toBeInTheDocument();
   });
 
   it('saving tone renders green', () => {
