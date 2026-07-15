@@ -23,6 +23,15 @@ it('hero band renders savings, monthly total, public exposure, and commit meter 
   expect(screen.getByRole('meter', { name: /commit/i })).toBeInTheDocument();
 });
 
+it('identified savings stay coherent with the invoice (never exceed total + public spend)', () => {
+  page();
+  // Read the rendered hero figure (StatTile puts the value right after the label).
+  const valueText = screen.getByText('Savings identified').nextElementSibling?.textContent ?? '';
+  const identified = Number(valueText.replace(/[^0-9]/g, ''));
+  expect(identified).toBeGreaterThan(0);
+  expect(identified).toBeLessThan(CC.billing().total + CC.egress().pub);
+});
+
 it('invoice renders one row per billing line', () => {
   page();
   const lines = CC.billing().lines;

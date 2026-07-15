@@ -1,17 +1,28 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
-import { estimateMonthlySavings, toSavingsRec } from './costMath';
+import { estimateMonthlySavings, publicGbps, toSavingsRec } from './costMath';
 
 export function SteerToSave() {
   const cc = useCloudControlActions();
   const advisor = useCloudControl(c => c.routeAdvisor());
   const flows = useCloudControl(c => c.routeFlows());
+  const egress = useCloudControl(c => c.egress());
   const [captured, setCaptured] = useState(0);
+  // Double-click guard: a flow's savings are captured at most once per
+  // session, even if a stale rec is clicked twice before re-render.
+  const capturedFlowIds = useRef(new Set<string>());
   const steers = advisor.recommendations.filter(r => r.action === 'steer');
 
   const steer = (rec: (typeof steers)[number]) => {
-    const value = estimateMonthlySavings([toSavingsRec(rec, flows)]);
-    if (rec.pathId && cc.steerFlow(rec.flowId, rec.pathId)) setCaptured(c => c + value);
+    if (capturedFlowIds.current.has(rec.flowId)) return;
+    // Value the rec at click time, against the CURRENT public spend/gbps
+    // (both shrink as flows steer off public paths).
+    const value = estimateMonthlySavings(
+      [toSavingsRec(rec, flows)], egress.pub, publicGbps(flows));
+    if (rec.pathId && cc.steerFlow(rec.flowId, rec.pathId)) {
+      capturedFlowIds.current.add(rec.flowId);
+      setCaptured(c => c + value);
+    }
   };
 
   return (

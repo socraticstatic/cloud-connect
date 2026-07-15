@@ -4,7 +4,7 @@ import { EgressSplit } from './EgressSplit';
 import { EgressTrend } from './EgressTrend';
 import { InvoiceTable } from './InvoiceTable';
 import { SteerToSave } from './SteerToSave';
-import { estimateMonthlySavings, toSavingsRec } from './costMath';
+import { estimateMonthlySavings, publicGbps, toSavingsRec, PUBLIC_EXPOSURE_ALERT_USD } from './costMath';
 
 export function CostPage() {
   const billing = useCloudControl(cc => cc.billing());
@@ -17,7 +17,9 @@ export function CostPage() {
   const flows = useCloudControl(cc => cc.routeFlows());
 
   const identified = billing.savings +
-    estimateMonthlySavings(advisor.recommendations.map(r => toSavingsRec(r, flows)));
+    estimateMonthlySavings(
+      advisor.recommendations.map(r => toSavingsRec(r, flows)),
+      egress.pub, publicGbps(flows));
 
   return (
     <main className="mx-auto max-w-6xl p-6">
@@ -30,7 +32,7 @@ export function CostPage() {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Savings identified" value={`$${identified.toLocaleString()}/mo`}
-                  delta={{ text: `${billing.forecast} forecast`, tone: egress.pub > 6000 ? 'bad' : 'good' }} />
+                  delta={{ text: `${billing.forecast} forecast`, tone: egress.pub > PUBLIC_EXPOSURE_ALERT_USD ? 'bad' : 'good' }} />
         <StatTile label="This month" value={`$${billing.total.toLocaleString()}`} />
         <StatTile label="Public exposure" value={`$${billing.uncommitted.toLocaleString()}/mo`}
                   delta={{ text: billing.uncommitted > 0 ? 'uncommitted, no SLA' : 'fully committed', tone: billing.uncommitted > 0 ? 'bad' : 'good' }} />
