@@ -14,14 +14,14 @@ interface Section {
   label: string;
 }
 
-// The six top-level routes the app ships (Phases 1-4 + Task 5.1).
+// The six top-level routes the app ships (curated nav — see navItems.ts).
 const SECTIONS: Section[] = [
   { path: '/discover', label: 'Discover' },
   { path: '/connect', label: 'Connect' },
   { path: '/govern', label: 'Govern' },
   { path: '/observe', label: 'Observe' },
+  { path: '/cost', label: 'Cost' },
   { path: '/ai-fabric', label: 'AI Fabric' },
-  { path: '/netops', label: 'NetOps for AI' },
 ];
 
 interface Onramp {

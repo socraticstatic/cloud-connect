@@ -9,7 +9,7 @@ import { AuthProvider } from '../../contexts/AuthContext';
 describe('MainNav curated Cloud Connect nav', () => {
   test('nav shows the six curated Cloud Connect sections', () => {
     render(<MemoryRouter><AuthProvider><MainNav /></AuthProvider></MemoryRouter>);
-    ['Discover', 'Connect', 'Govern', 'Observe', 'AI Fabric', 'NetOps for AI']
+    ['Discover', 'Connect', 'Govern', 'Observe', 'Cost', 'AI Fabric']
       .forEach(l => expect(screen.getByText(l)).toBeInTheDocument());
     expect(screen.queryByText('Marketplace')).toBeNull();
     expect(screen.queryByText('Create')).toBeNull();

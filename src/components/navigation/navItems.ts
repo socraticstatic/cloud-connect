@@ -17,6 +17,6 @@ export const NAV_ITEMS: CuratedNavItem[] = [
   { label: 'Connect', to: '/connect', icon: 'cloud', description: 'Create and Manage Your Connections' },
   { label: 'Govern', to: '/govern', icon: 'check-shield', description: 'Govern Access and Compliance' },
   { label: 'Observe', to: '/observe', icon: 'high-meter', description: 'Observe Connection Health and Performance' },
+  { label: 'Cost', to: '/cost', icon: 'bill', description: 'Cost visibility and control' },
   { label: 'AI Fabric', to: '/ai-fabric', icon: 'apis', description: 'Manage Your AI Fabric' },
-  { label: 'NetOps for AI', to: '/netops', icon: 'router', description: 'Network Operations for AI Workloads' },
 ] as const;

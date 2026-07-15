@@ -13,7 +13,7 @@ test('walks all six sections with real state changes, plus Tour and ⌘K', async
   // --- Discover: attach raises the attached count / shows a private path ---
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page).toHaveTitle(/Cloud Connect/);
-  for (const l of ['Discover', 'Connect', 'Govern', 'Observe', 'AI Fabric', 'NetOps for AI']) {
+  for (const l of ['Discover', 'Connect', 'Govern', 'Observe', 'Cost', 'AI Fabric']) {
     await expect(page.getByRole('link', { name: l })).toBeVisible();
   }
   await page.getByRole('button', { name: /attach/i }).first().click();
@@ -51,22 +51,9 @@ test('walks all six sections with real state changes, plus Tour and ⌘K', async
   await page.getByRole('button', { name: 'Trace', exact: true }).last().click();
   await expect(page.getByText(/denied/i).first()).toBeVisible();
 
-  // --- NetOps: inject a live incident directly on the engine, then Act clears it ---
-  await page.goto('/#/netops', { waitUntil: 'domcontentloaded' });
-  await expect(page.getByText(/closed loop · steady/i)).toBeVisible();
-
-  await page.evaluate(() => {
-    const CC = (window as any).CC;
-    if (!CC.onramps.find((o: any) => o.id === 'nb2')?.active) CC.activateOnramp('nb2');
-    CC.simulateFailure('nb2');
-  });
-  await expect(page.getByText(/live signal in the loop/i)).toBeVisible();
-
-  const actButton = page.getByRole('button', { name: /restore|act/i });
-  await expect(actButton).toBeVisible();
-  await actButton.click();
-  await expect(page.getByText(/closed loop · steady/i)).toBeVisible();
-  await expect(page.getByRole('button', { name: /restore|act/i })).toHaveCount(0);
+  // --- Cost: stub renders (Task 3 builds the real screen and its own e2e coverage) ---
+  await page.goto('/#/cost', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#main-content').getByText('Cost')).toBeVisible();
 
   // --- Tour: the Tour button opens the guided tour ---
   await page.getByRole('button', { name: /^Tour$/i }).click();

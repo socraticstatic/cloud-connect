@@ -6,7 +6,7 @@ describe('command registry', () => {
     const navigate = vi.fn();
     const cmds = commandRegistry(CC, navigate);
     const labels = cmds.map(c => c.label);
-    ['Discover','Connect','Govern','Observe','AI Fabric','NetOps for AI']
+    ['Discover','Connect','Govern','Observe','Cost','AI Fabric']
       .forEach(s => expect(labels.some(l => l.includes(s))).toBe(true));
     // a nav command navigates
     cmds.find(c => c.label.includes('Discover'))!.run();

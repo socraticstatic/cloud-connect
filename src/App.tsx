@@ -228,12 +228,20 @@ const LazyObservePage = lazy(() =>
   }))
 );
 
+const LazyCostPage = lazy(() =>
+  import('./features/cost/CostPage').then(module => ({
+    default: module.CostPage
+  }))
+);
+
 const LazyAiFabricPage = lazy(() =>
   import('./features/ai-fabric/AiFabricPage').then(module => ({
     default: module.AiFabricPage
   }))
 );
 
+// /netops is no longer in the curated nav (see navItems.ts) but the route
+// stays live and deep-linkable — the page is already built and reviewed.
 const LazyNetOpsPage = lazy(() =>
   import('./features/netops/NetOpsPage').then(module => ({
     default: module.NetOpsPage
@@ -629,6 +637,12 @@ function App() {
                 <Route path="/observe" element={
                   <Suspense fallback={<LoadingFallback />}>
                     <LazyObservePage />
+                  </Suspense>
+                } />
+
+                <Route path="/cost" element={
+                  <Suspense fallback={<LoadingFallback />}>
+                    <LazyCostPage />
                   </Suspense>
                 } />
 
