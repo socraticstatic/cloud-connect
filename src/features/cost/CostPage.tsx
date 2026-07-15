@@ -25,7 +25,7 @@ export function CostPage() {
     <main className="mx-auto max-w-6xl p-6">
       <header className="mb-4">
         <h1 className="text-xl font-semibold text-slate-900">Cost</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-600">
           What the fabric costs, what it saves, and what is still on the table.
         </p>
       </header>

@@ -85,8 +85,8 @@ export function ObservabilityShell({ binding }: { binding: ObservabilityBinding 
           <div className="rounded-2xl border border-fw-secondary bg-fw-base overflow-hidden">
             <div className="flex items-center gap-3 px-5 py-3 border-b border-fw-secondary bg-fw-wash">
               <span className="font-medium text-fw-heading flex-1">Records</span>
-              <label className="text-figma-xs text-fw-bodyLight">Group by</label>
-              <select data-testid="groupby-select" value={groupBy} onChange={e => setGroupBy(e.target.value)}
+              <label htmlFor="groupby-select" className="text-figma-xs text-fw-bodyLight">Group by</label>
+              <select id="groupby-select" data-testid="groupby-select" value={groupBy} onChange={e => setGroupBy(e.target.value)}
                 className="h-8 px-2 rounded-md border border-fw-secondary bg-fw-base text-figma-xs text-fw-body">
                 {groups.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
               </select>

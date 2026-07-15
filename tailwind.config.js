@@ -103,15 +103,15 @@ export default {
         // Flywheel Text Tokens - Figma-matched
         'fw-heading': '#1d2329',   // Gray 800 (Figma heading color)
         'fw-body': '#454b52',      // Gray 700
-        'fw-bodyLight': '#686e74', // Gray 600
+        'fw-bodyLight': '#5c6167', // Gray 650 — darkened from #686e74 for WCAG AA (4.5:1) on fw-neutral/fw-wash chips
         'fw-disabled': '#878c94',  // Gray 500
-        'fw-legal': '#686e74',     // Gray 600
+        'fw-legal': '#5c6167',     // Gray 650 (kept in step with fw-bodyLight)
         'fw-link': '#0057b8',      // Cobalt 600 - primary interactive
         'fw-linkHover': '#00388f', // Cobalt 700
         'fw-linkPrimary': '#ffffff',
         'fw-linkSecondary': '#0057b8', // Cobalt 600
-        'fw-success': '#2d7e24',
-        'fw-warn': '#ea712f',
+        'fw-success': '#1e6b17',   // darkened from #2d7e24 for WCAG AA text contrast on fw-successLight tint
+        'fw-warn': '#9a4708',      // accessible burnt-amber for amber TEXT (clears 4.5:1 even on fw-warnLight tint)
         'fw-error': '#c70032',
         'fw-info': '#0074b3',
         'fw-purple': '#af29bb',    // Purple accent text

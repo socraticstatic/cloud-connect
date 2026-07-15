@@ -1,6 +1,29 @@
 import { useState } from 'react';
 import type { InventoryRow } from './useUnifiedInventory';
 
+/**
+ * Provider marks carry brand colors from the data layer (AWS orange, Azure
+ * blue, …). White glyphs on a saturated mid-tone brand fail WCAG AA, so we pick
+ * whichever of near-black / white gives the higher contrast against the brand
+ * fill — keeping the mark on-brand while clearing 4.5:1. Saturated brand tones
+ * resolve to dark text; genuinely dark brands keep white.
+ */
+function relLuminance(hex: string): number {
+  const m = hex.replace('#', '');
+  const h = m.length === 3 ? m.split('').map(c => c + c).join('') : m;
+  const ch = [0, 2, 4].map(i => {
+    const c = parseInt(h.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+}
+function readableOn(bg: string): string {
+  const L = relLuminance(bg);
+  const onDark = (L + 0.05) / 0.05; // pure-black glyph
+  const onLight = 1.05 / (L + 0.05); // white glyph
+  return onDark >= onLight ? '#000000' : '#ffffff';
+}
+
 function Chip({ tone, children }: { tone: 'private' | 'public' | 'connected' | 'pending' | 'na'; children: React.ReactNode }) {
   const map: Record<string, string> = {
     private: 'bg-fw-successLight text-fw-success border-fw-success',
@@ -20,7 +43,7 @@ export function DiscoveryRow({ row, lens }: { row: InventoryRow; lens: 'all' | '
     <div className="rounded-2xl border border-fw-secondary bg-fw-base overflow-hidden">
       <button type="button" onClick={() => setOpen(o => !o)} aria-label={row.name} aria-expanded={open}
         className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-fw-wash/60 transition-colors">
-        <span className="inline-flex items-center justify-center h-7 w-7 rounded-md text-[10px] font-bold text-white" style={{ background: row.mark.color }}>{row.mark.label}</span>
+        <span className="inline-flex items-center justify-center h-7 w-7 rounded-md text-[10px] font-bold" style={{ background: row.mark.color, color: readableOn(row.mark.color) }}>{row.mark.label}</span>
         <span className="font-medium text-fw-heading flex-1">{row.name}</span>
         <span className={`flex items-center gap-2 ${dimNet}`}>
           <span className="text-figma-xs uppercase tracking-wide text-fw-bodyLight">Network</span>

@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 export function EgressTrend({ series }: { series: number[] }) {
   const data = series.map((v, i) => ({ i, v }));
   return (
-    <div className="h-40" aria-label="Egress spend trend">
+    <div className="h-40" role="img" aria-label="Egress spend trend">
       <ResponsiveContainer>
         <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
           <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
