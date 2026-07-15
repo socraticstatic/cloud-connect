@@ -41,12 +41,22 @@ function safe<T>(fn: () => T, fallback: T): T {
   }
 }
 
+/**
+ * The five remediation flags that correspond to an enforced governance rule.
+ * The `fixes` bag also holds two posture moves that are NOT rules —
+ * `shiftAws` (rebalance onto NetBond headroom) and `renumbered` (fix a CIDR
+ * collision) — so `Object.values(fixes).some(Boolean)` would wrongly mark
+ * Govern done when only a posture move was applied. Count these keys only.
+ */
+const RULE_FIX_KEYS = ['isolateFinance', 'fwInspection', 'segmentHelion', 'dnsFirewall', 'dataPerimeter'] as const;
+
 function anyRuleEnforced(cc: typeof CC): boolean {
-  const anyFix = Object.values(cc.fixes || {}).some(Boolean);
+  const fixes = cc.fixes || {};
+  const anyRuleFix = RULE_FIX_KEYS.some(k => !!fixes[k]);
   const anyRule =
     typeof cc.ruleList === 'function' &&
     (cc.ruleList() as { enforced?: boolean }[]).some(r => !!r.enforced);
-  return anyFix || anyRule;
+  return anyRuleFix || anyRule;
 }
 
 /**

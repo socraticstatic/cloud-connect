@@ -4,16 +4,17 @@ import { MemoryRouter } from 'react-router-dom';
 import { DiscoverPage } from './DiscoverPage';
 
 describe('DiscoverPage', () => {
-  it('mounts the unified discovery view with lens chips and joined inventory rows', () => {
+  it('mounts the drill-down estate view with the cloud tree and fabric rail', () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/discover']}>
         <DiscoverPage />
       </MemoryRouter>
     );
-    expect(screen.getByRole('button', { name: /^all$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^network$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^ai$/i })).toBeInTheDocument();
-    expect(screen.getByText('CoreWeave')).toBeInTheDocument();
-    expect(screen.getByText('AWS')).toBeInTheDocument();
+    // estate header + top-level cloud rows
+    expect(screen.getByText('Workloads')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'AWS' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'CoreWeave' })).toBeInTheDocument();
+    // fabric rail
+    expect(screen.getByRole('complementary', { name: /at&t fabric on-ramps/i })).toBeInTheDocument();
   });
 });

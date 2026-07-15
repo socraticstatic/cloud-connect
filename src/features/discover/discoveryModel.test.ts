@@ -1,0 +1,71 @@
+import { describe, it, expect } from 'vitest';
+import {
+  allKeys,
+  cloudVpcCount,
+  cloudRegionCount,
+  estateStats,
+  openSummary,
+  tagHex,
+  toggleKey,
+  regionKey,
+  vpcKey,
+} from './discoveryModel';
+import { CC } from '../../engine';
+
+describe('discoveryModel', () => {
+  it('derives per-cloud region and VPC counts from the engine', () => {
+    expect(cloudRegionCount(CC, 'aws')).toBe(3); // use1 / usw2 / euw1
+    expect(cloudVpcCount(CC, 'aws')).toBe(6); // 3 + 2 + 1 across the three regions
+    expect(cloudRegionCount(CC, 'oci')).toBe(1);
+  });
+
+  it('estate tiles cover the seven top-level facets and match counts()', () => {
+    const stats = estateStats(CC);
+    expect(stats.map(s => s.key)).toEqual([
+      'clouds',
+      'regions',
+      'vpcs',
+      'subnets',
+      'gateways',
+      'workloads',
+      'attached',
+    ]);
+    const c = CC.counts();
+    expect(stats.find(s => s.key === 'clouds')!.value).toBe(c.clouds);
+    expect(stats.find(s => s.key === 'workloads')!.value).toBe(c.workloads);
+  });
+
+  it('allKeys enumerates every cloud, region and VPC node once', () => {
+    const keys = allKeys(CC);
+    expect(new Set(keys).size).toBe(keys.length); // unique
+    expect(keys).toContain('aws');
+    expect(keys).toContain(regionKey('aws', 'use1'));
+    expect(keys).toContain(vpcKey('aws', 'use1', 'vpcprod'));
+    // one key per cloud + region + vpc
+    const expected = CC.counts().clouds + CC.counts().regions + CC.counts().vpcs;
+    expect(keys.length).toBe(expected);
+  });
+
+  it('toggleKey is immutable and flips membership', () => {
+    const a = new Set<string>(['aws']);
+    const b = toggleKey(a, 'aws/use1');
+    expect(a.has('aws/use1')).toBe(false); // original untouched
+    expect(b.has('aws/use1')).toBe(true);
+    const c = toggleKey(b, 'aws/use1');
+    expect(c.has('aws/use1')).toBe(false);
+  });
+
+  it('openSummary prefers resource maps over regions', () => {
+    expect(openSummary(new Set())).toBe('collapsed view');
+    expect(openSummary(new Set(['aws', 'aws/use1']))).toBe('1 region expanded');
+    expect(openSummary(new Set(['aws', 'aws/use1', 'aws/use1/vpcprod']))).toBe('1 resource map expanded');
+    expect(openSummary(new Set(['aws/use1/vpcprod', 'aws/use1/vpcdata']))).toBe('2 resource maps expanded');
+  });
+
+  it('tagHex neutralizes the amber finance tag but keeps other hues', () => {
+    const tags = CC.TAGS as Record<string, { label: string; hex: string }>;
+    expect(tagHex('finance-invoices', tags)).toBe('#64748b'); // de-ambered slate
+    expect(tagHex('rd-helion', tags).toLowerCase()).not.toBe('#f2a23c');
+    expect(tagHex('classified-helion', tags)).toBe(tags['classified-helion'].hex); // red kept
+  });
+});
