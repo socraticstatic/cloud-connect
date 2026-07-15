@@ -7,10 +7,11 @@ import { attIcons } from '../icons/att-icons';
 import { AuthProvider } from '../../contexts/AuthContext';
 
 describe('MainNav curated Cloud Connect nav', () => {
-  test('nav shows the six curated Cloud Connect sections', () => {
+  test('nav shows exactly the six curated Cloud Connect sections, in order', () => {
     render(<MemoryRouter><AuthProvider><MainNav /></AuthProvider></MemoryRouter>);
-    ['Discover', 'Connect', 'Govern', 'Observe', 'Cost', 'AI Fabric']
-      .forEach(l => expect(screen.getByText(l)).toBeInTheDocument());
+    const labels = screen.getAllByRole('link').map(a => a.textContent?.trim());
+    expect(labels).toEqual(['Discover', 'Connect', 'Govern', 'Observe', 'Cost', 'AI Fabric']);
+    expect(screen.queryByText('NetOps for AI')).toBeNull();
     expect(screen.queryByText('Marketplace')).toBeNull();
     expect(screen.queryByText('Create')).toBeNull();
     expect(screen.queryByText('Manage')).toBeNull();
