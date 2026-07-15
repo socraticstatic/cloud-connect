@@ -68,9 +68,9 @@ test('walks all six sections with real state changes, plus Tour and ⌘K', async
   await page.getByRole('button', { name: 'Trace', exact: true }).last().click();
   await expect(page.getByText(/denied/i).first()).toBeVisible();
 
-  // --- Cost: stub renders (Task 3 builds the real screen and its own e2e coverage) ---
+  // --- Cost: the real cost screen renders its hero (Task 3 owns deeper coverage) ---
   await page.goto('/#/cost', { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('#main-content').getByText('Cost')).toBeVisible();
+  await expect(page.locator('#main-content').getByRole('heading', { name: 'Cost' })).toBeVisible();
 
   // --- Tour: the Tour button opens the guided tour ---
   await page.getByRole('button', { name: /Start guided tour/i }).click();

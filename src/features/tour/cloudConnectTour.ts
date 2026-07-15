@@ -1,14 +1,21 @@
 import { TourStep } from '../../components/tour/ProductTour';
 import { CC } from '../../engine';
+import { DEMO_BEATS } from '../demo/demoScript';
+
+// The Cost beat is the single source of truth for the Cost step's copy — the
+// six-beat demo arc (demoScript.ts) owns the narrative; the Tour renders it.
+const COST_BEAT = DEMO_BEATS.find(b => b.route === '/cost')!;
 
 /**
- * Guided tour of Cloud Connect — ported from the vanilla prototype's
- * `js/tour.js` beats (bytes -> workloads -> tokens -> operate), retargeted at
- * the rebuilt Flywheel app: each step's `targetSelector` is a `data-tour`
- * attribute added to the relevant component, and each `route` is the new
- * HashRouter path for that section. `ProductTour` is route-agnostic — the
- * consuming `TourLauncher` navigates on `onStepChange` before the spotlight
- * looks for the target on the new page.
+ * Guided tour of Cloud Connect — the six-beat MVP demo arc:
+ * Discover → Connect → Govern → Observe → Cost → AI Fabric. Step order and the
+ * Cost step's copy are bound to `DEMO_BEATS` (demoScript.ts), the single source
+ * of truth for the narrative; NetOps is intentionally not part of this arc.
+ *
+ * Each step's `targetSelector` is a `data-tour` attribute added to the relevant
+ * component, and each `route` is the HashRouter path for that section.
+ * `ProductTour` is route-agnostic — the consuming `TourLauncher` navigates on
+ * `onStepChange` before the spotlight looks for the target on the new page.
  *
  * A step's target is only spotlighted if it's already in the DOM — so every
  * step below targets an element visible on that section's *default* tab.
@@ -63,6 +70,15 @@ export const cloudConnectTour: (TourStep & { route: string })[] = [
     highlightPadding: 12,
   },
   {
+    id: 'cost',
+    title: COST_BEAT.title,
+    description: COST_BEAT.narration,
+    route: '/cost',
+    targetSelector: '[data-tour="cost-hero"]',
+    placement: 'top',
+    highlightPadding: 12,
+  },
+  {
     id: 'ai-fabric',
     title: 'Token policies under governance',
     description:
@@ -71,24 +87,5 @@ export const cloudConnectTour: (TourStep & { route: string })[] = [
     targetSelector: '[data-tour="aifabric-policies"]',
     placement: 'top',
     highlightPadding: 12,
-  },
-  {
-    id: 'netops',
-    title: 'The network that acts',
-    description:
-      'This is the operate layer over bytes and tokens. It does not just see — it Observes the incident, Diagnoses root cause, Recommends the fix, and lets you Act. See it. Govern it. Operate it.',
-    route: '/netops',
-    targetSelector: '[data-tour="netops-loop"]',
-    placement: 'top',
-    highlightPadding: 12,
-    action: {
-      label: 'Inject an incident and walk the loop',
-      onClick: () => {
-        if (!CC.onramps.find((o: { id: string; active: boolean }) => o.id === 'nb2')?.active) {
-          CC.activateOnramp('nb2');
-        }
-        CC.simulateFailure('nb2');
-      },
-    },
   },
 ];

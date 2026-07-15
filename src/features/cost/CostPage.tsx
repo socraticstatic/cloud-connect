@@ -30,7 +30,7 @@ export function CostPage() {
         </p>
       </header>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div data-tour="cost-hero" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Savings identified" value={`$${identified.toLocaleString()}/mo`}
                   delta={{ text: `${billing.forecast} forecast`, tone: egress.pub > PUBLIC_EXPOSURE_ALERT_USD ? 'bad' : 'good' }} />
         <StatTile label="This month" value={`$${billing.total.toLocaleString()}`} />

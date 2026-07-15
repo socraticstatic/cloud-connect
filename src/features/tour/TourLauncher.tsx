@@ -7,7 +7,7 @@ import { cloudConnectTour } from './cloudConnectTour';
 
 /**
  * Launches the guided Cloud Connect tour — Discover -> Connect -> Govern ->
- * Observe -> AI Fabric -> NetOps — reusing NetBond's `useTour`/`ProductTour`
+ * Observe -> Cost -> AI Fabric — reusing NetBond's `useTour`/`ProductTour`
  * infra. Each step in `cloudConnectTour` carries a `route`; `onStepChange`
  * navigates there before ProductTour's spotlight looks for the step's
  * `targetSelector` on the new page.
