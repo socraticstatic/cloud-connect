@@ -4,9 +4,10 @@ import { networkBinding } from './networkBinding';
 
 describe('networkBinding', () => {
   const b = networkBinding(CC);
-  it('is a network binding with 5 KPIs, tabs, records, and a briefing', () => {
+  it('is a network binding with 6 KPIs (incl. Packet Loss), tabs, records, and a briefing', () => {
     expect(b.layer).toBe('network');
-    expect(b.kpis()).toHaveLength(5);
+    expect(b.kpis()).toHaveLength(6);
+    expect(b.kpis().some(k => /loss/i.test(k.label))).toBe(true);
     expect(b.flowTabs().length).toBeGreaterThan(0);
     expect(b.records('none').length).toBeGreaterThan(0);
     expect(b.briefing().narrative.length).toBeGreaterThan(0);

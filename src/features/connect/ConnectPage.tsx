@@ -4,6 +4,7 @@ import { PageSection } from '../../components/common/layouts';
 import { useCloudControl } from '../../engine/react/useCloudControl';
 import { FlowBar } from '../../components/flow/FlowBar';
 import { OnrampPanel } from './OnrampPanel';
+import { AttachTypes } from './AttachTypes';
 import { RouteTopology } from './RouteTopology';
 import { PathTable } from './PathTable';
 
@@ -36,6 +37,8 @@ export function ConnectPage() {
           <span className="text-fw-bodyLight">·</span>
           <span>{counts.attached} / {counts.vpcs} VPCs attached</span>
         </div>
+
+        <AttachTypes />
 
         <OnrampPanel />
 

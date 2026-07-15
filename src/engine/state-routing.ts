@@ -181,11 +181,15 @@ function routingRestore(){failedPaths.clear();lastFailover=null;try{CC.clearSim(
 function routeHistory(){return history.slice();}
 
 /* ---- scene graph for the isometric canvas: edge -> AT&T mid-mile -> clouds ---- */
+// First-mile ingress labeled with the AT&T transport product that carries it:
+// AVPN (MPLS VPN), ADI (Dedicated Internet), ABF (Business Fiber), plus
+// Mobility/Wireless and the public Internet on-ramp.
 const EDGE_NODES=[
-  {id:'e-hq',label:'HQ · Dallas',kind:'edge'},
-  {id:'e-dc',label:'DC · Ashburn',kind:'edge'},
-  {id:'e-branch',label:'Branch · SD-WAN',kind:'edge'},
-  {id:'e-mob',label:'Mobility',kind:'edge'},
+  {id:'e-hq',label:'HQ · Dallas · AVPN',kind:'edge'},
+  {id:'e-dc',label:'DC · Ashburn · ADI',kind:'edge'},
+  {id:'e-branch',label:'Branch · ABF',kind:'edge'},
+  {id:'e-mob',label:'Mobility · Wireless',kind:'edge'},
+  {id:'e-net',label:'Internet',kind:'edge'},
 ];
 function popNodes(){return onramps.map(o=>({id:'p-'+o.id,label:o.name,site:o.site.name,kind:'pop',active:o.active,onramp:o.id}));}
 function cloudNodes(){return clouds.map(c=>({id:'c-'+c.id,label:c.name,kind:'cloud',cloud:c.id,ai:!!c.ai,attached:!!c.attached}));}

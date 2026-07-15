@@ -61,6 +61,41 @@ function latencySeries(key,N){
   }
   return pts;
 }
+/* packet-loss series, derived the same deterministic way as latency: the
+   public path loses ~0.25% (worse during the seeded congestion anomaly),
+   the private envelope loses ~0.02%, and attaching this session steps the
+   line down. No Math.random / Date.now - one seed per region key. */
+const PUBLIC_LOSS=0.25, PRIVATE_LOSS=0.02;
+function lossSeries(key,N){
+  const item=regionList().find(x=>x.key===key); if(!item)return [];
+  const r=item.region;
+  const rng=mulberry32(hashStr('loss:'+key));
+  const wasAttachedAtLoad=key==='aws/use1';
+  const attachedNow=r.attached;
+  const sessionIdx=_.sessionAttached.indexOf(key);
+  const stepAt=sessionIdx>=0?Math.floor(N*0.82):-1;
+  const pts=[];
+  for(let i=0;i<N;i++){
+    const isPrivate=wasAttachedAtLoad||(stepAt>=0&&i>=stepAt);
+    const target=isPrivate?PRIVATE_LOSS:PUBLIC_LOSS;
+    const variance=target*0.5;
+    let v=target+(rng()-0.5)*2*variance;
+    if(ANOMALY.key===key&&!isPrivate){
+      const d=Math.abs(i/N-ANOMALY.at);
+      if(d<0.04)v*=ANOMALY.factor-(d/0.04)*(ANOMALY.factor-1);
+    }
+    pts.push(Math.max(0,Math.round(v*1000)/1000));
+  }
+  const impact=CC.simImpact();
+  if(impact&&impact.regionKeys.includes(key)){
+    pts[N-1]=Math.round((impact.defense?PUBLIC_LOSS*2:PUBLIC_LOSS*4)*1000)/1000;
+  } else if(attachedNow){
+    pts[N-1]=Math.max(0,Math.round((PRIVATE_LOSS+(rng()-0.5)*0.01)*1000)/1000);
+  } else {
+    pts[N-1]=PUBLIC_LOSS;
+  }
+  return pts;
+}
 function throughputSeries(key,N){
   const item=regionList().find(x=>x.key===key); if(!item)return [];
   const rng=mulberry32(hashStr('tp:'+key));
@@ -94,7 +129,7 @@ function telemetry(N){
   return {
     regions:regionList().map(x=>({key:x.key,name:x.region.name,cloudName:x.cloud.name,color:x.cloud.color,
       attached:x.region.attached,lat:x.region.lat,ai:x.region.ai,
-      latency:latencySeries(x.key,N),throughput:throughputSeries(x.key,N)})),
+      latency:latencySeries(x.key,N),throughput:throughputSeries(x.key,N),loss:lossSeries(x.key,N)})),
     egress:egressSeries(N),
     anomaly:ANOMALY,
     events:_.hist.map(h=>({label:h.label,posture:h.posture})),
@@ -139,7 +174,7 @@ function topTalkers(rid){
   });
 }
 
-Object.assign(CC,{telemetry,obsSummary,latencySeries,percentiles,topTalkers});
+Object.assign(CC,{telemetry,obsSummary,latencySeries,lossSeries,percentiles,topTalkers});
 
 /* tokens get a time dimension: spend/day per app (flat zero before the
    substrate exists, ramping once it does, tail = today's live meter)

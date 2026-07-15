@@ -101,7 +101,7 @@ function evalPolicy(p){
    SAME fix mutation the rest of the portal uses - the five system rules
    ARE the five governance fixes, authored as rules. */
 const SERVICES={
-  'fw-inspect-01':{label:'fw-inspect-01',kind:'inline firewall'},
+  'fw-inspect-01':{label:'Palo Alto NGFW — inline inspection',kind:'next-gen firewall'},
   'ips-engine':{label:'ips-engine',kind:'intrusion prevention'},
   'dlp-scan':{label:'dlp-scan',kind:'data loss prevention'},
   'ai-guardrail':{label:'ai-guardrail',kind:'token-layer guardrail'},
@@ -112,7 +112,7 @@ const SERVICES={
    the fabric drives the SAME fix/rule the portal already uses. State is
    derived, so insert/inserted survives undo, share-replay, and presets. */
 const SVC_TARGETS={
-  'fw-inspect-01':{ruleId:'pol-insp',target:'classified-helion egress',desc:'Inline firewall — re-points 0.0.0.0/0 through inspection before egress'},
+  'fw-inspect-01':{ruleId:'pol-insp',target:'classified-helion egress',desc:'Palo Alto NGFW — re-points 0.0.0.0/0 through inline inspection before egress'},
   'ips-engine':{ruleId:'pol-insp',target:'classified-helion egress',desc:'Intrusion prevention — inserted alongside the firewall in the same chain'},
   'dns-fw':{ruleId:'pol-dns',target:'classified-helion resolver',desc:'Resolver DNS firewall — blocks DNS tunneling that slips past TLS inspection'},
   'dlp-scan':{ruleId:'pol-perimeter',target:'org-wide storage egress',desc:'Data loss prevention — denies writes to object storage outside the org'},
@@ -217,6 +217,15 @@ const rules=[
     src:{tag:'classified-helion',cloud:'any'},dst:'dns-exfil',ports:'any',action:'deny',chain:['dns-fw'],fix:'dnsFirewall'},
   {id:'pol-perimeter',pri:5,name:'Deny egress to out-of-org storage',system:true,
     src:{tag:'any',cloud:'any'},dst:'storage-external',ports:'any',action:'deny',chain:[],fix:'dataPerimeter'},
+  /* The three requirements-doc example policies, authored as first-class,
+     enforceable rules alongside the fixes above. No pattern-fix binding, so
+     Enforce simply flips their enforced flag - they behave like real rules. */
+  {id:'pol-pci',pri:6,name:'PCI workloads → force private path',system:true,example:true,
+    src:{tag:'pci',cloud:'any'},dst:'any',ports:'any',action:'route-private',chain:[]},
+  {id:'pol-internet-facing',pri:7,name:'Internet-facing → NGFW + AT&T egress',system:true,example:true,
+    src:{tag:'internet-facing',cloud:'any'},dst:'internet',ports:'any',action:'inspect',chain:['Palo Alto NGFW','AT&T egress']},
+  {id:'pol-branch-finance',pri:8,name:'Finance branch → only finance-tagged workloads',system:true,example:true,
+    src:{tag:'finance',cloud:'any'},dst:'not-intra-tag',ports:'any',action:'deny',chain:[]},
 ];
 let ruleSeq=0;
 function ruleEnforced(r){return r.fix?fixes[r.fix]:!!r.enforced;}

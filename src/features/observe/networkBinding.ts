@@ -36,6 +36,7 @@ interface RegionTelemetry {
   attached: boolean;
   throughput: number[];
   latency: number[];
+  loss: number[];
 }
 interface Telemetry {
   regions: RegionTelemetry[];
@@ -49,6 +50,7 @@ const FLOW_TABS: FlowTab[] = [
   { id: 'trend', label: 'Trend' },
   { id: 'throughput', label: 'Throughput' },
   { id: 'latency', label: 'Latency' },
+  { id: 'loss', label: 'Loss' },
   { id: 'egress', label: 'Egress' },
   { id: 'control', label: 'Control' },
 ];
@@ -92,6 +94,24 @@ function buildFlowSeries(cc: CloudControl, tab: string): SeriesPoint[] {
         return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
       });
       return seriesFromNumbers(avgs);
+    }
+    case 'loss': {
+      // Throughput-weighted network-wide packet loss per time index, so the
+      // series tracks the loss the bulk of traffic actually sees.
+      const loss = Array.from({ length: SERIES_POINTS }, (_, i) => {
+        let wsum = 0;
+        let w = 0;
+        regions.forEach(r => {
+          const l = r.loss?.[i] ?? 0;
+          const tp = r.throughput?.[i] ?? 0;
+          wsum += l * tp;
+          w += tp;
+        });
+        return w ? wsum / w : 0;
+      });
+      // Keep 3-decimal precision (loss is sub-1%); seriesFromNumbers' 1-decimal
+      // rounding would floor these to zero and blank the panel.
+      return loss.map((v, i) => ({ t: `T${i}`, v: Math.round(v * 1000) / 1000 }));
     }
     case 'egress': {
       return seriesFromNumbers(egress.map(e => e.pub + e.priv));
@@ -184,15 +204,32 @@ function buildRecords(cc: CloudControl, groupBy: string): RecordRow[] {
     .map(({ _gbps, ...row }) => row);
 }
 
+/** Throughput-weighted network-wide packet loss at the latest sample (%). */
+function currentLoss(cc: CloudControl): number {
+  const tel = cc.telemetry(SERIES_POINTS) as Telemetry;
+  const regions = tel.regions ?? [];
+  let wsum = 0;
+  let w = 0;
+  regions.forEach(r => {
+    const last = r.loss?.[r.loss.length - 1] ?? 0;
+    const tp = r.throughput?.[r.throughput.length - 1] ?? 0;
+    wsum += last * tp;
+    w += tp;
+  });
+  return w ? wsum / w : 0;
+}
+
 function buildKpis(cc: CloudControl): Kpi[] {
   const rk = cc.routingKpis();
   const eg = cc.egress();
   const rows = cc.routeFlows() as RouteFlowRow[];
   const p95 = percentile95(rows.map(r => r.current.latencyMs));
+  const loss = currentLoss(cc);
 
   return [
     { key: 'throughput', label: 'Throughput', value: rk.totalGbps.toFixed(1), unit: 'Gbps' },
     { key: 'p95-latency', label: 'P95 Latency', value: String(Math.round(p95)), unit: 'ms' },
+    { key: 'loss', label: 'Packet Loss', value: loss.toFixed(2), unit: '%' },
     { key: 'egress', label: 'Egress', value: fmtDollars(eg.total), sub: '/mo' },
     { key: 'under-control', label: 'Under Control', value: String(rk.pctUnderControl), unit: '%' },
     { key: 'savings', label: 'Savings', value: fmtDollars(eg.savings), sub: '/mo' },

@@ -4,7 +4,9 @@ import { ObservePage } from './ObservePage';
 
 test('renders the network observability shell', () => {
   render(<MemoryRouter><ObservePage /></MemoryRouter>);
-  expect(screen.getAllByTestId('kpi-tile')).toHaveLength(5);
+  // Six KPI tiles: Throughput, P95 Latency, Packet Loss, Egress, Under Control, Savings.
+  expect(screen.getAllByTestId('kpi-tile')).toHaveLength(6);
+  expect(screen.getByText(/Packet Loss/i)).toBeInTheDocument();
   expect(screen.getAllByTestId('record-row').length).toBeGreaterThan(0);
   expect(screen.getByText(/Network briefing/i)).toBeInTheDocument();
 });

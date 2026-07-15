@@ -37,7 +37,7 @@ export function ObservabilityShell({ binding }: { binding: ObservabilityBinding 
       </div>
 
       {/* KPI strip */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {kpis.map(k => (
           <div key={k.key} data-testid="kpi-tile" className="rounded-2xl border border-fw-secondary bg-fw-base p-4">
             <div className="text-figma-xs uppercase tracking-wide text-fw-bodyLight">{k.label}</div>
