@@ -1,4 +1,5 @@
 import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
+import { CostChip } from '../../components/viz/CostChip';
 
 interface RoutePath {
   id: string;
@@ -102,7 +103,15 @@ export function PathTable() {
                   {row.kind === 'c2c' ? 'Cloud-to-cloud' : 'App'}
                 </td>
                 <td className="px-5 py-3 text-fw-body">{row.gbps}</td>
-                <td className="px-5 py-3 text-fw-body">{row.current.latencyMs}ms</td>
+                <td className="px-5 py-3 text-fw-body">
+                  <div className="flex items-center gap-2">
+                    <span>{row.current.latencyMs}ms</span>
+                    <CostChip
+                      perGb={row.current.egressPerGb ?? 0.09}
+                      tone={row.current.attControlled ? 'controlled' : 'public'}
+                    />
+                  </div>
+                </td>
                 <td className="px-5 py-3">
                   <span
                     className={`inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium ${
