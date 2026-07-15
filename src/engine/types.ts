@@ -76,8 +76,20 @@ export interface CloudControl {
 
   // --- billing (state-billing.js) ---
   egress(): CloudControlEgress;
-  billing?(...args: any[]): any;
+  billing(): {
+    lines: { item: string; kind: 'circuit' | 'usage'; amount: number; note: string }[];
+    total: number; commit: number; commitDraw: number; commitPct: number;
+    burst: number; uncommitted: number; savings: number; forecast: string;
+  };
   utilization?(...args: any[]): any;
+
+  // --- routing advisor (state-routing.js) ---
+  routeAdvisor(): {
+    recommendations: { id: string; flowId: string; pathId?: string; title: string; detail: string; action: 'steer' | 'diversify' }[];
+    events: { title: string; detail: string }[];
+  };
+  steerFlow(rowId: string, pathId: string): boolean;
+  routeFlows(): { id: string; label: string; gbps: number; current: { attControlled: boolean; egressPerGb?: number; latencyMs?: number; label: string }; paths: { id: string; label: string; attControlled: boolean; available: boolean; egressPerGb?: number }[] }[];
 
   // --- console (state-console.js) ---
   setTokenPolicy(tag: string, patch: Record<string, unknown>): void;
