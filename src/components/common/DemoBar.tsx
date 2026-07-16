@@ -7,8 +7,8 @@ import { ROLE_CATALOG } from '../../data/roleCatalog';
 import { Shield, Users, Wrench } from 'lucide-react';
 
 const SCENARIOS = [
-  { id: 'platform-admin', label: 'AT&T Platform', icon: Shield, tenantId: 'TNT-001', role: 'super-admin' as UserRole, navigateTo: '/manage' },
-  { id: 'reseller', label: 'Reseller', icon: Users, tenantId: 'TNT-004', role: 'admin' as UserRole, navigateTo: '/manage' },
+  { id: 'platform-admin', label: 'AT&T Platform', icon: Shield, tenantId: 'TNT-001', role: 'super-admin' as UserRole, navigateTo: '/discover' },
+  { id: 'reseller', label: 'Reseller', icon: Users, tenantId: 'TNT-004', role: 'admin' as UserRole, navigateTo: '/discover' },
 ];
 
 const PERSONAS: { id: RoleName; short: string }[] = [

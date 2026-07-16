@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef, ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { PlusCircle, SlidersHorizontal, Users, Menu, Bell, HelpCircle } from 'lucide-react';
-import { Settings, BarChart2 } from '../../utils/iconImports';
+import { PlusCircle, Menu } from 'lucide-react';
 import { AttIcon } from '../icons/AttIcon';
 import { SearchBar } from './SearchBar';
 import { NotificationsButton } from './NotificationsButton';
-import { HelpButton } from './HelpButton';
 import { UserMenu } from './UserMenu';
 import { MobileMenu } from './MobileMenu';
 import { AdaptiveNavigation } from './AdaptiveNavigation';
@@ -101,29 +99,6 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
         } as TabItem;
       }),
       defaultOpen: true
-    },
-    {
-      id: 'user',
-      title: 'User',
-      icon: <HelpCircle className="h-5 w-5" />,
-      items: [
-        {
-          id: 'profile',
-          label: 'Profile',
-          icon: <Settings className="h-5 w-5" />,
-        },
-        {
-          id: 'notifications',
-          label: 'Notifications',
-          icon: <Bell className="h-5 w-5" />,
-        },
-        {
-          id: 'support',
-          label: 'Help & Resources',
-          icon: <HelpCircle className="h-5 w-5" />,
-        }
-      ] as TabItem[],
-      defaultOpen: false
     }
   ];
 
@@ -252,10 +227,9 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
                 {/* demo controls, grouped */}
                 <UndoControl />
                 <TourLauncher />
-                <HelpButton />
                 <div className="h-5 w-px bg-fw-secondary hidden xl:block mx-0.5" />
                 <NotificationsButton count={notifications} />
-                <TenantSelector onProfileClick={() => navigate('/profile')} />
+                <TenantSelector />
               </>
             )}
           </div>

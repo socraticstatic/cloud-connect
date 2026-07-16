@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Activity, Shield, Clock } from 'lucide-react';
 import { AttIcon } from '../icons/AttIcon';
 
@@ -12,7 +11,6 @@ interface Notification {
 }
 
 export function NotificationsButton() {
-  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications] = useState<Notification[]>([
     {
@@ -84,11 +82,6 @@ export function NotificationsButton() {
     }
   };
 
-  const handleViewAll = () => {
-    setIsOpen(false);
-    navigate('/monitor', { state: { defaultTab: 'logs' } });
-  };
-
   return (
     <div className="relative">
       <button
@@ -143,21 +136,6 @@ export function NotificationsButton() {
                   </div>
                 );
               })}
-            </div>
-
-            <div className="p-3 border-t border-fw-secondary bg-fw-wash flex items-center justify-between">
-              <button
-                className="tab-button text-figma-base text-fw-link hover:text-fw-linkHover font-medium transition-colors"
-                onClick={handleViewAll}
-              >
-                View All Notifications
-              </button>
-              <button
-                className="tab-button text-figma-base text-fw-link hover:text-fw-linkHover font-medium transition-colors"
-                onClick={() => { setIsOpen(false); navigate('/news'); }}
-              >
-                News & Announcements
-              </button>
             </div>
           </div>
         </>

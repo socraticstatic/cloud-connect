@@ -43,20 +43,6 @@ export function GlobalKeyboardShortcuts() {
     shortcutsEnabled
   );
 
-  // Profile shortcut
-  useKeyboardShortcut(
-    {
-      key: 'p',
-      ctrl: true,
-      shift: true,
-      description: 'Open profile',
-      handler: useCallback(() => {
-        navigate('/profile');
-      }, [navigate])
-    },
-    shortcutsEnabled
-  );
-
   // Navigation shortcuts
   useKeyboardShortcut(
     [
@@ -64,26 +50,6 @@ export function GlobalKeyboardShortcuts() {
         key: 'h',
         description: 'Go to home',
         handler: () => navigate('/')
-      },
-      {
-        key: 'c',
-        description: 'Go to connections',
-        handler: () => navigate('/connections')
-      },
-      {
-        key: 'g',
-        description: 'Go to pools',
-        handler: () => navigate('/groups')
-      },
-      {
-        key: 'm',
-        description: 'Go to monitoring',
-        handler: () => navigate('/monitoring')
-      },
-      {
-        key: 'e',
-        description: 'Go to configure',
-        handler: () => navigate('/configure')
       }
     ],
     shortcutsEnabled
