@@ -28,7 +28,17 @@ function targetLabel(cc: CloudControl, cloudId: string, regionId: string): { clo
   return { cloud, region: region.name };
 }
 
-export function AttFabricRail({ cc }: { cc: CloudControl }) {
+export function AttFabricRail({
+  cc,
+  highlighted,
+  onHover,
+}: {
+  cc: CloudControl;
+  /** on-ramp ids to highlight (driven by hovering a region/cloud in the tree) */
+  highlighted?: ReadonlySet<string>;
+  /** report which on-ramp the pointer is over, so the tree can light up its reach */
+  onHover?: (id: string | null) => void;
+}) {
   const onramps = cc.onramps as Onramp[];
   const active = onramps.filter(o => o.active).length;
   const reached = new Set<string>();
@@ -52,7 +62,13 @@ export function AttFabricRail({ cc }: { cc: CloudControl }) {
         {onramps.map(o => (
           <div
             key={o.id}
-            className={`rounded-xl border bg-fw-base p-3 ${o.active ? 'border-fw-success/40' : 'border-fw-secondary'}`}
+            onMouseEnter={() => onHover?.(o.id)}
+            onMouseLeave={() => onHover?.(null)}
+            className={`rounded-xl border bg-fw-base p-3 transition-all ${
+              highlighted?.has(o.id)
+                ? 'border-[#0057b8] ring-1 ring-[#0057b8]/50'
+                : o.active ? 'border-fw-success/40' : 'border-fw-secondary'
+            }`}
           >
             <div className="flex items-start gap-2">
               <span

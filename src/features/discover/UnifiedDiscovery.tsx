@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ChevronRight, Globe } from 'lucide-react';
 import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
 import { useRevealStagger } from './useRevealStagger';
@@ -82,6 +82,32 @@ export function UnifiedDiscovery() {
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set(['aws']));
   const toggle = (key: string) => setOpen(o => toggleKey(o, key));
 
+  // Fabric ↔ estate association: hovering an on-ramp lights up the clouds/regions
+  // it reaches; hovering a region (or cloud) lights up the on-ramps that serve it.
+  const onramps = cc.onramps as { id: string; targets: [string, string][] }[];
+  const [hover, setHover] = useState<{ k: 'onramp' | 'region' | 'cloud'; id: string } | null>(null);
+  const hl = useMemo(() => {
+    const on = new Set<string>();
+    const reg = new Set<string>();
+    const cl = new Set<string>();
+    if (hover) {
+      if (hover.k === 'onramp') {
+        on.add(hover.id);
+        onramps.find(o => o.id === hover.id)?.targets.forEach(([c, r]) => { reg.add(`${c}/${r}`); cl.add(c); });
+      } else if (hover.k === 'region') {
+        reg.add(hover.id);
+        cl.add(hover.id.split('/')[0]);
+        onramps.forEach(o => { if (o.targets.some(([c, r]) => `${c}/${r}` === hover.id)) on.add(o.id); });
+      } else {
+        cl.add(hover.id);
+        onramps.forEach(o => o.targets.forEach(([c, r]) => { if (c === hover.id) { on.add(o.id); reg.add(`${c}/${r}`); } }));
+      }
+    }
+    return { on, reg, cl };
+  }, [hover, onramps]);
+  const linkCls = (active: boolean, base: string) =>
+    active ? 'border-[#0057b8] ring-1 ring-[#0057b8]/50' : base;
+
   // Reveal stagger runs on the top-level cloud rows (+1 slot for the finding strip).
   const stagger = useRevealStagger(clouds.length + 1);
 
@@ -113,7 +139,11 @@ export function UnifiedDiscovery() {
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <AttFabricRail cc={cc} />
+        <AttFabricRail
+          cc={cc}
+          highlighted={hl.on}
+          onHover={id => setHover(id ? { k: 'onramp', id } : null)}
+        />
 
         <div className="space-y-3">
           {/* Tree controls */}
@@ -143,10 +173,18 @@ export function UnifiedDiscovery() {
               const ck = cloudKey(c.id);
               const cOpen = open.has(ck);
               return (
-                <div key={c.id} style={stagger(i)} className="rounded-2xl border border-fw-secondary bg-fw-base">
+                <div
+                  key={c.id}
+                  style={stagger(i)}
+                  className={`rounded-2xl border bg-fw-base transition-all ${linkCls(hl.cl.has(c.id), 'border-fw-secondary')}`}
+                >
                   <button
                     type="button"
                     onClick={() => toggle(ck)}
+                    onMouseEnter={() => setHover({ k: 'cloud', id: c.id })}
+                    onMouseLeave={() => setHover(null)}
+                    onFocus={() => setHover({ k: 'cloud', id: c.id })}
+                    onBlur={() => setHover(null)}
                     aria-expanded={cOpen}
                     aria-label={c.name}
                     className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-fw-wash/60"
@@ -181,10 +219,17 @@ export function UnifiedDiscovery() {
                         const rk = regionKey(c.id, r.id);
                         const rOpen = open.has(rk);
                         return (
-                          <div key={r.id} className="rounded-xl border border-fw-secondary bg-fw-wash/40">
+                          <div
+                            key={r.id}
+                            className={`rounded-xl border bg-fw-wash/40 transition-all ${linkCls(hl.reg.has(rk), 'border-fw-secondary')}`}
+                          >
                             <button
                               type="button"
                               onClick={() => toggle(rk)}
+                              onMouseEnter={() => setHover({ k: 'region', id: rk })}
+                              onMouseLeave={() => setHover(null)}
+                              onFocus={() => setHover({ k: 'region', id: rk })}
+                              onBlur={() => setHover(null)}
                               aria-expanded={rOpen}
                               aria-label={r.name}
                               className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-fw-wash"
