@@ -93,8 +93,8 @@ export function RulesPanel() {
               <th className="px-5 py-2 font-medium">Rule</th>
               <th className="px-5 py-2 font-medium">Match</th>
               <th className="px-5 py-2 font-medium">Requirement</th>
-              <th className="px-5 py-2 font-medium">Status</th>
-              <th className="px-5 py-2 font-medium text-right">Action</th>
+              <th className="px-5 py-2 font-medium text-center">Status</th>
+              <th className="px-5 py-2 font-medium text-right whitespace-nowrap">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-fw-secondary">
@@ -116,7 +116,7 @@ export function RulesPanel() {
                     </span>
                   </td>
                   <td className="px-5 py-3 text-fw-body">{requirementLabel(rule)}</td>
-                  <td className="px-5 py-3">
+                  <td className="px-5 py-3 text-center">
                     <span
                       className={`inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium ${
                         enforced
@@ -133,34 +133,37 @@ export function RulesPanel() {
                       </div>
                     )}
                   </td>
-                  <td className="px-5 py-3 text-right">
+                  <td className="px-5 py-3">
+                    {/* Secondary fix actions sit left; the primary Enforce is
+                        pinned to the right edge so it lines up across every row
+                        regardless of how many buttons a row has. */}
                     <div className="flex items-center justify-end gap-2">
-                      {!enforced && (
-                        <button
-                          type="button"
-                          onClick={() => handleEnforce(rule)}
-                          className="inline-flex items-center h-8 px-3 rounded-full text-figma-xs font-medium bg-fw-active text-white hover:bg-fw-linkHover transition-colors"
-                        >
-                          Enforce
-                        </button>
-                      )}
                       {!enforced && rule.fix && (
                         <>
                           <button
                             type="button"
                             onClick={() => handlePreview(rule)}
-                            className="inline-flex items-center h-8 px-3 rounded-full text-figma-xs font-medium border border-fw-secondary text-fw-body hover:bg-fw-wash transition-colors"
+                            className="inline-flex items-center justify-center h-8 px-3 rounded-full text-figma-xs font-medium whitespace-nowrap border border-fw-secondary text-fw-body hover:bg-fw-wash transition-colors"
                           >
                             Preview impact
                           </button>
                           <button
                             type="button"
                             onClick={() => handleApply(rule)}
-                            className="inline-flex items-center h-8 px-3 rounded-full text-figma-xs font-medium border border-fw-secondary text-fw-body hover:bg-fw-wash transition-colors"
+                            className="inline-flex items-center justify-center h-8 px-3 rounded-full text-figma-xs font-medium whitespace-nowrap border border-fw-secondary text-fw-body hover:bg-fw-wash transition-colors"
                           >
                             Apply
                           </button>
                         </>
+                      )}
+                      {!enforced && (
+                        <button
+                          type="button"
+                          onClick={() => handleEnforce(rule)}
+                          className="inline-flex items-center justify-center h-8 min-w-[84px] px-3 rounded-full text-figma-xs font-medium whitespace-nowrap bg-fw-active text-white hover:bg-fw-linkHover transition-colors"
+                        >
+                          Enforce
+                        </button>
                       )}
                     </div>
                   </td>

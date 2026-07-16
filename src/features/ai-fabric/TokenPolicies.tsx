@@ -30,7 +30,7 @@ export function TokenPolicies() {
             <th className="px-5 py-2 font-medium">Scope</th>
             <th className="px-5 py-2 font-medium">Budget</th>
             <th className="px-5 py-2 font-medium">Guardrail</th>
-            <th className="px-5 py-2 font-medium">Status</th>
+            <th className="px-5 py-2 font-medium text-center">Status</th>
             <th className="px-5 py-2 font-medium text-right">Action</th>
           </tr>
         </thead>
@@ -55,9 +55,9 @@ export function TokenPolicies() {
                   {p.guardrail ? 'Guardrail on' : 'Guardrail off'}
                 </button>
               </td>
-              <td className="px-5 py-3">
+              <td className="px-5 py-3 text-center">
                 <span
-                  className={`inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium ${
+                  className={`inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium whitespace-nowrap ${
                     p.enforced
                       ? 'bg-fw-successLight text-fw-success'
                       : 'bg-fw-neutral text-fw-bodyLight'

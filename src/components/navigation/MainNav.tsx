@@ -128,10 +128,9 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
   ];
 
   const handleLogoClick = () => {
-    navigate('/manage');
-    if (location.pathname === '/manage') {
-      window.dispatchEvent(new CustomEvent('setActiveTab', { detail: 'connections' }));
-    }
+    // Home = the first stage of the flow. (Previously routed to the NetBond
+    // legacy /manage portal — a fork remnant.)
+    navigate('/discover');
   };
 
   const toggleMobileMenu = () => {

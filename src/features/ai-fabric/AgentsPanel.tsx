@@ -29,7 +29,7 @@ export function AgentsPanel() {
             <th className="px-5 py-2 font-medium">Agent</th>
             <th className="px-5 py-2 font-medium">App</th>
             <th className="px-5 py-2 font-medium">Scopes</th>
-            <th className="px-5 py-2 font-medium">Status</th>
+            <th className="px-5 py-2 font-medium text-center">Status</th>
             <th className="px-5 py-2 font-medium text-right">Action</th>
           </tr>
         </thead>
@@ -43,9 +43,9 @@ export function AgentsPanel() {
               <td className="px-5 py-3 text-fw-body">
                 <span className="text-figma-xs text-fw-bodyLight">{a.scopes.join(', ')}</span>
               </td>
-              <td className="px-5 py-3">
+              <td className="px-5 py-3 text-center">
                 <span
-                  className={`inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium ${
+                  className={`inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium whitespace-nowrap ${
                     a.enabled
                       ? 'bg-fw-successLight text-fw-success'
                       : 'bg-fw-errorLight text-fw-error'

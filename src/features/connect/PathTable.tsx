@@ -81,7 +81,7 @@ export function PathTable() {
             <th className="px-5 py-2 font-medium">Kind</th>
             <th className="px-5 py-2 font-medium">Gbps</th>
             <th className="px-5 py-2 font-medium">Latency</th>
-            <th className="px-5 py-2 font-medium">Control</th>
+            <th className="px-5 py-2 font-medium text-center">Control</th>
             <th className="px-5 py-2 font-medium">Diverse</th>
             <th className="px-5 py-2 font-medium text-right">Action</th>
           </tr>
@@ -112,9 +112,9 @@ export function PathTable() {
                     />
                   </div>
                 </td>
-                <td className="px-5 py-3">
+                <td className="px-5 py-3 text-center">
                   <span
-                    className={`inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium ${
+                    className={`inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium whitespace-nowrap ${
                       row.current.attControlled
                         ? 'bg-fw-successLight text-fw-success'
                         : 'bg-fw-neutral text-fw-bodyLight'
