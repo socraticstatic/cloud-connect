@@ -1,6 +1,7 @@
 import { Network, Check, MapPin } from 'lucide-react';
 import { AttentionTag } from '../../components/viz/AttentionTag';
 import { regionsOf, type Cloud } from './discoveryModel';
+import { fabricLatency } from './latency';
 import type { CloudControl } from '../../engine/types';
 
 /**
@@ -33,11 +34,11 @@ function targetLabel(
   cc: CloudControl,
   cloudId: string,
   regionId: string,
-): { cloud: Cloud; region: string; lat: number } | null {
+): { cloud: Cloud; region: string; lat: number; geo?: readonly [number, number] } | null {
   const cloud = (cc.clouds as Cloud[]).find(c => c.id === cloudId);
   const region = regionsOf(cc, cloudId).find(r => r.id === regionId);
   if (!cloud || !region) return null;
-  return { cloud, region: region.name, lat: region.lat };
+  return { cloud, region: region.name, lat: region.lat, geo: region.geo };
 }
 
 export function AttFabricRail({
@@ -125,6 +126,11 @@ export function AttFabricRail({
               {o.targets.map(([cid, rid]) => {
                 const t = targetLabel(cc, cid, rid);
                 if (!t) return null;
+                const lat =
+                  o.site && t.geo
+                    ? fabricLatency(`${o.id}:${cid}/${rid}`, [o.site.lat, o.site.lon], t.geo)
+                    : { ms: t.lat, source: 'estimated' as const };
+                const probed = lat.source === 'probed';
                 return (
                   <div
                     key={`${cid}/${rid}`}
@@ -135,8 +141,16 @@ export function AttFabricRail({
                       <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: t.cloud.color }} />
                       <span className="truncate">{t.cloud.name} · {t.region}</span>
                     </span>
-                    <span className="shrink-0 tabular-nums text-fw-heading" title={`Round-trip latency, ${popCity(o.site) ?? 'on-ramp'} → ${t.region} (estimated)`}>
-                      {t.lat}ms
+                    <span
+                      className="flex shrink-0 items-center gap-1 tabular-nums text-fw-heading"
+                      title={`Round-trip, ${popCity(o.site) ?? 'on-ramp'} → ${t.region} · ${
+                        probed ? 'measured (vRouter probe)' : 'estimated (air-miles × 1.4 fiber factor)'
+                      }`}
+                    >
+                      {lat.ms}ms
+                      <span className={`text-[8px] font-semibold uppercase tracking-wide ${probed ? 'text-fw-success' : 'text-fw-bodyLight'}`}>
+                        {probed ? 'probed' : 'est'}
+                      </span>
                     </span>
                   </div>
                 );

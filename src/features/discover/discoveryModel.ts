@@ -26,6 +26,8 @@ export interface Region {
   attached: boolean;
   spof?: boolean;
   ai?: boolean;
+  /** [lat, lon] of the region, used to estimate on-ramp→region latency by distance */
+  geo?: readonly [number, number];
 }
 export interface Vpc {
   id: string;
