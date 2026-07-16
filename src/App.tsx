@@ -13,8 +13,7 @@ import { ToastContainer, AnnouncementBanner, AlertDialog, WarningDialog, Confirm
 import { useStore } from './store/useStore';
 import { ThemeProvider } from './components/ThemeProvider';
 import { MobileMenu } from './components/navigation/MobileMenu';
-// SmartAssistant removed per user request
-import { FeedbackWidget } from './components/feedback/FeedbackWidget';
+// SmartAssistant + FeedbackWidget removed — legacy prototype chrome
 import { NavigationStateProvider } from './components/common/layouts/NavigationStateProvider';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
@@ -25,7 +24,6 @@ import { GlobalKeyboardShortcuts } from './components/common/GlobalKeyboardShort
 import { ImpersonationBanner } from './components/common/ImpersonationBanner';
 import { PWAUpdatePrompt, usePWAUpdate } from './components/common/PWAUpdatePrompt';
 import { MaintenanceModal } from './components/common/MaintenanceModal';
-import { DemoBar } from './components/common/DemoBar';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
 // Curated Cloud Connect flow pages (the six live screens + /netops).
@@ -398,9 +396,9 @@ function App() {
               userInfo={userInfo}
               notifications={3}
             />
-            {/* SmartAssistant removed */}
-            <FeedbackWidget onStartTour={tour.startTour} />
-            <DemoBar />
+            {/* SmartAssistant + FeedbackWidget/DemoBar removed — legacy prototype
+                feedback/usability chrome (Maze study, role switcher). The guided
+                tour is launched from the top-bar control. */}
             {/* LMCC ordering flows through Marketplace / Create dropdown into the wizard —
                 the NetBondMax auto-demo modal was retired at GA (2026-07-10). */}
             <MaintenanceModal
