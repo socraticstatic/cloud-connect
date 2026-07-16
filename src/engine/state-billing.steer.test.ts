@@ -23,12 +23,14 @@ const steerableRow = () => {
 };
 
 describe('steer-aware egress economics', () => {
-  it('seed egress is fully public with zero steer savings and is deterministic', () => {
+  it('seed egress is fully public on the four opportunity buckets and is deterministic', () => {
     const a = CC.egress();
     const b = CC.egress();
     expect(a).toEqual(b);                    // no Date.now / Math.random
     expect(a.pub).toBe(29_900);
-    expect(a.savings).toBe(0);
+    // honest-middle: base-private is always captured at its committed rate, so
+    // even at seed the fabric already saves vs all-public (18_300 - 15_000).
+    expect(a.savings).toBe(3_300);
     expect(BASE_PUB).toBe(29_900);
   });
 

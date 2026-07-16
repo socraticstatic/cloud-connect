@@ -102,22 +102,46 @@ function virtualPorts(){
     consumptionMo:ports.reduce((s,p)=>s+p.ratePerMo,0)+e.priv+e.pub};
 }
 
-/* Egress model - $/mo buckets that shift public -> private as paths attach.
-   The raw buckets react to on-ramp attach (a bucket flips public->private);
-   the steer overlay (below) then moves a share of the ORIGINAL public spend
-   to committed pricing when the operator STEERS a public flow. */
+/* Egress model - honest-middle per-bucket arbitrage.
+   Each bucket carries an explicit public (hyperscaler) rate and an AT&T
+   committed rate; a bucket is "captured" onto the fabric when its on-ramp is
+   active (or its fix applied; base-private is always private). Captured
+   buckets bill at attCost; the rest bill at publicCost. This one model feeds
+   egress()/billing() AND arbitrage(), so the invoice, Observe's egress KPIs,
+   and the arbitrage hero agree by construction.
+
+   Calibration (honest middle): internet/cross-cloud egress gets the big
+   per-GB win; committed base stays a modest ~18%, so the blended headline is
+   ~40% when fully attached and stays defensible to a technical buyer. */
+const BUCKETS=[
+  {k:'gpu',        label:'GPU inference egress', category:'internet',
+   publicCost:11400, attCost:3400,  onrampId:'nb2', captured:()=>onramps.find(o=>o.id==='nb2').active},
+  {k:'aws-west-eu',label:'AWS West / EU',        category:'cross-cloud',
+   publicCost:9500,  attCost:3300,  onrampId:'dx1', captured:()=>onramps.find(o=>o.id==='dx1').active},
+  {k:'azure',      label:'Azure cross-cloud',    category:'cross-cloud',
+   publicCost:6000,  attCost:2100,  onrampId:'er1', captured:()=>onramps.find(o=>o.id==='er1').active},
+  {k:'misc',       label:'Misc internet egress', category:'internet',
+   publicCost:3000,  attCost:1200,  onrampId:null,  captured:()=>fixes.shiftAws},
+  {k:'base-private',label:'Committed base',       category:'committed',
+   publicCost:18300, attCost:15000, onrampId:null,  captured:()=>true},
+];
+/* Public vs committed $/mo from the current attach state, before the steer
+   overlay: captured buckets contribute attCost to private, the rest their
+   publicCost to public. */
 function rawBuckets(){
-  const buckets=[
-    {k:'gpu',amt:11400,priv:()=>onramps.find(o=>o.id==='nb2').active},
-    {k:'aws-west-eu',amt:9500,priv:()=>onramps.find(o=>o.id==='dx1').active},
-    {k:'azure',amt:6000,priv:()=>onramps.find(o=>o.id==='er1').active},
-    {k:'misc',amt:3000,priv:()=>fixes.shiftAws},
-    {k:'base-private',amt:18300,priv:()=>true},
-  ];
   let pub=0,priv=0;
-  buckets.forEach(b=>{if(b.priv())priv+=b.amt;else pub+=b.amt;});
+  BUCKETS.forEach(b=>{if(b.captured())priv+=b.attCost;else pub+=b.publicCost;});
   return {pub,priv};
 }
+/* Σ publicCost over ALL buckets - what the estate would cost fully on public
+   (hyperscaler) egress; the arbitrage ceiling. */
+function hyperscalerEgress(){return BUCKETS.reduce((s,b)=>s+b.publicCost,0);}
+/* Σ attCost over ALL buckets - what it would cost with EVERY bucket captured
+   onto the fabric; the opportunity floor. */
+function fabricEgress(){return BUCKETS.reduce((s,b)=>s+b.attCost,0);}
+/* committed pricing is ~15% under public rates - a steered public flow's
+   dollars land here when the operator overrides it onto an AT&T path. */
+const STEER_DISCOUNT=0.15;
 
 /* ---- steer baselines, frozen once at module load ----
    Captured with zero steers and only the seed on-ramp active, so they are
@@ -149,18 +173,48 @@ function steeredShare(){
 
 function egress(){
   const {pub:rawPub,priv:rawPriv}=rawBuckets();
-  // a steered public flow moves its share of the ORIGINAL public spend into
-  // committed pricing; capped at what's actually still public so priv is
+  // a steered public flow moves its share of the ORIGINAL public spend onto an
+  // AT&T-committed path; capped at what's actually still public so priv is
   // never over-credited (floor pub at 0).
   const pubReduction=Math.min(rawPub,BASELINE_PUB*steeredShare());
   const pub=Math.max(0,rawPub-pubReduction);
-  const priv=rawPriv+pubReduction;                 // folded into committed buckets
-  // private paths carry committed pricing - 15% under public rates
-  const savings=Math.round((priv-18300)*0.15);
-  return {total:pub+priv-savings,pub,priv:priv-savings,savings,
+  // moved dollars re-price at the committed rate (15% under public): the bill
+  // genuinely drops by the discount on what was steered. Round the discount so
+  // the invoice total stays a clean integer (the raw share is fractional).
+  const steerDiscount=Math.round(pubReduction*STEER_DISCOUNT);
+  const priv=rawPriv+pubReduction-steerDiscount;
+  const currentEgress=pub+priv;                    // = rawPub+rawPriv - steerDiscount
+  // savings = what the fabric saves vs paying all-public for the same estate.
+  const savings=Math.round(hyperscalerEgress()-currentEgress);
+  return {total:currentEgress,pub,priv,savings,
     forecast:pub>20000?'+9%':pub>6000?'+3%':'-4%'};
 }
 function utilization(){return fixes.shiftAws?85:60;}
 
-Object.assign(CC,{billing,tokenMeterList,modelRoutes,egress,utilization,virtualPorts});
+/* Arbitrage - the AT&T-vs-hyperscaler differentiator, all derived from the
+   same per-bucket model and the same attach state as egress()/billing(), so
+   the hero, the invoice, and Observe's KPIs reconcile by construction. */
+function arbitrage(){
+  const portFees=onramps.filter(o=>o.active)
+    .reduce((s,o)=>s+(PORT_FEES[o.type]||4000),0);
+  const buckets=BUCKETS.map(b=>{
+    const saving=b.publicCost-b.attCost;
+    return {key:b.k,label:b.label,category:b.category,
+      publicCost:b.publicCost,attCost:b.attCost,
+      saving,savingPct:Math.round(saving/b.publicCost*100),
+      attached:b.captured(),onrampId:b.onrampId};
+  }).sort((a,b)=>b.saving-a.saving);          // opportunity ranking, biggest first
+  const e=egress();
+  const currentEgress=e.pub+e.priv;           // == e.total == billing() egress
+  const hyperscalerBill=hyperscalerEgress()+portFees;   // all-public + ports
+  const cloudConnectBill=currentEgress+portFees;        // == billing().total
+  const fullyFabricBill=fabricEgress()+portFees;        // every bucket captured
+  const savings=hyperscalerBill-cloudConnectBill;       // realized so far
+  const availableSavings=cloudConnectBill-fullyFabricBill; // still on the table
+  return {hyperscalerBill,cloudConnectBill,savings,
+    savingsPct:Math.round(savings/hyperscalerBill*100),
+    fullyFabricBill,availableSavings,buckets};
+}
+
+Object.assign(CC,{billing,tokenMeterList,modelRoutes,egress,arbitrage,utilization,virtualPorts});
 })(window.CC);
