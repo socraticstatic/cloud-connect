@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { seedAuth } from '../tests/e2e/helpers';
 
-test('Connect renders the route topology; the Paths table + Steer live on Observe', async ({ page }) => {
+test('Connect renders the cloud fabric; the Paths table + Steer live on Observe', async ({ page }) => {
   await seedAuth(page);
   await page.goto('/#/connect', { waitUntil: 'domcontentloaded' });
 
-  // Connect keeps the route topology: at least one node from the live scene graph.
-  const nodes = page.locator('[data-node]');
+  // Connect renders the fabric hero: at least one region node from the model.
+  const nodes = page.locator('[data-fabric-node]');
   await expect(nodes.first()).toBeVisible();
   expect(await nodes.count()).toBeGreaterThan(0);
 

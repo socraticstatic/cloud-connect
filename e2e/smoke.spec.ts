@@ -5,23 +5,24 @@ test('boots to Discover, nav shows six sections, attach works on Connect', async
   await seedAuth(page);
   await page.goto('/');
   await expect(page).toHaveTitle(/Cloud Connect/);
+  const mainNav = page.getByLabel('Main navigation');
   for (const l of ['Discover', 'Connect', 'Govern', 'Observe', 'Cost', 'AI Fabric'])
-    await expect(page.getByRole('link', { name: l })).toBeVisible();
+    await expect(mainNav.getByRole('link', { name: l })).toBeVisible();
   // Discover is a read view of the unified estate — no attach control here.
   // The rebuilt Discover tree exposes Expand/Collapse controls (the old
   // All/Network/AI lens chips are gone) and Private/Public path badges.
   await expect(page.getByRole('button', { name: /^Expand all$/i })).toBeVisible();
   await expect(page.getByText(/^(Private|Public)$/).first()).toBeVisible();
 
-  // Attach now lives on the Connect on-ramp panel; an attach persists a
-  // visible state change (the active on-ramp count going up).
+  // Provisioning now lives on the Connect cloud fabric; provisioning a region
+  // persists a visible state change (its edge flips public → private).
   await page.goto('/#/connect', { waitUntil: 'domcontentloaded' });
-  const activeCount = page.getByText(/^\d+ active$/);
-  const activeBefore = parseInt((await activeCount.textContent()) ?? '0', 10);
-  const attachButton = page.getByRole('button', { name: /^Attach$/i }).first();
-  await expect(attachButton).toBeVisible();
-  await attachButton.click();
-  await expect
-    .poll(async () => parseInt((await activeCount.textContent()) ?? '0', 10))
-    .toBeGreaterThan(activeBefore);
+  const usw2Edge = page.locator('[data-fabric-edge][data-region-id="usw2"]').first();
+  await expect(usw2Edge).toHaveAttribute('data-path', 'public');
+  await page.getByTestId('fabric-node-region-usw2').click();
+  await page.getByTestId('open-provision-wizard').click();
+  const dialog = page.getByRole('dialog');
+  for (let i = 0; i < 3; i++) await dialog.getByRole('button', { name: /^Next$/i }).click();
+  await dialog.getByTestId('provision-confirm').click();
+  await expect(usw2Edge).toHaveAttribute('data-path', 'private');
 });

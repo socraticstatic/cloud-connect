@@ -17,8 +17,9 @@ test('walks all six sections with real state changes, plus Tour and ⌘K', async
   // --- Discover: the unified inventory renders real estate — lenses, rows, path state ---
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page).toHaveTitle(/Cloud Connect/);
+  const mainNav = page.getByLabel('Main navigation');
   for (const l of ['Discover', 'Connect', 'Govern', 'Observe', 'Cost', 'AI Fabric']) {
-    await expect(page.getByRole('link', { name: l })).toBeVisible();
+    await expect(mainNav.getByRole('link', { name: l })).toBeVisible();
   }
   // The rebuilt Discover tree exposes Expand/Collapse controls and a real cloud
   // row (AWS) — the old All/Network/AI lens chips were removed in the rebuild.
@@ -28,16 +29,18 @@ test('walks all six sections with real state changes, plus Tour and ⌘K', async
   await expect(page.getByRole('button', { name: 'AWS' })).toBeVisible();
   await expect(page.getByText(/^(Private|Public)$/).first()).toBeVisible();
 
-  // --- Connect: Attach activates an on-ramp, raising the active count ---
+  // --- Connect: provisioning a region joins it to the fabric (public → private) ---
   await page.goto('/#/connect', { waitUntil: 'domcontentloaded' });
-  const activeCount = page.getByText(/^\d+ active$/);
-  const activeBefore = parseInt((await activeCount.textContent()) ?? '0', 10);
-  const attachButton = page.getByRole('button', { name: /^Attach$/i }).first();
-  await expect(attachButton).toBeVisible();
-  await attachButton.click();
-  await expect
-    .poll(async () => parseInt((await activeCount.textContent()) ?? '0', 10))
-    .toBeGreaterThan(activeBefore);
+  const targetEdge = page.locator('[data-fabric-edge][data-region-id="usw2"]').first();
+  await expect(targetEdge).toHaveAttribute('data-path', 'public');
+  await page.getByTestId('fabric-node-region-usw2').click();
+  await page.getByTestId('open-provision-wizard').click();
+  const provDialog = page.getByRole('dialog');
+  for (let i = 0; i < 3; i++) {
+    await provDialog.getByRole('button', { name: /^Next$/i }).click();
+  }
+  await provDialog.getByTestId('provision-confirm').click();
+  await expect(targetEdge).toHaveAttribute('data-path', 'private');
 
   // --- Observe: Steer (on the relocated Paths table) flips a control badge ---
   await page.goto('/#/observe', { waitUntil: 'domcontentloaded' });

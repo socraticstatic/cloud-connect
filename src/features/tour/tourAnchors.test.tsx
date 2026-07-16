@@ -5,7 +5,7 @@ import type { ReactElement } from 'react';
 import { CC } from '../../engine';
 import { cloudConnectTour } from './cloudConnectTour';
 import { UnifiedDiscovery } from '../discover/UnifiedDiscovery';
-import { OnrampPanel } from '../connect/OnrampPanel';
+import { FabricHero } from '../connect/FabricHero';
 import { RulesPanel } from '../govern/RulesPanel';
 import { ObservabilityShell } from '../observe/ObservabilityShell';
 import { networkBinding } from '../observe/networkBinding';
@@ -22,7 +22,7 @@ import { TokenPolicies } from '../ai-fabric/TokenPolicies';
  */
 const screenFor: Record<string, () => ReactElement> = {
   discover: () => <UnifiedDiscovery />,
-  connect: () => <OnrampPanel />,
+  connect: () => <FabricHero model={CC.fabricModel()} />,
   govern: () => <RulesPanel />,
   observe: () => <ObservabilityShell binding={networkBinding(CC)} />,
   cost: () => <CostPage />,

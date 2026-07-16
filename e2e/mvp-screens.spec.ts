@@ -33,9 +33,9 @@ async function prep(page: Page) {
 const SCREENS = [
   // Discover: the amber public-exposure finding strip (Task 5) — real estate rollup.
   { route: '/discover', mustSee: /workloads? reachable over the public internet/i },
-  // Connect: on-ramp panel copy (the section description) — the steerable Paths
+  // Connect: the cloud-fabric copy (section description) — the steerable Paths
   // table moved to Observe.
-  { route: '/connect', mustSee: /on-ramps? to the AT&T fabric|attach/i },
+  { route: '/connect', mustSee: /AT&T fabric|on-ramps?/i },
   // Govern: policy & segmentation surface.
   { route: '/govern', mustSee: /polic(y|ies)|enforce|rules?/i },
   // Observe: network observability KPIs (throughput / latency / egress series).
