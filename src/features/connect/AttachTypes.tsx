@@ -44,7 +44,7 @@ export function AttachTypes() {
               type="button"
               aria-pressed={isSelected}
               onClick={() => setSelected(t.id)}
-              className={`text-left rounded-xl border p-3 transition-colors ${
+              className={`text-left rounded-lg border p-3 transition-colors ${
                 isSelected
                   ? 'border-[#0057b8] bg-[#0057b8]/[0.04] ring-1 ring-[#0057b8]'
                   : 'border-fw-secondary bg-fw-base hover:bg-fw-wash'
