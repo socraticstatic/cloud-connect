@@ -1,4 +1,4 @@
-import { Network, Check } from 'lucide-react';
+import { Network, Check, MapPin } from 'lucide-react';
 import { AttentionTag } from '../../components/viz/AttentionTag';
 import { regionsOf, type Cloud } from './discoveryModel';
 import type { CloudControl } from '../../engine/types';
@@ -18,14 +18,26 @@ interface Onramp {
   sub: string;
   active: boolean;
   planned?: boolean;
+  site?: { name: string; lat: number; lon: number };
   targets: [string, string][];
 }
 
-function targetLabel(cc: CloudControl, cloudId: string, regionId: string): { cloud: Cloud; region: string } | null {
+// The PoP city is the tail of the site name ("Equinix IAD · Ashburn" -> "Ashburn").
+function popCity(site?: Onramp['site']): string | null {
+  if (!site?.name) return null;
+  const parts = site.name.split('·');
+  return parts[parts.length - 1].trim();
+}
+
+function targetLabel(
+  cc: CloudControl,
+  cloudId: string,
+  regionId: string,
+): { cloud: Cloud; region: string; lat: number } | null {
   const cloud = (cc.clouds as Cloud[]).find(c => c.id === cloudId);
   const region = regionsOf(cc, cloudId).find(r => r.id === regionId);
   if (!cloud || !region) return null;
-  return { cloud, region: region.name };
+  return { cloud, region: region.name, lat: region.lat };
 }
 
 export function AttFabricRail({
@@ -83,6 +95,12 @@ export function AttFabricRail({
                 <div className="truncate text-[11px] text-fw-bodyLight">
                   {o.type} · {o.sub}
                 </div>
+                {popCity(o.site) && (
+                  <div className="mt-0.5 flex items-center gap-1 truncate text-[11px] font-medium text-fw-body">
+                    <MapPin size={11} className="shrink-0 text-fw-bodyLight" aria-hidden="true" />
+                    From {popCity(o.site)}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -101,18 +119,26 @@ export function AttFabricRail({
               </span>
             </div>
 
-            <div className="mt-2 flex flex-wrap gap-1">
+            {/* Reach as from → to · latency: the PoP above is the "from", each
+                row is a region it serves and the round-trip latency to it. */}
+            <div className="mt-2 space-y-1">
               {o.targets.map(([cid, rid]) => {
                 const t = targetLabel(cc, cid, rid);
                 if (!t) return null;
                 return (
-                  <span
+                  <div
                     key={`${cid}/${rid}`}
-                    className="inline-flex items-center gap-1 rounded-full border border-fw-secondary bg-fw-wash px-2 py-0.5 text-[10px] font-medium text-fw-body"
+                    className="flex items-center justify-between gap-2 rounded-lg border border-fw-secondary bg-fw-wash px-2 py-1 text-[10px] font-medium text-fw-body"
                   >
-                    <span className="inline-block h-2 w-2 rounded-full" style={{ background: t.cloud.color }} />
-                    {t.cloud.name} · {t.region}
-                  </span>
+                    <span className="flex min-w-0 items-center gap-1 truncate">
+                      <span className="text-fw-bodyLight" aria-hidden="true">→</span>
+                      <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: t.cloud.color }} />
+                      <span className="truncate">{t.cloud.name} · {t.region}</span>
+                    </span>
+                    <span className="shrink-0 tabular-nums text-fw-heading" title={`Round-trip latency, ${popCity(o.site) ?? 'on-ramp'} → ${t.region} (estimated)`}>
+                      {t.lat}ms
+                    </span>
+                  </div>
                 );
               })}
             </div>
