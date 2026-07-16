@@ -41,9 +41,26 @@ describe('UnifiedDiscovery drill-down tree', () => {
     expect(screen.queryByRole('button', { name: 'us-east-1' })).not.toBeInTheDocument();
   });
 
-  it('the AT&T fabric rail lists the on-ramps', () => {
+  it('has no AT&T fabric on-ramp rail (Pure Discovery — rail relocated to Connect)', () => {
     renderUD();
-    const rail = screen.getByRole('complementary', { name: /at&t fabric on-ramps/i });
-    expect(within(rail).getByText(/NetBond · PE-IAD-02/)).toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: /at&t fabric on-ramps/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/NetBond · PE-IAD-02/)).not.toBeInTheDocument();
+  });
+
+  it('shows a connection-state indicator on cloud rows (fabric vs public)', () => {
+    renderUD();
+    // AWS is reached over the fabric in the seed; the label abstracts the product.
+    expect(screen.getAllByText('via the AT&T fabric').length).toBeGreaterThan(0);
+    // Unattached clouds read as public internet.
+    expect(screen.getAllByText('public internet').length).toBeGreaterThan(0);
+  });
+
+  it('"+ Connect a cloud" opens the discovery wizard', () => {
+    renderUD();
+    fireEvent.click(screen.getByRole('button', { name: /connect a cloud/i }));
+    const dialog = screen.getByRole('dialog', { name: /connect a cloud/i });
+    expect(dialog).toBeInTheDocument();
+    // provider picker is present (visible option label, scoped to the wizard)
+    expect(within(dialog).getByText('Oracle Cloud')).toBeInTheDocument();
   });
 });
