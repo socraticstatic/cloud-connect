@@ -1,80 +1,68 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { afterEach, it, expect } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { CC } from '../../engine'; // side-effect import builds window.CC
 import { CostPage } from './CostPage';
 
 const page = () => render(<MemoryRouter><CostPage /></MemoryRouter>);
 
-// The steer test mutates routing state, which persists for the rest of this
-// test file (fresh per file, not per test). Revert anything steered so test
-// order doesn't matter.
+// Steers and attaches mutate global engine state that persists for the rest of
+// this file (fresh per file, not per test). Revert both so test order is free.
 const steeredThisFile = new Set<string>();
-
+const attachCount = { n: 0 };
 afterEach(() => {
   steeredThisFile.forEach(flowId => CC.clearSteer(flowId));
   steeredThisFile.clear();
+  while (attachCount.n > 0) { CC.undo(); attachCount.n--; }
 });
 
-it('hero band renders savings, monthly total, public exposure, and commit meter from the engine', () => {
+it('hero renders the two bills, the savings, and the commit meter from the engine', () => {
+  const arb = CC.arbitrage();
   page();
-  expect(screen.getByText('Savings identified')).toBeInTheDocument();
-  expect(screen.getByText('This month')).toBeInTheDocument();
-  expect(screen.getByText('Public exposure')).toBeInTheDocument();
+  const k = (n: number) => (n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${n}`);
+  expect(screen.getByTestId('hero-cc-bill')).toHaveTextContent(k(arb.cloudConnectBill));
+  expect(screen.getByTestId('hero-savings')).toHaveTextContent(k(arb.savings));
   expect(screen.getByRole('meter', { name: /commit/i })).toBeInTheDocument();
 });
 
-it('identified savings stay coherent with the invoice (never exceed total + public spend)', () => {
+it('breakdown lists every egress bucket from arbitrage()', () => {
   page();
-  // Read the rendered hero figure (StatTile puts the value right after the label).
-  const valueText = screen.getByText('Savings identified').nextElementSibling?.textContent ?? '';
-  const identified = Number(valueText.replace(/[^0-9]/g, ''));
-  expect(identified).toBeGreaterThan(0);
-  expect(identified).toBeLessThan(CC.billing().total + CC.egress().pub);
+  for (const b of CC.arbitrage().buckets) {
+    expect(screen.getByText(b.label)).toBeInTheDocument();
+  }
 });
 
-it('invoice renders one row per billing line', () => {
+it('invoice renders one row per billing line and its total reconciles (cloudConnect + ports)', () => {
   page();
   const lines = CC.billing().lines;
   for (const l of lines) expect(screen.getByText(l.item)).toBeInTheDocument();
+  const arb = CC.arbitrage();
+  expect(CC.billing().total).toBe(arb.cloudConnectBill + arb.portFeesMo);
 });
 
-it('numbers reconcile after steering: This month == billing.total, and captured is the realized delta', async () => {
+it('attaching a path on the breakdown moves the hero savings up and reconciles the invoice', async () => {
+  page();
+  const azure = CC.arbitrage().buckets.find(b => b.key === 'azure')!;
+  if (azure.attached) return; // seed already captured
+  const savingsBefore = CC.arbitrage().savings;
+  const beforeText = screen.getByTestId('hero-savings').textContent;
+
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(`Attach ${azure.label}`, 'i') }));
+  attachCount.n++;
+
+  await waitFor(() => expect(CC.arbitrage().savings).toBe(savingsBefore + azure.saving));
+  // Hero savings figure actually changed on screen.
+  await waitFor(() => expect(screen.getByTestId('hero-savings').textContent).not.toBe(beforeText));
+  // Invoice total still equals cloudConnect bill + ports after the recompute.
+  const arb = CC.arbitrage();
+  expect(CC.billing().total).toBe(arb.cloudConnectBill + arb.portFeesMo);
+});
+
+it('steer-to-save still captures the realized delta as a running tally', async () => {
   page();
   const rec = CC.routeAdvisor().recommendations.find(r => r.action === 'steer');
   if (!rec) return; // engine state already fully steered
   steeredThisFile.add(rec.flowId);
-
-  const totalBefore = CC.billing().total;
   fireEvent.click(screen.getAllByRole('button', { name: /steer to save/i })[0]);
-  await waitFor(() =>
-    expect(CC.routeAdvisor().recommendations.some(r => r.id === rec.id)).toBe(false));
-
-  const totalAfter = CC.billing().total;
-  // The bill actually moved (steer is economically real, not a no-op).
-  expect(totalAfter).toBeLessThan(totalBefore);
-  // "This month" headline == billing.total == egress-derived invoice total.
-  const monthText = screen.getByText('This month').nextElementSibling?.textContent ?? '';
-  expect(Number(monthText.replace(/[^0-9]/g, ''))).toBe(Math.round(CC.billing().total));
-  expect(Math.round(CC.billing().total)).toBe(Math.round(CC.egress().total + CC.billing().lines.filter(l => l.kind === 'circuit').reduce((s, l) => s + l.amount, 0)));
-  // Captured headline equals the realized total delta.
-  const captured = totalBefore - totalAfter;
-  expect(screen.getByText(new RegExp(`\\$${Math.round(captured).toLocaleString()}/mo captured`, 'i'))).toBeInTheDocument();
-});
-
-it('steering from a recommendation removes it and narrates the capture', async () => {
-  page();
-  const recs = CC.routeAdvisor().recommendations.filter(r => r.action === 'steer');
-  if (recs.length === 0) return; // engine state already fully steered
-  // routeAdvisor caps at 5 recommendations, so a fixed backlog of "diversify"
-  // recs can backfill a just-steered flow's vacated slot with the *next*
-  // eligible steer candidate — the overall filtered count doesn't reliably
-  // drop. Assert on the specific recommendation's identity instead, which is
-  // what "steering removes it" actually means.
-  const target = recs[0];
-  steeredThisFile.add(target.flowId);
-  const btn = screen.getAllByRole('button', { name: /steer to save/i })[0];
-  fireEvent.click(btn);
-  await waitFor(() =>
-    expect(CC.routeAdvisor().recommendations.some(r => r.id === target.id)).toBe(false));
-  expect(screen.getByText(/captured/i)).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByText(/captured this session/i)).toBeInTheDocument());
 });

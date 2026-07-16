@@ -50,8 +50,8 @@ export interface CloudControl {
   // --- core state (state.js) ---
   counts(): CloudControlCounts;
   subscribe(fn: (ev?: CloudControlEvent) => void): void;
-  activateOnramp(id: string, silent?: boolean): void;
-  applyFix(key: string, silent?: boolean): void;
+  activateOnramp(id: string, silent?: boolean): boolean;
+  applyFix(key: string, silent?: boolean): boolean;
   undo(): boolean;
   canUndo(): string | false | null;
   simulateFailure(id: string): void;
@@ -82,6 +82,21 @@ export interface CloudControl {
     burst: number; uncommitted: number; savings: number; forecast: string;
   };
   utilization?(...args: any[]): any;
+  arbitrage(): {
+    hyperscalerBill: number;      // Σ publicCost, all buckets (attach-invariant), egress-only
+    cloudConnectBill: number;     // current egress (pub+priv), egress-only
+    savings: number;              // hyperscalerBill - cloudConnectBill
+    savingsPct: number;           // 0..100
+    fullyFabricBill: number;      // Σ attCost, all buckets (opportunity floor)
+    availableSavings: number;     // cloudConnectBill - fullyFabricBill (still on the table)
+    portFeesMo: number;           // current AT&T fabric port fees, disclosed separately
+    fullyFabricPortFeesMo: number;// port fees if every on-ramp attached
+    buckets: {
+      key: string; label: string; category: 'internet' | 'cross-cloud' | 'committed';
+      publicCost: number; attCost: number; saving: number; savingPct: number;
+      attached: boolean; onrampId: string | null;
+    }[];                          // sorted by saving desc (opportunity ranking)
+  };
 
   // --- routing advisor (state-routing.js) ---
   routeAdvisor(): {

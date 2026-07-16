@@ -39,8 +39,8 @@ const SCREENS = [
   { route: '/govern', mustSee: /polic(y|ies)|enforce|rules?/i },
   // Observe: network observability KPIs (throughput / latency / egress series).
   { route: '/observe', mustSee: /latency|egress|throughput/i },
-  // Cost: hero "Savings identified" StatTile — verified real.
-  { route: '/cost', mustSee: /savings identified/i },
+  // Cost: arbitrage hero — the two-bill savings band, verified real.
+  { route: '/cost', mustSee: /on the AT&T fabric/i },
   // AI Fabric: token policies + model catalog.
   { route: '/ai-fabric', mustSee: /token|model/i },
 ];
@@ -73,22 +73,20 @@ for (const s of SCREENS) {
 
 /**
  * Cause-and-effect across screens — the demo's core proof. Read the Cost hero
- * "Savings identified" figure, cross to Connect, steer a flow onto an AT&T path
- * (which pulls egress off the public internet), cross back to Cost, and assert
- * the headline moved. Navigation is via the SPA nav links (not page.goto) so the
- * seeded engine state survives the trip. Guarded: if no flow is steerable in the
- * seeded estate, the lever doesn't exist and we assert nothing rather than lie.
+ * savings figure, cross to Connect, steer a flow onto an AT&T path (which pulls
+ * egress off the public internet), cross back to Cost, and assert the headline
+ * moved. Navigation is via the SPA nav links (not page.goto) so the seeded
+ * engine state survives the trip. Guarded: if no flow is steerable in the seeded
+ * estate, the lever doesn't exist and we assert nothing rather than lie.
  */
 test('cause-and-effect: steering on Connect moves the Cost savings headline', async ({ page }) => {
   await prep(page);
   await page.goto('/#/cost', { waitUntil: 'domcontentloaded' });
 
-  // The value node sits immediately after the "Savings identified" label in the StatTile.
-  const savingsValue = page
-    .getByText('Savings identified', { exact: true })
-    .locator('xpath=following-sibling::div[1]');
+  // The arbitrage hero's "save $X (Y%)" pill — moves as egress leaves public.
+  const savingsValue = page.getByTestId('hero-savings');
   const before = (await savingsValue.innerText()).trim();
-  expect(before).toMatch(/\$[\d,]+\/mo/);
+  expect(before).toMatch(/save \$[\d.]+k? \(\d+%\)/);
 
   // "Connect" is a link in both the top nav and the flow stepper — use the
   // nav (first in DOM) to avoid a strict-mode collision.

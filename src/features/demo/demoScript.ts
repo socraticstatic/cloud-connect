@@ -44,8 +44,8 @@ export const DEMO_BEATS: DemoBeat[] = [
     route: '/cost',
     title: 'The money slide, live',
     narration:
-      'A consumption invoice built from the circuits you just attached, egress split private vs public, and steer-to-save recommendations still on the table. This is arbitrage only AT&T can offer.',
-    hero: 'Savings identified per month',
+      'Two bills side by side: all-hyperscaler egress against the same estate on the AT&T fabric. Attach a path and watch both bills move and the saving grow. This is arbitrage only AT&T can offer.',
+    hero: 'On the AT&T fabric, per month',
   },
   {
     route: '/ai-fabric',
