@@ -25,17 +25,21 @@ afterEach(() => {
 });
 
 describe('arbitrage() seed numbers (calibration target)', () => {
-  it('produces the exact seed bills', () => {
+  it('produces the exact seed bills (egress-only; ports disclosed separately)', () => {
     const a = CC.arbitrage();
-    // ports(4200) + public gpu/aws/azure/misc (29_900) + base captured (15_000)
-    expect(a.cloudConnectBill).toBe(49_100);
-    // ports(4200) + Σ publicCost all buckets (48_200)
-    expect(a.hyperscalerBill).toBe(52_400);
-    expect(a.savings).toBe(3_300);
-    expect(a.savingsPct).toBe(6);                 // 3300 / 52400 ≈ 6.3%
-    // ports(4200) + Σ attCost all buckets (3400+3300+2100+1200+15000 = 25_000)
-    expect(a.fullyFabricBill).toBe(29_200);
-    expect(a.availableSavings).toBe(19_900);      // 49_100 - 29_200
+    // EGRESS-ONLY: public gpu/aws/azure/misc (29_900) + base captured (15_000)
+    expect(a.cloudConnectBill).toBe(44_900);
+    // Σ publicCost all buckets (48_200), NO ports — attach-invariant ceiling.
+    expect(a.hyperscalerBill).toBe(48_200);
+    expect(a.savings).toBe(3_300);                // 48_200 - 44_900
+    expect(a.savingsPct).toBe(7);                 // 3300 / 48200 ≈ 6.8%
+    // Σ attCost all buckets (3400+3300+2100+1200+15000 = 25_000)
+    expect(a.fullyFabricBill).toBe(25_000);
+    expect(a.availableSavings).toBe(19_900);      // 44_900 - 25_000
+    // ports disclosed separately: nb1 NetBond = 4200 active.
+    expect(a.portFeesMo).toBe(4_200);
+    // if every on-ramp were attached: +dx1(3800)+er1(3800)+nb2(5600) = 17_400.
+    expect(a.fullyFabricPortFeesMo).toBe(17_400);
   });
 
   it('egress at seed matches: pub 29_900, priv 15_000, total 44_900, savings 3_300', () => {
@@ -67,8 +71,9 @@ describe('arbitrage() seed numbers (calibration target)', () => {
 });
 
 describe('consistency invariants (binding)', () => {
-  it('billing().total === arbitrage().cloudConnectBill', () => {
-    expect(CC.billing().total).toBe(CC.arbitrage().cloudConnectBill);
+  it('billing().total === arbitrage().cloudConnectBill + arbitrage().portFeesMo (egress + ports)', () => {
+    const a = CC.arbitrage();
+    expect(CC.billing().total).toBe(a.cloudConnectBill + a.portFeesMo);
   });
 
   it('hyperscalerBill >= cloudConnectBill >= fullyFabricBill', () => {
@@ -99,17 +104,19 @@ describe('attaching a bucket moves the bills', () => {
 
     const after = CC.arbitrage();
     expect(after.buckets.find(b => b.key === 'gpu')!.attached).toBe(true);
-    // gpu egress moves 11_400 public -> 3_400 att: savings rise by the full
-    // 8_000 (port fees cancel in the hyperscaler-vs-fabric delta).
+    // gpu egress moves 11_400 public -> 3_400 att: egress-only bills, so the
+    // whole 8_000 shows up cleanly.
     expect(after.savings - before.savings).toBe(8_000);
-    // the bill drops by the capture saving net of the new 5_600 port fee.
-    expect(after.cloudConnectBill).toBeLessThan(before.cloudConnectBill);
-    expect(before.cloudConnectBill - after.cloudConnectBill).toBe(8_000 - 5_600);
+    expect(before.cloudConnectBill - after.cloudConnectBill).toBe(8_000);
     // opportunity still on the table shrinks by 8_000.
     expect(before.availableSavings - after.availableSavings).toBe(8_000);
-    // invariant holds and invoice still reconciles after the attach.
-    expect(after.hyperscalerBill).toBeGreaterThanOrEqual(after.cloudConnectBill);
+    // the hyperscaler ceiling is ATTACH-INVARIANT (egress-only, no ports).
+    expect(after.hyperscalerBill).toBe(before.hyperscalerBill);
+    expect(after.hyperscalerBill).toBe(48_200);
+    // ports are disclosed separately and DO grow (nb2 NetBond Adv = 5_600).
+    expect(after.portFeesMo - before.portFeesMo).toBe(5_600);
+    // invariant holds and invoice still reconciles (egress + ports).
     expect(after.cloudConnectBill).toBeGreaterThanOrEqual(after.fullyFabricBill);
-    expect(CC.billing().total).toBe(after.cloudConnectBill);
+    expect(CC.billing().total).toBe(after.cloudConnectBill + after.portFeesMo);
   });
 });

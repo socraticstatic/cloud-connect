@@ -195,8 +195,6 @@ function utilization(){return fixes.shiftAws?85:60;}
    same per-bucket model and the same attach state as egress()/billing(), so
    the hero, the invoice, and Observe's KPIs reconcile by construction. */
 function arbitrage(){
-  const portFees=onramps.filter(o=>o.active)
-    .reduce((s,o)=>s+(PORT_FEES[o.type]||4000),0);
   const buckets=BUCKETS.map(b=>{
     const saving=b.publicCost-b.attCost;
     return {key:b.k,label:b.label,category:b.category,
@@ -205,15 +203,23 @@ function arbitrage(){
       attached:b.captured(),onrampId:b.onrampId};
   }).sort((a,b)=>b.saving-a.saving);          // opportunity ranking, biggest first
   const e=egress();
-  const currentEgress=e.pub+e.priv;           // == e.total == billing() egress
-  const hyperscalerBill=hyperscalerEgress()+portFees;   // all-public + ports
-  const cloudConnectBill=currentEgress+portFees;        // == billing().total
-  const fullyFabricBill=fabricEgress()+portFees;        // every bucket captured
+  const currentEgress=e.pub+e.priv;           // == e.total
+  // Bills are EGRESS-ONLY: port fees are the fabric's access cost, disclosed
+  // separately (portFeesMo) so the arbitrage comparison stays clean and the
+  // hyperscaler ceiling is attach-invariant.
+  const hyperscalerBill=hyperscalerEgress();            // Σ publicCost, all buckets
+  const cloudConnectBill=currentEgress;                 // current egress (pub+priv)
+  const fullyFabricBill=fabricEgress();                 // Σ attCost, all buckets
   const savings=hyperscalerBill-cloudConnectBill;       // realized so far
   const availableSavings=cloudConnectBill-fullyFabricBill; // still on the table
+  const portFeesMo=onramps.filter(o=>o.active)
+    .reduce((s,o)=>s+(PORT_FEES[o.type]||4000),0);       // current access cost
+  const fullyFabricPortFeesMo=onramps
+    .reduce((s,o)=>s+(PORT_FEES[o.type]||4000),0);       // if every on-ramp attached
   return {hyperscalerBill,cloudConnectBill,savings,
     savingsPct:Math.round(savings/hyperscalerBill*100),
-    fullyFabricBill,availableSavings,buckets};
+    fullyFabricBill,availableSavings,
+    portFeesMo,fullyFabricPortFeesMo,buckets};
 }
 
 Object.assign(CC,{billing,tokenMeterList,modelRoutes,egress,arbitrage,utilization,virtualPorts});
