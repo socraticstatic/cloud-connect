@@ -24,16 +24,14 @@ test('Govern rules enforce, and Observe telemetry + Applications sub-view render
     .toBeGreaterThan(enforcedBefore);
   void unenforcedBadge;
 
-  // --- Observe: telemetry region renders, Applications tab shows app cards ---
+  // --- Observe: the observability shell renders telemetry + the records table ---
   await page.goto('/#/observe', { waitUntil: 'domcontentloaded' });
 
-  const telemetryHeading = page.getByText(/Latency by region/i);
-  await expect(telemetryHeading).toBeVisible();
+  await expect(page.getByText(/Network Observability/i)).toBeVisible();
+  // KPI tiles derive from live engine telemetry
+  await expect(page.getByText(/Throughput/i).first()).toBeVisible();
 
-  await page.getByRole('button', { name: /^Applications$/i }).click();
-
-  const appHeading = page.getByText(/^Applications$/i).last();
-  await expect(appHeading).toBeVisible();
-  // at least one app card renders with real engine-derived content
-  await expect(page.getByText(/Workloads/i).first()).toBeVisible();
+  // switch to the Latency lens and confirm the records table renders rows
+  await page.getByRole('button', { name: /^Latency$/i }).click();
+  await expect(page.getByText(/^Records$/i).first()).toBeVisible();
 });
