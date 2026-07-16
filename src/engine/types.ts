@@ -46,6 +46,18 @@ export interface CloudControlEgress {
   [key: string]: unknown;
 }
 
+export interface FabricRegion {
+  cloudId: string;
+  regionId: string;
+  name: string;
+  cloudName: string;
+  attached: boolean;
+  reliability: 'dual' | 'single' | 'none';
+  path: 'private' | 'public';
+  latencyMs: number;
+  onrampIds: string[];
+}
+
 export interface CloudControl {
   // --- core state (state.js) ---
   counts(): CloudControlCounts;
@@ -105,6 +117,15 @@ export interface CloudControl {
   };
   steerFlow(rowId: string, pathId: string): boolean;
   routeFlows(): { id: string; label: string; gbps: number; current: { attControlled: boolean; egressPerGb?: number; latencyMs?: number; label: string }; paths: { id: string; label: string; attControlled: boolean; available: boolean; egressPerGb?: number }[] }[];
+
+  // --- fabric model (Cloud Fabric redesign C1, state-routing.js) ---
+  fabricModel(): {
+    sites: { id: string; label: string; firstMile: string | null }[];
+    onramps: { id: string; name: string; type: string; site: string; active: boolean; targets: [string, string][] }[];
+    regions: FabricRegion[];
+    c2c: { id: string; label: string; gbps: number; viaPublic: boolean; controlled: boolean }[];
+  };
+  provisionRegion(regionId: string, opts?: { attachType?: string; onrampId?: string; resilient?: boolean }): FabricRegion | null;
 
   // --- console (state-console.js) ---
   setTokenPolicy(tag: string, patch: Record<string, unknown>): void;

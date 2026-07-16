@@ -260,5 +260,83 @@ function routeAdvisor(){
   return {recommendations:recs.slice(0,5),events};
 }
 
-Object.assign(CC,{routeFlows,steerFlow,clearSteer,routingKpis,routingFailover,routingRestore,routeHistory,sceneGraph,routeAdvisor});
+/* ---- fabric model (Cloud Fabric redesign C1): Sites → AT&T Fabric → Regions ----
+   A shaped, deterministic view the fabric UI renders. Everything derives from the
+   same substrate (EDGE_NODES / onramps / regions / routeFlows) so reliability,
+   private/public and latency reconcile with Discovery attach and Routing steer. */
+
+// Great-circle + fiber-route RTT estimate. Inlined (not imported from
+// features/discover/latency.ts) so the engine has no dependency on the feature
+// layer; the formula matches latency.ts (fiber factor 1.4, 124 mi/ms, 3ms base).
+function _airMiles(aLat,aLon,bLat,bLon){
+  const R=3958.8, toRad=d=>d*Math.PI/180;
+  const dLat=toRad(bLat-aLat), dLon=toRad(bLon-aLon);
+  const h=Math.sin(dLat/2)**2+Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.min(1,Math.sqrt(h)));
+}
+function _estRttMs(aLat,aLon,bLat,bLon){return Math.round(3+_airMiles(aLat,aLon,bLat,bLon)*1.4*2/124);}
+
+// parse the first-mile transport product off an EDGE_NODES label
+// ("HQ · Dallas · AVPN" -> "AVPN"; "Internet" -> null)
+function _firstMile(label){const m=label.match(/AVPN|ADI|ABF|Wireless/);return m?m[0]:null;}
+
+// locate a region object + its cloud id by region id (region ids are unique)
+function _findRegion(rid){
+  for(const c of clouds){const r=(regions[c.id]||[]).find(x=>x.id===rid);if(r)return {cid:c.id,cloud:c,r};}
+  return null;
+}
+
+// shape one region into the fabric view (reliability / path / latency / on-ramps)
+function _regionShape(cid,cloud,r){
+  const ramps=rampsFor(cid,r.id);
+  const active=ramps.filter(o=>o.active);
+  const reliability = active.length>=2 ? 'dual' : (active.length===1||r.spof) ? 'single' : 'none';
+  const path = active.length>=1 ? 'private' : 'public';
+  // latency: nearest active on-ramp site -> region.geo; fall back to any capturing
+  // on-ramp, then to the seeded region.lat when no geometry is available.
+  let latencyMs=r.lat;
+  const cand=(active.length?active:ramps).filter(o=>o.site&&typeof o.site.lat==='number');
+  if(r.geo&&cand.length){
+    latencyMs=Math.min(...cand.map(o=>_estRttMs(o.site.lat,o.site.lon,r.geo[0],r.geo[1])));
+  }
+  return {
+    cloudId:cid, regionId:r.id, name:r.name, cloudName:cloud.name, attached:!!r.attached,
+    reliability, path, latencyMs, onrampIds:ramps.map(o=>o.id),
+  };
+}
+
+function fabricModel(){
+  const sites=EDGE_NODES.map(n=>({id:n.id,label:n.label,firstMile:_firstMile(n.label)}));
+  const fabricOnramps=onramps.map(o=>({
+    id:o.id, name:o.name, type:o.type, site:o.site.name, active:!!o.active,
+    targets:o.targets.map(([c,rid])=>[c,rid]),
+  }));
+  const shaped=[];
+  clouds.forEach(c=>(regions[c.id]||[]).forEach(r=>shaped.push(_regionShape(c.id,c,r))));
+  const c2c=routeFlows().filter(f=>f.kind==='c2c').map(f=>({
+    id:f.id, label:f.label, gbps:f.gbps, viaPublic:!!f.viaPublic, controlled:!!f.current.attControlled,
+  }));
+  return {sites, onramps:fabricOnramps, regions:shaped, c2c};
+}
+
+// simulated provisioning: activate the on-ramp(s) that reach the region (marks it
+// attached via activateOnramp), log it, and return the updated region shape.
+// opts.onrampId targets a specific on-ramp; opts.resilient/attachType are carried
+// for labeling only — the effect is activating the capturing on-ramp(s).
+function provisionRegion(regionId,opts){
+  opts=opts||{};
+  const found=_findRegion(regionId);
+  if(!found)return null;
+  const {cid,cloud,r}=found;
+  const ramps=opts.onrampId?onramps.filter(o=>o.id===opts.onrampId):rampsFor(cid,regionId);
+  let activated=[];
+  ramps.forEach(o=>{if(!o.active&&CC.activateOnramp(o.id)){activated.push(o.name);}});
+  const shape=_regionShape(cid,cloud,r);
+  const via=activated.length?activated.join(' + '):(ramps[0]?ramps[0].name:'existing path');
+  const label=(opts.attachType?opts.attachType+' · ':'')+cloud.name+' '+r.name;
+  log('provision',label,`attached ${r.name} via ${via}${opts.resilient?' (dual)':''} — now ${shape.path}/${shape.reliability}`);
+  return shape;
+}
+
+Object.assign(CC,{routeFlows,steerFlow,clearSteer,routingKpis,routingFailover,routingRestore,routeHistory,sceneGraph,routeAdvisor,fabricModel,provisionRegion});
 })(window.CC);

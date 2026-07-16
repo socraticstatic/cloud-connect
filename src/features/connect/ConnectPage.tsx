@@ -6,7 +6,6 @@ import { FlowBar } from '../../components/flow/FlowBar';
 import { OnrampPanel } from './OnrampPanel';
 import { AttachTypes } from './AttachTypes';
 import { RouteTopology } from './RouteTopology';
-import { PathTable } from './PathTable';
 
 export function ConnectPage() {
   const counts = useCloudControl(cc => cc.counts());
@@ -43,8 +42,6 @@ export function ConnectPage() {
         <OnrampPanel />
 
         <RouteTopology />
-
-        <PathTable />
       </PageSection>
     </div>
   );

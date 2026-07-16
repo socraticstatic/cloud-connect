@@ -1,16 +1,23 @@
 import { test, expect } from '@playwright/test';
 import { seedAuth } from '../tests/e2e/helpers';
 
-test('Connect route renders topology + path table, and Steer moves a flow under AT&T control', async ({ page }) => {
+test('Connect renders the route topology; the Paths table + Steer live on Observe', async ({ page }) => {
   await seedAuth(page);
   await page.goto('/#/connect', { waitUntil: 'domcontentloaded' });
 
-  // Topology: at least one node rendered from the live scene graph.
+  // Connect keeps the route topology: at least one node from the live scene graph.
   const nodes = page.locator('[data-node]');
   await expect(nodes.first()).toBeVisible();
   expect(await nodes.count()).toBeGreaterThan(0);
 
-  // Path table: rows present.
+  // The Flows & paths table moved to Observe — it is no longer on Connect.
+  await expect(page.getByText('Flows & paths')).toHaveCount(0);
+
+  // Observe: the relocated Paths table renders rows, and Steer moves a flow
+  // under AT&T control (engine wiring unchanged, only the mount location moved).
+  await page.goto('/#/observe', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByText('Flows & paths')).toBeVisible();
+
   const rows = page.locator('table tbody tr');
   await expect(rows.first()).toBeVisible();
   expect(await rows.count()).toBeGreaterThan(0);

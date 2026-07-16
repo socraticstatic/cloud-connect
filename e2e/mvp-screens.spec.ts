@@ -33,7 +33,8 @@ async function prep(page: Page) {
 const SCREENS = [
   // Discover: the amber public-exposure finding strip (Task 5) — real estate rollup.
   { route: '/discover', mustSee: /workloads? reachable over the public internet/i },
-  // Connect: on-ramp panel copy (the section description) + steerable path table.
+  // Connect: on-ramp panel copy (the section description) — the steerable Paths
+  // table moved to Observe.
   { route: '/connect', mustSee: /on-ramps? to the AT&T fabric|attach/i },
   // Govern: policy & segmentation surface.
   { route: '/govern', mustSee: /polic(y|ies)|enforce|rules?/i },
@@ -73,13 +74,12 @@ for (const s of SCREENS) {
 
 /**
  * Cause-and-effect across screens — the demo's core proof. Read the Cost hero
- * savings figure, cross to Connect, steer a flow onto an AT&T path (which pulls
- * egress off the public internet), cross back to Cost, and assert the headline
- * moved. Navigation is via the SPA nav links (not page.goto) so the seeded
- * engine state survives the trip. Guarded: if no flow is steerable in the seeded
- * estate, the lever doesn't exist and we assert nothing rather than lie.
+ * savings figure, cross to Observe (where the Paths table now lives), steer a
+ * flow onto an AT&T path (which pulls egress off the public internet), cross back
+ * to Cost, and assert the headline moved. Navigation is via the SPA nav links
+ * (not page.goto) so the seeded engine state survives the trip.
  */
-test('cause-and-effect: steering on Connect moves the Cost savings headline', async ({ page }) => {
+test('cause-and-effect: steering on Observe moves the Cost savings headline', async ({ page }) => {
   await prep(page);
   await page.goto('/#/cost', { waitUntil: 'domcontentloaded' });
 
@@ -88,10 +88,11 @@ test('cause-and-effect: steering on Connect moves the Cost savings headline', as
   const before = (await savingsValue.innerText()).trim();
   expect(before).toMatch(/save \$[\d.]+k? \(\d+%\)/);
 
-  // "Connect" is a link in both the top nav and the flow stepper — use the
-  // nav (first in DOM) to avoid a strict-mode collision.
-  await page.getByRole('link', { name: 'Connect' }).first().click();
-  // Wait for the lazy ConnectPage + path table to render before probing for
+  // The steerable Paths table lives on Observe (relocated from Connect). "Observe"
+  // is a link in both the top nav and the flow stepper — use the nav (first in DOM)
+  // to avoid a strict-mode collision.
+  await page.getByRole('link', { name: 'Observe' }).first().click();
+  // Wait for the lazy ObservePage + Paths table to render before probing for
   // steerable flows — otherwise the count races the route transition.
   await expect(page.getByText('Flows & paths')).toBeVisible();
   // A steer lever MUST exist — the demo's core proof depends on it. Asserting

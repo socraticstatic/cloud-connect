@@ -8,8 +8,8 @@ import { seedAuth } from '../tests/e2e/helpers';
  * rebuild hangs together, not just each section in isolation.
  *
  * Discover is a read view of the unified estate (no mutating control lives
- * there); the Connect section carries two real engine actions — Attach and
- * Steer — since Attach moved off Discover onto the Connect on-ramp panel.
+ * there); Connect carries the Attach action (on-ramp panel); the Steer action
+ * lives on Observe, where the Paths table now mounts.
  */
 test('walks all six sections with real state changes, plus Tour and ⌘K', async ({ page }) => {
   await seedAuth(page);
@@ -39,7 +39,8 @@ test('walks all six sections with real state changes, plus Tour and ⌘K', async
     .poll(async () => parseInt((await activeCount.textContent()) ?? '0', 10))
     .toBeGreaterThan(activeBefore);
 
-  // --- Connect: Steer flips a control badge ---
+  // --- Observe: Steer (on the relocated Paths table) flips a control badge ---
+  await page.goto('/#/observe', { waitUntil: 'domcontentloaded' });
   const controlledBadge = page.getByText(/AT&T-controlled/i);
   const controlledBefore = await controlledBadge.count();
   const steerButton = page.getByRole('button', { name: /^Steer$/i }).first();
