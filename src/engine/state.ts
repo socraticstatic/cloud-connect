@@ -16,6 +16,11 @@ const TAGS={
   'finance-invoices':{label:'finance-invoices',color:'var(--amber)',hex:'#f2a23c',desc:'Finance · invoicing — must not have direct internet access'},
   'classified-helion':{label:'classified-helion',color:'var(--red)',hex:'#ff5c5c',desc:'Classified · Project Helion — all traffic must pass security inspection'},
   'shared-services':{label:'shared-services',color:'var(--teal)',hex:'#42d6c8',desc:'Shared services — cross-BU, baseline policy only'},
+  // The three requirements-doc example-policy tags. Non-amber hues (indigo /
+  // cyan / teal) so the example policies match real seeded workloads.
+  'pci':{label:'pci',color:'#6366f1',hex:'#6366f1',desc:'Cardholder data · PCI-DSS — must ride an AT&T private path, never the public internet'},
+  'internet-facing':{label:'internet-facing',color:'#0891b2',hex:'#0891b2',desc:'Public-facing edge — all egress must pass NGFW inspection'},
+  'finance':{label:'finance',color:'#0d9488',hex:'#0d9488',desc:'Finance branch — segment to finance-tagged peers only'},
 };
 
 const onramps=[
@@ -54,8 +59,8 @@ const regions={
 };
 const vpcs={
   use1:[{id:'vpcprod',name:'vpc-prod-01',cidr:'10.0.0.0/16',azs:3,subnets:6,attached:true,role:'Production · 3-tier',tags:['rd-helion','shared-services']},
-        {id:'vpcdata',name:'vpc-data-02',cidr:'10.1.0.0/16',azs:2,subnets:4,attached:true,role:'Data lake',tags:['finance-invoices']},
-        {id:'vpcdmz',name:'vpc-dmz-03',cidr:'10.2.0.0/16',azs:2,subnets:4,attached:false,role:'DMZ · public',tags:['classified-helion']}],
+        {id:'vpcdata',name:'vpc-data-02',cidr:'10.1.0.0/16',azs:2,subnets:4,attached:true,role:'Data lake',tags:['finance-invoices','pci','finance']},
+        {id:'vpcdmz',name:'vpc-dmz-03',cidr:'10.2.0.0/16',azs:2,subnets:4,attached:false,role:'DMZ · public',tags:['classified-helion','internet-facing']}],
   usw2:[{id:'vpcwest',name:'vpc-west-01',cidr:'10.8.0.0/16',azs:2,subnets:4,attached:false,role:'Edge services',tags:['shared-services']},
         {id:'vpcbak',name:'vpc-backup-02',cidr:'10.9.0.0/16',azs:2,subnets:4,attached:false,role:'Backup'}],
   euw1:[{id:'vpceu',name:'vpc-eu-01',cidr:'10.12.0.0/16',azs:1,subnets:4,attached:false,role:'EMEA apps',tags:['shared-services']}],
@@ -299,6 +304,12 @@ function violations(){
   if(!fixes.segmentHelion)v.push({tag:'rd-helion',vpc:null,msg:'cross-cloud spread unsegmented'});
   _.customPolicies.forEach(p=>{
     CC.evalPolicy(p).violations.forEach(x=>v.push({tag:p.tag,vpc:x.vpc,msg:x.msg,policy:p.id}));
+  });
+  // the three requirements-doc example policies: matched, tag-carrying
+  // workloads are in violation until the policy is enforced (same shape as
+  // the seed fixes above - they clear on enforce and re-derive posture).
+  if(CC.exampleRules)CC.exampleRules().forEach(r=>{
+    CC.evalExample(r).violations.forEach(x=>v.push({tag:r.src.tag,vpc:x.vpc,msg:x.msg,policy:r.id}));
   });
   return v;
 }

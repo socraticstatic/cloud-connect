@@ -35,7 +35,7 @@ function StatTiles({ items }: { items: { v: React.ReactNode; l: string }[] }) {
       {items.map((it, i) => (
         <div key={i} className="min-w-[54px] rounded-lg border border-fw-secondary bg-fw-wash px-2.5 py-1 text-center">
           <div className="text-figma-sm font-semibold leading-tight text-fw-heading tabular-nums">{it.v}</div>
-          <div className="text-[10px] uppercase tracking-wide text-fw-bodyLight">{it.l}</div>
+          <div className="whitespace-nowrap text-[10px] uppercase tracking-wide text-fw-bodyLight">{it.l}</div>
         </div>
       ))}
     </div>
@@ -165,8 +165,8 @@ export function UnifiedDiscovery() {
                     <StatTiles
                       items={[
                         { v: cloudRegionCount(cc, c.id), l: 'Regions' },
-                        { v: cloudVpcCount(cc, c.id), l: 'VPC/VN' },
-                        { v: c.workloads, l: 'Work' },
+                        { v: cloudVpcCount(cc, c.id), l: 'VPC/VNet' },
+                        { v: c.workloads, l: 'Workloads' },
                       ]}
                     />
                     <Badge attached={c.attached} />
@@ -199,7 +199,7 @@ export function UnifiedDiscovery() {
                               </div>
                               <StatTiles
                                 items={[
-                                  { v: vpcsOf(cc, r.id).length, l: 'VPC/VN' },
+                                  { v: vpcsOf(cc, r.id).length, l: 'VPC/VNet' },
                                   { v: r.subnets, l: 'Subnets' },
                                   { v: `${r.lat}ms`, l: 'Latency' },
                                 ]}

@@ -91,6 +91,22 @@ function evalPolicy(p){
   const req=REQUIREMENTS[p.requirement];
   return {matched,violations:req.evaluate(matched,p.enforced,p.param)};
 }
+/* the three requirements-doc example policies (pol-pci / pol-internet-facing /
+   pol-branch-finance) compute matched + violations from the tag registry the
+   same way custom policies do: every tag-carrying workload is in violation of
+   the requirement until the policy is ENFORCED, then clears. Mirrors the
+   REQUIREMENTS 'require-inspection' / 'isolate-internet' evaluate shape. */
+const EXAMPLE_MSG={
+  'route-private':'not pinned to an AT&T private path',
+  'inspect':'internet-facing egress bypasses NGFW inspection',
+  'deny':'reachable outside its tag — unsegmented',
+};
+function exampleRules(){return rules.filter(r=>r.example);}
+function evalExample(r){
+  const matched=policyMatches(r.src.tag,r.src.cloud);
+  const msg=EXAMPLE_MSG[r.action]||'requirement not yet applied';
+  return {matched,violations:ruleEnforced(r)?[]:matched.map(m=>({vpc:m.v.id,name:m.v.name,msg}))};
+}
 
 
 /* ---------------- flow table + rule engine (realistic policies) ----------------
@@ -411,7 +427,7 @@ _.customPolicies=customPolicies;
 _.nextPolId=()=>'custom-'+(++polSeq);
 _.nextRuleId=()=>'rule-'+(++ruleSeq);
 
-Object.assign(CC,{REQUIREMENTS,addPolicy,removePolicy,enforcePolicy,policyMatches,evalPolicy,previewPolicy,
+Object.assign(CC,{REQUIREMENTS,addPolicy,removePolicy,enforcePolicy,policyMatches,evalPolicy,evalExample,exampleRules,previewPolicy,
   SERVICES,DSTS,flows,ruleList,ruleMatch,dryRun,addRule,enforceRule,removeRule,moveRule,enforceAny,ruleEnforced,
   serviceCatalog,insertService,
   settings,setRequireApproval,requestRule,approveRule,rejectRule,pendingRules,
