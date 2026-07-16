@@ -83,7 +83,7 @@ export function PathTable() {
             <th className="px-5 py-2 font-medium">Latency</th>
             <th className="px-5 py-2 font-medium text-center">Control</th>
             <th className="px-5 py-2 font-medium">Diverse</th>
-            <th className="px-5 py-2 font-medium text-right">Action</th>
+            <th className="px-5 py-2 font-medium text-center">Action</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-fw-secondary">
@@ -124,8 +124,8 @@ export function PathTable() {
                   </span>
                 </td>
                 <td className="px-5 py-3 text-fw-body">{row.diverse ? 'Yes' : 'No'}</td>
-                <td className="px-5 py-3 text-right">
-                  <div className="flex items-center justify-end gap-2">
+                <td className="px-5 py-3 text-center">
+                  <div className="flex items-center justify-center gap-2">
                     {canSteer && (
                       <button
                         type="button"

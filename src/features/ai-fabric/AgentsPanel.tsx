@@ -30,7 +30,7 @@ export function AgentsPanel() {
             <th className="px-5 py-2 font-medium">App</th>
             <th className="px-5 py-2 font-medium">Scopes</th>
             <th className="px-5 py-2 font-medium text-center">Status</th>
-            <th className="px-5 py-2 font-medium text-right">Action</th>
+            <th className="px-5 py-2 font-medium text-center">Action</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-fw-secondary">
@@ -54,7 +54,7 @@ export function AgentsPanel() {
                   {a.enabled ? 'Enabled' : 'Suspended'}
                 </span>
               </td>
-              <td className="px-5 py-3 text-right">
+              <td className="px-5 py-3 text-center">
                 <button
                   type="button"
                   onClick={() => actions.toggleAgent(a.id)}

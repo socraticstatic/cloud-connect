@@ -31,7 +31,7 @@ export function TokenPolicies() {
             <th className="px-5 py-2 font-medium">Budget</th>
             <th className="px-5 py-2 font-medium">Guardrail</th>
             <th className="px-5 py-2 font-medium text-center">Status</th>
-            <th className="px-5 py-2 font-medium text-right">Action</th>
+            <th className="px-5 py-2 font-medium text-center">Action</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-fw-secondary">
@@ -66,7 +66,7 @@ export function TokenPolicies() {
                   {p.enforced ? 'Enforced' : 'Draft'}
                 </span>
               </td>
-              <td className="px-5 py-3 text-right">
+              <td className="px-5 py-3 text-center">
                 {!p.enforced && (
                   <button
                     type="button"

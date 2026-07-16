@@ -94,7 +94,7 @@ export function RulesPanel() {
               <th className="px-5 py-2 font-medium">Match</th>
               <th className="px-5 py-2 font-medium">Requirement</th>
               <th className="px-5 py-2 font-medium text-center">Status</th>
-              <th className="px-5 py-2 font-medium text-right whitespace-nowrap">Action</th>
+              <th className="px-5 py-2 font-medium text-center whitespace-nowrap">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-fw-secondary">
@@ -134,10 +134,9 @@ export function RulesPanel() {
                     )}
                   </td>
                   <td className="px-5 py-3">
-                    {/* Secondary fix actions sit left; the primary Enforce is
-                        pinned to the right edge so it lines up across every row
-                        regardless of how many buttons a row has. */}
-                    <div className="flex items-center justify-end gap-2">
+                    {/* The action group is centered under the centered "Action"
+                        header; secondary fix actions sit left of the primary Enforce. */}
+                    <div className="flex items-center justify-center gap-2">
                       {!enforced && rule.fix && (
                         <>
                           <button
