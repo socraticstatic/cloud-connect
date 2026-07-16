@@ -2,7 +2,13 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: '.',
-  testMatch: ['e2e/**/*.spec.ts', 'tests/e2e/**/*.spec.ts'],
+  // Only the Cloud Connect app specs live in e2e/. tests/e2e/ holds INHERITED
+  // NetBond/RBAC specs (billing, rbac-*, monitor-*, user-management, …) that
+  // exercise legacy routes now redirected to /discover — obsolete, kept as files
+  // but out of the default run. testMatch is not root-anchored, so also ignore
+  // agent worktrees / deps / build output.
+  testMatch: ['e2e/**/*.spec.ts'],
+  testIgnore: ['**/.claude/**', '**/node_modules/**', '**/dist/**', '**/tests/e2e/**'],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

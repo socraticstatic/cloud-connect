@@ -9,10 +9,10 @@ test('boots to Discover, nav shows six sections, attach works on Connect', async
   for (const l of ['Discover', 'Connect', 'Govern', 'Observe', 'Cost', 'AI Fabric'])
     await expect(mainNav.getByRole('link', { name: l })).toBeVisible();
   // Discover is a read view of the unified estate — no attach control here.
-  // The rebuilt Discover tree exposes Expand/Collapse controls (the old
-  // All/Network/AI lens chips are gone) and Private/Public path badges.
+  // The rebuilt Discover tree exposes Expand/Collapse controls and per-row
+  // connection-state indicators (via the AT&T fabric / public internet).
   await expect(page.getByRole('button', { name: /^Expand all$/i })).toBeVisible();
-  await expect(page.getByText(/^(Private|Public)$/).first()).toBeVisible();
+  await expect(page.getByText(/via the AT&T fabric|public internet/i).first()).toBeVisible();
 
   // Provisioning now lives on the Connect cloud fabric; provisioning a region
   // persists a visible state change (its edge flips public → private).

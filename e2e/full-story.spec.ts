@@ -27,7 +27,7 @@ test('walks all six sections with real state changes, plus Tour and ⌘K', async
     await expect(page.getByRole('button', { name: new RegExp(`^${ctrl}$`, 'i') })).toBeVisible();
   }
   await expect(page.getByRole('button', { name: 'AWS' })).toBeVisible();
-  await expect(page.getByText(/^(Private|Public)$/).first()).toBeVisible();
+  await expect(page.getByText(/via the AT&T fabric|public internet/i).first()).toBeVisible();
 
   // --- Connect: provisioning a region joins it to the fabric (public → private) ---
   await page.goto('/#/connect', { waitUntil: 'domcontentloaded' });
