@@ -61,7 +61,8 @@ export interface FabricRegion {
 export interface CloudControl {
   // --- core state (state.js) ---
   counts(): CloudControlCounts;
-  subscribe(fn: (ev?: CloudControlEvent) => void): void;
+  /** Returns an unsubscribe function — required by useSyncExternalStore. */
+  subscribe(fn: (ev?: CloudControlEvent) => void): () => void;
   activateOnramp(id: string, silent?: boolean): boolean;
   applyFix(key: string, silent?: boolean): boolean;
   undo(): boolean;

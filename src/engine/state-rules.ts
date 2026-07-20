@@ -222,7 +222,15 @@ function flows(){
       const tenths=Math.round(base*0.9*10);
       let given=0;
       peers.forEach((p,i)=>{
-        const share=i===peers.length-1?tenths-given:Math.round(tenths/peers.length);
+        // FLOOR, not round: with round(), the first n-1 shares can together
+        // exceed the total (round(2/4)*3 = 3 > 2) and the last peer absorbs a
+        // NEGATIVE remainder - a peer modelled as carrying less than no
+        // traffic. Flooring can only under-allocate, so the remainder the last
+        // peer takes is non-negative by construction and the sum still lands
+        // on `tenths` exactly. The conservation this comment's neighbour
+        // describes is preserved; only the direction of the rounding error is
+        // pinned. See peerSplit.test.ts.
+        const share=i===peers.length-1?tenths-given:Math.floor(tenths/peers.length);
         given+=share;
         mk('intra-tag','5432, 8443',!r.attached,share/10).dstVpc=p.id;
       });
@@ -367,10 +375,24 @@ function dryRun(rule){
     blocked:matched.filter(m=>m.v==='blocked').length,
     pending:matched.filter(m=>m.bad).length};
 }
+/* dst is either a legacy DSTS string enum or a structured {group:'<id>'}.
+   A string must be a known DSTS key; an object must name a group that
+   actually exists - fail closed on both, same as the string case always
+   has, rather than weakening the guard to accept any shape. */
+function validDst(dst){
+  if(dst&&typeof dst==='object')return !!(dst.group&&(CC.groupList()||[]).some(g=>g.id===dst.group));
+  return !!DSTS[dst];
+}
+/* Human-readable fallback-name endpoint label. src/dst can each be
+   tag-based or group-based; read whichever key is present rather than
+   assuming .tag or stringifying the object, which is what produced
+   "deny undefined → [object Object]" for group rules. */
+function ruleEndpointLabel(x){return (x&&typeof x==='object')?(x.group||x.tag||'any'):x;}
 function addRule({name,src,dst,ports,action,chain,enforceNow}){
-  if(!DSTS[dst]||!src)return null;
+  if(!src||!validDst(dst))return null;
   _.pushUndo('Author rule');
-  const r={id:'rule-'+(++ruleSeq),pri:rules.length+1,name:name||`${action} ${src.tag||'any'} → ${dst}`,
+  const r={id:'rule-'+(++ruleSeq),pri:rules.length+1,
+    name:name||`${action} ${ruleEndpointLabel(src)} → ${ruleEndpointLabel(dst)}`,
     src,dst,ports:ports||'any',action,chain:chain||[],enforced:false,system:false};
   rules.push(r);
   if(enforceNow)enforceRule(r.id,true);
@@ -452,7 +474,11 @@ function pendingRules(){return rules.filter(r=>r.pending);}
 function policies(){
   return [
     ...ruleList().map(r=>({id:r.id,name:r.name,custom:!r.system,
-      match:`${r.src.tag||'any'}${r.src.cloud&&r.src.cloud!=='any'?' @ '+r.src.cloud:''} → ${r.dst}${r.ports!=='any'?' :'+r.ports:''}`,
+      /* Read both endpoints through ruleEndpointLabel, never interpolate
+         them raw: a group rule carries an object on BOTH sides, and
+         `${r.dst}` on an object is the "[object Object]" this summary used
+         to print. */
+      match:`${ruleEndpointLabel(r.src)}${r.src.cloud&&r.src.cloud!=='any'?' @ '+r.src.cloud:''} → ${ruleEndpointLabel(r.dst)}${r.ports!=='any'?' :'+r.ports:''}`,
       tag:TAGS[r.src.tag]?r.src.tag:null,
       chain:r.chain.join(' → ')||r.action,action:r.action,
       enforced:ruleEnforced(r),rule:true})),
@@ -514,7 +540,19 @@ function tickHits(){
   if(_.tickTokens(rng))any=true;
   if(any)_.emit({type:'hits'});
 }
-setInterval(tickHits,3000);
+/* The ticker drives live product state - CC.policyHits counters and, through
+   _.tickTokens, the AI token meters the Observe page reads - so it has to keep
+   running in the app. It used to be a bare setInterval fired at module load
+   with no handle kept: unstoppable, and started fresh in every test file that
+   imported the engine, where a 3s timer mutating shared counters is noise the
+   suite can neither clear nor rely on. It is now a managed handle, started
+   automatically everywhere EXCEPT under test. */
+let hitTimer=null;
+function startHits(){if(hitTimer!==null)return false;hitTimer=setInterval(tickHits,3000);return true;}
+function stopHits(){if(hitTimer===null)return false;clearInterval(hitTimer);hitTimer=null;return true;}
+function hitsRunning(){return hitTimer!==null;}
+const underTest=typeof process!=='undefined'&&!!process.env&&(!!process.env.VITEST||process.env.NODE_ENV==='test');
+if(!underTest)startHits();
 function policyHits(id){return polHits[id]||null;}
 
 /* the core's snapshot/restore and the share module's replay reach the
@@ -528,5 +566,5 @@ Object.assign(CC,{REQUIREMENTS,addPolicy,removePolicy,enforcePolicy,policyMatche
   SERVICES,DSTS,flows,ruleList,ruleMatch,dryRun,addRule,enforceRule,removeRule,moveRule,enforceAny,ruleEnforced,
   serviceCatalog,insertService,
   settings,setRequireApproval,requestRule,approveRule,rejectRule,pendingRules,
-  policies,policyHits});
+  policies,policyHits,startHits,stopHits,hitsRunning});
 })(window.CC);

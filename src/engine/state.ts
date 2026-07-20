@@ -74,22 +74,28 @@ const regions={
   cw:[{id:'cwe',name:'US-EAST-04A',sub:'GPU region',subnets:2,lat:28,attached:false,ai:true,geo:[40.2,-74.7]}],
   neb:[{id:'nbe',name:'eu-north1',sub:'Finland',subnets:2,lat:44,attached:false,ai:true,geo:[60.6,24.8]}],
 };
+/* Region cloudTags reuse the same west/central/east(+emea) vocabulary the
+   branches carry above, so one predicate vocabulary groups premises and
+   workloads honestly by geography. us-central1 (Iowa) is bucketed into
+   'west' - the branches' own 'central' value (Dallas/Chicago) is never
+   applied to a VPC, so the two vocabularies stay compatible without
+   forcing every value to appear on both sides. */
 const vpcs={
-  use1:[{id:'vpcprod',name:'vpc-prod-01',cidr:'10.0.0.0/16',azs:3,subnets:6,attached:true,role:'Production · 3-tier',tags:['rd-helion','shared-services'],cloudTags:{Project:'xyz',Env:'prod',Owner:'platform'}},
-        {id:'vpcdata',name:'vpc-data-02',cidr:'10.1.0.0/16',azs:2,subnets:4,attached:true,role:'Data lake',tags:['finance-invoices','pci','finance'],cloudTags:{Project:'abc',Env:'prod',Owner:'finance'}},
-        {id:'vpcdmz',name:'vpc-dmz-03',cidr:'10.2.0.0/16',azs:2,subnets:4,attached:false,role:'DMZ · public',tags:['classified-helion','internet-facing'],cloudTags:{Project:'xyz',Env:'prod',Owner:'security'}}],
-  usw2:[{id:'vpcwest',name:'vpc-west-01',cidr:'10.8.0.0/16',azs:2,subnets:4,attached:false,role:'Edge services',tags:['shared-services'],cloudTags:{Project:'xyz',Env:'prod',Owner:'platform'}},
-        {id:'vpcbak',name:'vpc-backup-02',cidr:'10.9.0.0/16',azs:2,subnets:4,attached:false,role:'Backup',cloudTags:{Project:'ops',Env:'prod',Owner:'platform'}}],
-  euw1:[{id:'vpceu',name:'vpc-eu-01',cidr:'10.12.0.0/16',azs:1,subnets:4,attached:false,role:'EMEA apps',tags:['shared-services'],cloudTags:{Project:'abc',Env:'prod',Owner:'emea'}}],
-  wus2:[{id:'vnetapp',name:'vnet-app-02',cidr:'10.4.0.0/16',azs:2,subnets:5,attached:false,role:'App tier',vnet:true,tags:['rd-helion'],cloudTags:{Project:'xyz',Env:'stage',Owner:'platform'}},
-        {id:'vnetdata',name:'vnet-data-03',cidr:'10.5.0.0/16',azs:2,subnets:4,attached:false,role:'Data',vnet:true,cloudTags:{Project:'abc',Env:'stage',Owner:'data'}}],
-  uks:[{id:'vnetemea',name:'vnet-emea-01',cidr:'10.6.0.0/16',azs:1,subnets:4,attached:false,role:'EMEA · SPOF',vnet:true,cloudTags:{Project:'abc',Env:'prod',Owner:'emea'}},
-       {id:'vnetdmz',name:'vnet-dmz-uk',cidr:'10.7.0.0/16',azs:1,subnets:3,attached:false,role:'DMZ',vnet:true,cloudTags:{Project:'ops',Env:'prod',Owner:'security'}}],
-  usc1:[{id:'vpcgcp1',name:'vpc-gke-prod',cidr:'10.16.0.0/16',azs:2,subnets:4,attached:false,role:'GKE',cloudTags:{Project:'xyz',Env:'prod',Owner:'platform'}},
-        {id:'vpcgcp2',name:'vpc-svc-02',cidr:'10.4.0.0/16',azs:1,subnets:2,attached:false,role:'Services',cloudTags:{Project:'ops',Env:'prod',Owner:'platform'}}],
-  iad:[{id:'ocivcn',name:'vcn-prod-01',cidr:'10.20.0.0/16',azs:1,subnets:3,attached:false,role:'Production',vnet:true,cloudTags:{Project:'abc',Env:'prod',Owner:'platform'}}],
-  cwe:[{id:'cwgpu',name:'gpu-cluster-01',cidr:'10.30.0.0/16',azs:1,subnets:2,attached:false,role:'H100 inference',ai:true,vnet:true,tags:['rd-helion'],cloudTags:{Project:'xyz',Env:'prod',Owner:'ml'}}],
-  nbe:[{id:'nbgpu',name:'nb-gpu-net',cidr:'10.34.0.0/16',azs:1,subnets:2,attached:false,role:'L40S inference',ai:true,vnet:true,tags:['classified-helion'],cloudTags:{Project:'abc',Env:'prod',Owner:'ml'}}],
+  use1:[{id:'vpcprod',name:'vpc-prod-01',cidr:'10.0.0.0/16',azs:3,subnets:6,attached:true,role:'Production · 3-tier',tags:['rd-helion','shared-services'],cloudTags:{Project:'xyz',Env:'prod',Owner:'platform',Region:'east'}},
+        {id:'vpcdata',name:'vpc-data-02',cidr:'10.1.0.0/16',azs:2,subnets:4,attached:true,role:'Data lake',tags:['finance-invoices','pci','finance'],cloudTags:{Project:'abc',Env:'prod',Owner:'finance',Region:'east'}},
+        {id:'vpcdmz',name:'vpc-dmz-03',cidr:'10.2.0.0/16',azs:2,subnets:4,attached:false,role:'DMZ · public',tags:['classified-helion','internet-facing'],cloudTags:{Project:'xyz',Env:'prod',Owner:'security',Region:'east'}}],
+  usw2:[{id:'vpcwest',name:'vpc-west-01',cidr:'10.8.0.0/16',azs:2,subnets:4,attached:false,role:'Edge services',tags:['shared-services'],cloudTags:{Project:'xyz',Env:'prod',Owner:'platform',Region:'west'}},
+        {id:'vpcbak',name:'vpc-backup-02',cidr:'10.9.0.0/16',azs:2,subnets:4,attached:false,role:'Backup',cloudTags:{Project:'ops',Env:'prod',Owner:'platform',Region:'west'}}],
+  euw1:[{id:'vpceu',name:'vpc-eu-01',cidr:'10.12.0.0/16',azs:1,subnets:4,attached:false,role:'EMEA apps',tags:['shared-services'],cloudTags:{Project:'abc',Env:'prod',Owner:'emea',Region:'emea'}}],
+  wus2:[{id:'vnetapp',name:'vnet-app-02',cidr:'10.4.0.0/16',azs:2,subnets:5,attached:false,role:'App tier',vnet:true,tags:['rd-helion'],cloudTags:{Project:'xyz',Env:'stage',Owner:'platform',Region:'west'}},
+        {id:'vnetdata',name:'vnet-data-03',cidr:'10.5.0.0/16',azs:2,subnets:4,attached:false,role:'Data',vnet:true,cloudTags:{Project:'abc',Env:'stage',Owner:'data',Region:'west'}}],
+  uks:[{id:'vnetemea',name:'vnet-emea-01',cidr:'10.6.0.0/16',azs:1,subnets:4,attached:false,role:'EMEA · SPOF',vnet:true,cloudTags:{Project:'abc',Env:'prod',Owner:'emea',Region:'emea'}},
+       {id:'vnetdmz',name:'vnet-dmz-uk',cidr:'10.7.0.0/16',azs:1,subnets:3,attached:false,role:'DMZ',vnet:true,cloudTags:{Project:'ops',Env:'prod',Owner:'security',Region:'emea'}}],
+  usc1:[{id:'vpcgcp1',name:'vpc-gke-prod',cidr:'10.16.0.0/16',azs:2,subnets:4,attached:false,role:'GKE',cloudTags:{Project:'xyz',Env:'prod',Owner:'platform',Region:'west'}},
+        {id:'vpcgcp2',name:'vpc-svc-02',cidr:'10.4.0.0/16',azs:1,subnets:2,attached:false,role:'Services',cloudTags:{Project:'ops',Env:'prod',Owner:'platform',Region:'west'}}],
+  iad:[{id:'ocivcn',name:'vcn-prod-01',cidr:'10.20.0.0/16',azs:1,subnets:3,attached:false,role:'Production',vnet:true,cloudTags:{Project:'abc',Env:'prod',Owner:'platform',Region:'east'}}],
+  cwe:[{id:'cwgpu',name:'gpu-cluster-01',cidr:'10.30.0.0/16',azs:1,subnets:2,attached:false,role:'H100 inference',ai:true,vnet:true,tags:['rd-helion'],cloudTags:{Project:'xyz',Env:'prod',Owner:'ml',Region:'east'}}],
+  nbe:[{id:'nbgpu',name:'nb-gpu-net',cidr:'10.34.0.0/16',azs:1,subnets:2,attached:false,role:'L40S inference',ai:true,vnet:true,tags:['classified-helion'],cloudTags:{Project:'abc',Env:'prod',Owner:'ml',Region:'emea'}}],
 };
 
 /* Remediation flags - policies and service insertions applied this session */
@@ -121,11 +127,40 @@ function auditClear(){try{localStorage.removeItem(AUDIT_KEY);}catch(e){}emit({ty
 /* ---------------- pub/sub + history ---------------- */
 const listeners=[];
 const hist=[];
-function subscribe(fn){listeners.push(fn);}
+/* Returns an unsubscribe function. It used to return nothing, so React's
+   useSyncExternalStore - whose subscribe callback is contractually required to
+   hand back a teardown - had to return a no-op, and every component that ever
+   mounted stayed subscribed for the life of the page.
+
+   The teardown closes over a `done` flag rather than re-deriving the
+   listener's position with indexOf(fn): indexOf finds *a* registration of fn,
+   not *this* one, so if the same function is ever subscribed twice, calling
+   one teardown twice - or calling it after the other registration's teardown
+   already ran - would remove whichever matching entry indexOf happens to find
+   first, which can belong to someone else. The done flag makes each teardown
+   remove only its own registration and safe to call any number of times. */
+function subscribe(fn){
+  let done=false;
+  listeners.push(fn);
+  return function(){
+    if(done)return;
+    done=true;
+    const i=listeners.indexOf(fn);if(i>=0)listeners.splice(i,1);
+  };
+}
 function emit(ev){
   if(ev&&(ev.type==='onramp'||ev.type==='fix'))hist.push({label:ev.label||ev.id||ev.key,posture:posture()});
   if(ev&&(ev.type==='onramp'||ev.type==='fix'||ev.type==='policy'))auditWrite(ev.label||ev.id||ev.key,posture());
-  listeners.forEach(f=>{try{f(ev);}catch(e){console.error(e);}});
+  // iterate a COPY: a listener is now allowed to unsubscribe itself (React
+  // does exactly this when a notification unmounts a subscriber), and splicing
+  // the live array mid-forEach would silently skip the next listener.
+  // This is a deliberate trade, not an oversight: a listener unsubscribed by
+  // an EARLIER listener during this same emit still gets called this tick,
+  // because it was still present when the copy was taken. A stale
+  // notification (one extra call to a listener that's on its way out) is far
+  // safer than a skipped one (a live listener that silently misses an
+  // update), and React tolerates redundant notifications fine.
+  listeners.slice().forEach(f=>{try{f(ev);}catch(e){console.error(e);}});
 }
 function history(){return hist.slice();}
 
@@ -180,11 +215,36 @@ function snapshot(){
     app:CC.settings.requireApproval,
   };
 }
+/* The estate is not a fixed shape. rescanAccount() pushes a newly DISCOVERED
+   VPC and deliberately records no undo entry, and orderCircuit() appends an
+   on-ramp the same way, so a snapshot taken before either one is shorter than
+   the live arrays it is restored onto. restore() used to index s.vp[k][i]
+   blind and threw on the surplus.
+
+   Restoring means "put back what this snapshot actually recorded". A
+   discovered VPC therefore SURVIVES an undo: discovery reports what was
+   already out there rather than changing it, it pushed no undo entry, and
+   un-finding a workload the user can still see in their cloud console because
+   they undid an unrelated action would make the engine lie about the estate.
+   Every reconciliation below skips indices the snapshot never covered.
+
+   PRECONDITION: this reconciles snapshot to live estate BY ARRAY INDEX, which
+   is only sound because estate growth is append-only - nothing in src/ ever
+   splices, shifts, pops, sorts, or reverses vpcs/onramps/regions, so index i
+   always names the same logical entity it named when the snapshot was taken.
+   The bounds guards above (the `if(!so)return` / `if(s.vp[k]&&...)` checks)
+   only stop this from throwing on a snapshot shorter than the live arrays;
+   they do nothing to protect against an array that was reordered or had a
+   middle element removed. If anything ever mutates one of these arrays by
+   position rather than by append, restore() will silently apply one entity's
+   snapshot fields to a DIFFERENT entity at the same index - no crash, no
+   warning, just a wrong answer. Whoever touches estate mutation next needs to
+   preserve append-only growth or rework this reconciliation. */
 function restore(s){
-  onramps.forEach((o,i)=>{o.active=s.onr[i].active;o.planned=s.onr[i].planned;o.sub=s.onr[i].sub;});
-  clouds.forEach((c,i)=>{c.attached=s.cl[i];});
-  Object.entries(regions).forEach(([k,rs])=>rs.forEach((r,i)=>{r.attached=s.reg[k][i].attached;r.spof=s.reg[k][i].spof;}));
-  Object.entries(vpcs).forEach(([k,vs])=>vs.forEach((v,i)=>{v.attached=s.vp[k][i].attached;v.cidr=s.vp[k][i].cidr;}));
+  onramps.forEach((o,i)=>{const so=s.onr[i];if(!so)return;o.active=so.active;o.planned=so.planned;o.sub=so.sub;});
+  clouds.forEach((c,i)=>{if(s.cl[i]===undefined)return;c.attached=s.cl[i];});
+  Object.entries(regions).forEach(([k,rs])=>rs.forEach((r,i)=>{const sr=s.reg[k]&&s.reg[k][i];if(!sr)return;r.attached=sr.attached;r.spof=sr.spof;}));
+  Object.entries(vpcs).forEach(([k,vs])=>vs.forEach((v,i)=>{const sv=s.vp[k]&&s.vp[k][i];if(!sv)return;v.attached=sv.attached;v.cidr=sv.cidr;}));
   Object.assign(fixes,s.fx);
   if(s.rl){_.rules.length=0;s.rl.forEach(r=>_.rules.push({...r,src:{...r.src},chain:r.chain.slice()}));}
   if(s.cp){_.customPolicies.length=0;s.cp.forEach(p=>_.customPolicies.push({...p}));}
@@ -399,7 +459,7 @@ function posture(){
 /* the internal bag: privates the sibling state*.js modules share.
    Members land here as each module loads; consumers read them at call
    time, so the bag is the only load-order coupling between files. */
-const _={emit,hist,sessionAttached,pushUndo};
+const _={emit,hist,sessionAttached,pushUndo,listeners};
 
 return {TAGS,onramps,branches,clouds,regions,vpcs,fixes,sim,designedPublic,
   auditLog,auditClear,

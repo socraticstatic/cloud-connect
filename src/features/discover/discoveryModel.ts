@@ -46,11 +46,60 @@ export interface Tag {
   hex: string;
   desc?: string;
 }
+/** A customer premises. Distinct from `onramps[].site`, which is the AT&T
+ *  colo facility an on-ramp lives in — a branch is the customer's own
+ *  building, and is what the stakeholder note means by "San Jose". */
+export interface Branch {
+  id: string;
+  name: string;
+  city: string;
+  cidrs: string[];
+  onrampId?: string;
+  cloudTags?: Record<string, string>;
+}
 
 /** Tree node keys are path-joined: `aws`, `aws/use1`, `aws/use1/vpcprod`. */
 export const cloudKey = (cloudId: string) => cloudId;
 export const regionKey = (cloudId: string, regionId: string) => `${cloudId}/${regionId}`;
 export const vpcKey = (cloudId: string, regionId: string, vpcId: string) => `${cloudId}/${regionId}/${vpcId}`;
+
+/* --------------------------- selection --------------------------- */
+
+/* Selection is a SECOND set, deliberately not the open-set: expanding a
+   region to look inside it is not the same act as choosing it, and
+   overloading toggleKey would make every drill-down silently claim
+   something. The two sets share the same path vocabulary so a selected node
+   is identifiable no matter how the tree is expanded. */
+
+/** Sites live outside the cloud tree, so their key is namespaced rather
+ *  than path-joined — `site/br-sjc` can never collide with a cloud id. */
+export const branchKey = (branchId: string) => `site/${branchId}`;
+export const isBranchKey = (key: string) => key.startsWith('site/');
+
+export const branchesOf = (cc: CloudControl): Branch[] => ((cc.branches || []) as Branch[]);
+
+/** Selection keys are tree paths; the engine's group `members` are estate
+ *  ids. The estate id is always the last path segment — `aws/usw2/vpcwest`
+ *  names the VPC `vpcwest`, `site/br-sjc` names the branch `br-sjc`. */
+export function selectionMemberIds(sel: ReadonlySet<string>): string[] {
+  return [...sel].map(k => k.slice(k.lastIndexOf('/') + 1));
+}
+
+/* `kind` is what the engine's resolver checks literal members against, so
+   getting it wrong drops half a selection with nothing on screen saying
+   why. A selection spanning both estates therefore becomes 'mixed' — the
+   only kind that can hold a branch and a VPC at once. It is stated
+   explicitly rather than left to addGroup's inference so the selection bar
+   can show the person which estate their group will cover before they
+   commit to it. */
+export function selectionKind(sel: ReadonlySet<string>): 'workload' | 'site' | 'mixed' {
+  const keys = [...sel];
+  if (keys.length === 0) return 'mixed';
+  const hasSite = keys.some(isBranchKey);
+  const hasVpc = keys.some(k => !isBranchKey(k));
+  if (hasSite && hasVpc) return 'mixed';
+  return hasSite ? 'site' : 'workload';
+}
 
 export const regionsOf = (cc: CloudControl, cloudId: string): Region[] => (cc.regions[cloudId] || []) as Region[];
 export const vpcsOf = (cc: CloudControl, regionId: string): Vpc[] => (cc.vpcs[regionId] || []) as Vpc[];

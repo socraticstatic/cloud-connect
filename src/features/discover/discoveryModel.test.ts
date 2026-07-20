@@ -9,6 +9,11 @@ import {
   toggleKey,
   regionKey,
   vpcKey,
+  branchesOf,
+  branchKey,
+  isBranchKey,
+  selectionMemberIds,
+  selectionKind,
 } from './discoveryModel';
 import { CC } from '../../engine';
 
@@ -67,5 +72,57 @@ describe('discoveryModel', () => {
     expect(tagHex('finance-invoices', tags)).toBe('#64748b'); // de-ambered slate
     expect(tagHex('rd-helion', tags).toLowerCase()).not.toBe('#f2a23c');
     expect(tagHex('classified-helion', tags)).toBe(tags['classified-helion'].hex); // red kept
+  });
+});
+
+/* Task E — branches are visible and selectable in Discover, and a selection
+   turns into a group. The selection ids are tree paths; the engine's group
+   members are estate ids, and the two are not the same string. */
+describe('discovery selection', () => {
+  it('branchesOf reads the six seeded customer sites off the engine', () => {
+    const b = branchesOf(CC);
+    expect(b.map(x => x.name)).toContain('San Jose campus');
+    expect(b.length).toBe(CC.branches.length);
+  });
+
+  it('branchKey namespaces a site so it can never collide with a cloud id', () => {
+    expect(branchKey('br-sjc')).toBe('site/br-sjc');
+    expect(isBranchKey(branchKey('br-sjc'))).toBe(true);
+    expect(isBranchKey(vpcKey('aws', 'usw2', 'vpcwest'))).toBe(false);
+  });
+
+  it('selectionMemberIds turns tree paths back into the estate ids addGroup stores', () => {
+    const sel = new Set([branchKey('br-sjc'), vpcKey('aws', 'usw2', 'vpcwest')]);
+    expect(selectionMemberIds(sel).sort()).toEqual(['br-sjc', 'vpcwest']);
+  });
+
+  it('selectionKind is site for branches only, workload for VPCs only, mixed for both', () => {
+    expect(selectionKind(new Set([branchKey('br-sjc'), branchKey('br-sfo')]))).toBe('site');
+    expect(selectionKind(new Set([vpcKey('aws', 'usw2', 'vpcwest')]))).toBe('workload');
+    expect(selectionKind(new Set([branchKey('br-sjc'), vpcKey('aws', 'usw2', 'vpcwest')]))).toBe('mixed');
+    expect(selectionKind(new Set())).toBe('mixed');
+  });
+
+  it('a selection resolves through the engine to exactly what was picked', () => {
+    const sel = new Set([branchKey('br-sjc'), branchKey('br-sfo'), branchKey('br-bkl')]);
+    const r = CC.resolveGroupSpec({
+      kind: selectionKind(sel),
+      members: selectionMemberIds(sel),
+      predicates: [],
+    });
+    expect(r.branchIds.slice().sort()).toEqual(['br-bkl', 'br-sfo', 'br-sjc']);
+    expect(r.vpcIds).toEqual([]);
+  });
+
+  it('a mixed selection keeps BOTH estates — neither half is silently dropped', () => {
+    const sel = new Set([branchKey('br-sjc'), vpcKey('aws', 'usw2', 'vpcwest')]);
+    const r = CC.resolveGroupSpec({
+      kind: selectionKind(sel),
+      members: selectionMemberIds(sel),
+      predicates: [],
+    });
+    expect(r.branchIds).toEqual(['br-sjc']);
+    expect(r.vpcIds).toEqual(['vpcwest']);
+    expect(r.count).toBe(2);
   });
 });

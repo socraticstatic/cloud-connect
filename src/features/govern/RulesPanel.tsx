@@ -1,14 +1,20 @@
 import { useState } from 'react';
-import { Tag, ShieldAlert, ShieldCheck, Eye, Wrench } from 'lucide-react';
+import { Tag, Boxes, ShieldAlert, ShieldCheck, Eye, Wrench } from 'lucide-react';
 import { OverflowMenu, type OverflowMenuItem } from '../../components/common/OverflowMenu';
 import { RuleBuilder } from './RuleBuilder';
 import { AttIcon } from '../../components/icons/AttIcon';
+import { CC } from '../../engine';
 import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
 
 interface RuleSrc {
   tag?: string;
   cloud?: string;
+  group?: string;
 }
+
+/** A destination is either a legacy DSTS string enum or a structured group
+ *  reference. Both shapes reach this table, so both must be rendered. */
+type RuleDst = string | { group?: string };
 
 interface Rule {
   id: string;
@@ -16,7 +22,7 @@ interface Rule {
   name: string;
   system?: boolean;
   src: RuleSrc;
-  dst: string;
+  dst: RuleDst;
   ports: string;
   action: string;
   chain: string[];
@@ -39,14 +45,44 @@ interface FixPreview {
   scores: Record<string, number>;
 }
 
+/** Group ids are stored on rules; people recognise group LABELS. Resolved
+ *  live from the engine on every render, so a renamed group is renamed
+ *  here. An id with no live group is shown as-is rather than swallowed —
+ *  a dangling reference should be visible, not silently blank. */
+function groupLabel(id: string): string {
+  const g = (CC.groupList() as { id: string; label: string }[]).find(x => x.id === id);
+  return g ? g.label : id;
+}
+
+/* Destinations that are relative to the rule's own source group. Spelled
+   out, because "not-intra-group" is engine vocabulary, not English. */
+const RELATIVE_DST: Record<string, string> = {
+  'not-intra-tag': 'outside tag',
+  'intra-group': 'inside the same group',
+  'not-intra-group': 'outside the group',
+};
+
+/** A named group is the whole point of the match — it must never collapse
+ *  to "any", which is what reading only src.tag used to do. */
 function matchLabel(rule: Rule): string {
-  const tagPart = rule.src.tag && rule.src.tag !== 'any' ? rule.src.tag : 'any';
   const cloudPart = rule.src.cloud && rule.src.cloud !== 'any' ? ` @ ${rule.src.cloud}` : '';
-  return `${tagPart}${cloudPart}`;
+  const tagPart = rule.src.tag && rule.src.tag !== 'any' ? rule.src.tag : null;
+  if (rule.src.group) {
+    // A group rule may still narrow by tag; say both rather than drop one.
+    return `${groupLabel(rule.src.group)}${tagPart ? ` · ${tagPart}` : ''}${cloudPart}`;
+  }
+  return `${tagPart ?? 'any'}${cloudPart}`;
+}
+
+/** Never interpolate rule.dst directly: a group destination is an object,
+ *  and `${obj}` is the "[object Object]" this column used to print. */
+function dstLabel(dst: RuleDst): string {
+  if (dst && typeof dst === 'object') return dst.group ? groupLabel(dst.group) : 'any destination';
+  return RELATIVE_DST[dst] || dst;
 }
 
 function requirementLabel(rule: Rule): string {
-  const dst = rule.dst === 'not-intra-tag' ? 'outside tag' : rule.dst;
+  const dst = dstLabel(rule.dst);
   const via = rule.chain.length ? ` via ${rule.chain.join(' → ')}` : '';
   return `${rule.action} → ${dst}${rule.ports !== 'any' ? ` :${rule.ports}` : ''}${via}`;
 }
@@ -160,7 +196,13 @@ export function RulesPanel() {
                       ("classified-" / "helion" reads as two tags). */}
                   <td className="px-5 py-3 text-fw-body whitespace-nowrap">
                     <span className="inline-flex items-center gap-1.5">
-                      <Tag className="w-3.5 h-3.5 shrink-0 text-fw-bodyLight" aria-hidden="true" />
+                      {/* A group and a tag are different kinds of match —
+                          the icon says which without extra words. */}
+                      {rule.src.group ? (
+                        <Boxes className="w-3.5 h-3.5 shrink-0 text-fw-bodyLight" aria-hidden="true" />
+                      ) : (
+                        <Tag className="w-3.5 h-3.5 shrink-0 text-fw-bodyLight" aria-hidden="true" />
+                      )}
                       {matchLabel(rule)}
                     </span>
                   </td>
