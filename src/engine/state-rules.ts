@@ -173,11 +173,22 @@ const DSTS={
 function flows(){
   const out=[];let n=0;
   const rng=_.mulberry32(_.hashStr('flows'));
+  /* Flat index of every VPC and its primary tag, walked in the same
+     cloud → region → vpc order as the flow loop below. Used to resolve the
+     concrete same-tag peers an intra-tag flow points at. Built before the
+     loop and draws no rng, so flow gbps are untouched by its existence. */
+  const allVpcs=[];
+  clouds.forEach(cl=>(regions[cl.id]||[]).forEach(r=>(vpcs[r.id]||[]).forEach(v=>{
+    allVpcs.push({id:v.id,tag:(v.tags||[])[0]||'untagged'});
+  })));
   clouds.forEach(cl=>(regions[cl.id]||[]).forEach(r=>(vpcs[r.id]||[]).forEach(v=>{
     const tag=(v.tags||[])[0]||'untagged';
     const base=v.subnets*Math.round(2+rng()*6)/10;
-    const mk=(dst,ports,via,gbps)=>out.push({id:'f'+(++n),srcVpc:v.id,srcName:v.name,
-      srcTag:tag,srcCloud:cl.id,dst,ports,viaPublic:via,gbps:Math.round(gbps*10)/10});
+    const mk=(dst,ports,via,gbps)=>{
+      const f={id:'f'+(++n),srcVpc:v.id,srcName:v.name,
+        srcTag:tag,srcCloud:cl.id,dst,ports,viaPublic:via,gbps:Math.round(gbps*10)/10};
+      out.push(f);return f;
+    };
     // every VPC reaches storage
     mk('storage','443',!r.attached,base*0.8);
     // unattached estates (and the DMZ) egress to the internet; finance
@@ -187,8 +198,20 @@ function flows(){
     // AI-adjacent tags call AI endpoints
     if(tag==='rd-helion'||tag==='shared-services')mk('ai-endpoints','443',!r.attached,base*1.8);
     if(tag==='classified-helion')mk('ai-endpoints','443',!r.attached,base*1.2);
-    // rd-helion talks to itself across clouds
-    if(tag==='rd-helion')mk('intra-tag','5432, 8443',!r.attached,base*0.9);
+    /* rd-helion talks to itself across clouds. One flow per same-tag PEER,
+       not one flow per source: 'intra-tag' names a class of destinations, and
+       group membership can only be tested against a concrete instance. The
+       dst string stays 'intra-tag' so every legacy rule keeps matching; the
+       concrete dstVpc is added alongside it. The source's intra-tag gbps is
+       DIVIDED across its peers rather than duplicated onto each, so total
+       modelled traffic does not inflate. A VPC with no same-tag peer emits
+       nothing - there is nobody for it to reach. */
+    if(tag==='rd-helion'){
+      const peers=allVpcs.filter(p=>p.tag===tag&&p.id!==v.id);
+      peers.forEach(p=>{
+        mk('intra-tag','5432, 8443',!r.attached,base*0.9/peers.length).dstVpc=p.id;
+      });
+    }
     // classified-helion can attempt DNS tunneling: data encoded in query
     // names on UDP/53. It looks like benign DNS and slips past TLS/packet
     // inspection — only the resolver DNS firewall (dns-fw) catches it.

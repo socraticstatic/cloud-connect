@@ -136,9 +136,30 @@ describe('branch-originated flows', () => {
         },
         {
           "dst": "intra-tag",
-          "dstGroups": [],
-          "gbps": 2.2,
+          "dstGroups": [
+            "west-workloads",
+          ],
+          "dstVpc": "vnetapp",
+          "gbps": 1.1,
           "id": "f3",
+          "ports": "5432, 8443",
+          "srcCloud": "aws",
+          "srcGroups": [
+            "west-workloads",
+          ],
+          "srcName": "vpc-prod-01",
+          "srcTag": "rd-helion",
+          "srcVpc": "vpcprod",
+          "viaPublic": false,
+        },
+        {
+          "dst": "intra-tag",
+          "dstGroups": [
+            "west-workloads",
+          ],
+          "dstVpc": "cwgpu",
+          "gbps": 1.1,
+          "id": "f4",
           "ports": "5432, 8443",
           "srcCloud": "aws",
           "srcGroups": [
@@ -153,7 +174,7 @@ describe('branch-originated flows', () => {
           "dst": "storage",
           "dstGroups": [],
           "gbps": 1.3,
-          "id": "f4",
+          "id": "f5",
           "ports": "443",
           "srcCloud": "aws",
           "srcGroups": [
@@ -168,7 +189,7 @@ describe('branch-originated flows', () => {
           "dst": "internet",
           "dstGroups": [],
           "gbps": 2.2,
-          "id": "f5",
+          "id": "f6",
           "ports": "443",
           "srcCloud": "aws",
           "srcGroups": [
@@ -183,7 +204,7 @@ describe('branch-originated flows', () => {
           "dst": "storage-external",
           "dstGroups": [],
           "gbps": 1,
-          "id": "f6",
+          "id": "f7",
           "ports": "443",
           "srcCloud": "aws",
           "srcGroups": [
@@ -198,7 +219,7 @@ describe('branch-originated flows', () => {
           "dst": "storage",
           "dstGroups": [],
           "gbps": 1.3,
-          "id": "f7",
+          "id": "f8",
           "ports": "443",
           "srcCloud": "aws",
           "srcGroups": [
@@ -213,7 +234,7 @@ describe('branch-originated flows', () => {
           "dst": "internet",
           "dstGroups": [],
           "gbps": 2.2,
-          "id": "f8",
+          "id": "f9",
           "ports": "443",
           "srcCloud": "aws",
           "srcGroups": [
@@ -228,7 +249,7 @@ describe('branch-originated flows', () => {
           "dst": "ai-endpoints",
           "dstGroups": [],
           "gbps": 1.9,
-          "id": "f9",
+          "id": "f10",
           "ports": "443",
           "srcCloud": "aws",
           "srcGroups": [
@@ -243,7 +264,7 @@ describe('branch-originated flows', () => {
           "dst": "dns-exfil",
           "dstGroups": [],
           "gbps": 0.5,
-          "id": "f10",
+          "id": "f11",
           "ports": "53",
           "srcCloud": "aws",
           "srcGroups": [
@@ -258,7 +279,7 @@ describe('branch-originated flows', () => {
           "dst": "storage",
           "dstGroups": [],
           "gbps": 1.9,
-          "id": "f11",
+          "id": "f12",
           "ports": "443",
           "srcCloud": "aws",
           "srcGroups": [
@@ -273,7 +294,7 @@ describe('branch-originated flows', () => {
           "dst": "internet",
           "dstGroups": [],
           "gbps": 3.4,
-          "id": "f12",
+          "id": "f13",
           "ports": "443",
           "srcCloud": "aws",
           "srcGroups": [
@@ -288,7 +309,7 @@ describe('branch-originated flows', () => {
           "dst": "ai-endpoints",
           "dstGroups": [],
           "gbps": 4.3,
-          "id": "f13",
+          "id": "f14",
           "ports": "443",
           "srcCloud": "aws",
           "srcGroups": [
@@ -303,7 +324,7 @@ describe('branch-originated flows', () => {
           "dst": "storage",
           "dstGroups": [],
           "gbps": 1,
-          "id": "f14",
+          "id": "f15",
           "ports": "443",
           "srcCloud": "aws",
           "srcGroups": [],
@@ -316,7 +337,7 @@ describe('branch-originated flows', () => {
           "dst": "internet",
           "dstGroups": [],
           "gbps": 1.7,
-          "id": "f15",
+          "id": "f16",
           "ports": "443",
           "srcCloud": "aws",
           "srcGroups": [],
@@ -329,7 +350,7 @@ describe('branch-originated flows', () => {
           "dst": "storage",
           "dstGroups": [],
           "gbps": 1.3,
-          "id": "f16",
+          "id": "f17",
           "ports": "443",
           "srcCloud": "aws",
           "srcGroups": [
@@ -344,7 +365,7 @@ describe('branch-originated flows', () => {
           "dst": "internet",
           "dstGroups": [],
           "gbps": 2.2,
-          "id": "f17",
+          "id": "f18",
           "ports": "443",
           "srcCloud": "aws",
           "srcGroups": [
@@ -359,7 +380,7 @@ describe('branch-originated flows', () => {
           "dst": "ai-endpoints",
           "dstGroups": [],
           "gbps": 2.9,
-          "id": "f18",
+          "id": "f19",
           "ports": "443",
           "srcCloud": "aws",
           "srcGroups": [
@@ -374,7 +395,7 @@ describe('branch-originated flows', () => {
           "dst": "storage",
           "dstGroups": [],
           "gbps": 2.8,
-          "id": "f19",
+          "id": "f20",
           "ports": "443",
           "srcCloud": "azure",
           "srcGroups": [
@@ -389,7 +410,7 @@ describe('branch-originated flows', () => {
           "dst": "internet",
           "dstGroups": [],
           "gbps": 4.9,
-          "id": "f20",
+          "id": "f21",
           "ports": "443",
           "srcCloud": "azure",
           "srcGroups": [
@@ -404,7 +425,7 @@ describe('branch-originated flows', () => {
           "dst": "ai-endpoints",
           "dstGroups": [],
           "gbps": 6.3,
-          "id": "f21",
+          "id": "f22",
           "ports": "443",
           "srcCloud": "azure",
           "srcGroups": [
@@ -417,9 +438,30 @@ describe('branch-originated flows', () => {
         },
         {
           "dst": "intra-tag",
-          "dstGroups": [],
-          "gbps": 3.2,
-          "id": "f22",
+          "dstGroups": [
+            "west-workloads",
+          ],
+          "dstVpc": "vpcprod",
+          "gbps": 1.6,
+          "id": "f23",
+          "ports": "5432, 8443",
+          "srcCloud": "azure",
+          "srcGroups": [
+            "west-workloads",
+          ],
+          "srcName": "vnet-app-02",
+          "srcTag": "rd-helion",
+          "srcVpc": "vnetapp",
+          "viaPublic": true,
+        },
+        {
+          "dst": "intra-tag",
+          "dstGroups": [
+            "west-workloads",
+          ],
+          "dstVpc": "cwgpu",
+          "gbps": 1.6,
+          "id": "f24",
           "ports": "5432, 8443",
           "srcCloud": "azure",
           "srcGroups": [
@@ -434,7 +476,7 @@ describe('branch-originated flows', () => {
           "dst": "storage",
           "dstGroups": [],
           "gbps": 1,
-          "id": "f23",
+          "id": "f25",
           "ports": "443",
           "srcCloud": "azure",
           "srcGroups": [
@@ -449,7 +491,7 @@ describe('branch-originated flows', () => {
           "dst": "internet",
           "dstGroups": [],
           "gbps": 1.7,
-          "id": "f24",
+          "id": "f26",
           "ports": "443",
           "srcCloud": "azure",
           "srcGroups": [
@@ -464,7 +506,7 @@ describe('branch-originated flows', () => {
           "dst": "storage",
           "dstGroups": [],
           "gbps": 1.6,
-          "id": "f25",
+          "id": "f27",
           "ports": "443",
           "srcCloud": "azure",
           "srcGroups": [
@@ -479,7 +521,7 @@ describe('branch-originated flows', () => {
           "dst": "internet",
           "dstGroups": [],
           "gbps": 2.8,
-          "id": "f26",
+          "id": "f28",
           "ports": "443",
           "srcCloud": "azure",
           "srcGroups": [
@@ -494,7 +536,7 @@ describe('branch-originated flows', () => {
           "dst": "storage",
           "dstGroups": [],
           "gbps": 1.4,
-          "id": "f27",
+          "id": "f29",
           "ports": "443",
           "srcCloud": "azure",
           "srcGroups": [],
@@ -507,7 +549,7 @@ describe('branch-originated flows', () => {
           "dst": "internet",
           "dstGroups": [],
           "gbps": 2.5,
-          "id": "f28",
+          "id": "f30",
           "ports": "443",
           "srcCloud": "azure",
           "srcGroups": [],
@@ -520,7 +562,7 @@ describe('branch-originated flows', () => {
           "dst": "storage",
           "dstGroups": [],
           "gbps": 0.6,
-          "id": "f29",
+          "id": "f31",
           "ports": "443",
           "srcCloud": "gcp",
           "srcGroups": [
@@ -535,7 +577,7 @@ describe('branch-originated flows', () => {
           "dst": "internet",
           "dstGroups": [],
           "gbps": 1.1,
-          "id": "f30",
+          "id": "f32",
           "ports": "443",
           "srcCloud": "gcp",
           "srcGroups": [
@@ -550,7 +592,7 @@ describe('branch-originated flows', () => {
           "dst": "storage",
           "dstGroups": [],
           "gbps": 0.8,
-          "id": "f31",
+          "id": "f33",
           "ports": "443",
           "srcCloud": "gcp",
           "srcGroups": [],
@@ -563,7 +605,7 @@ describe('branch-originated flows', () => {
           "dst": "internet",
           "dstGroups": [],
           "gbps": 1.4,
-          "id": "f32",
+          "id": "f34",
           "ports": "443",
           "srcCloud": "gcp",
           "srcGroups": [],
@@ -576,7 +618,7 @@ describe('branch-originated flows', () => {
           "dst": "storage",
           "dstGroups": [],
           "gbps": 1.7,
-          "id": "f33",
+          "id": "f35",
           "ports": "443",
           "srcCloud": "oci",
           "srcGroups": [
@@ -591,7 +633,7 @@ describe('branch-originated flows', () => {
           "dst": "internet",
           "dstGroups": [],
           "gbps": 2.9,
-          "id": "f34",
+          "id": "f36",
           "ports": "443",
           "srcCloud": "oci",
           "srcGroups": [
@@ -606,7 +648,7 @@ describe('branch-originated flows', () => {
           "dst": "storage",
           "dstGroups": [],
           "gbps": 1,
-          "id": "f35",
+          "id": "f37",
           "ports": "443",
           "srcCloud": "cw",
           "srcGroups": [
@@ -621,7 +663,7 @@ describe('branch-originated flows', () => {
           "dst": "internet",
           "dstGroups": [],
           "gbps": 1.7,
-          "id": "f36",
+          "id": "f38",
           "ports": "443",
           "srcCloud": "cw",
           "srcGroups": [
@@ -636,7 +678,7 @@ describe('branch-originated flows', () => {
           "dst": "ai-endpoints",
           "dstGroups": [],
           "gbps": 2.2,
-          "id": "f37",
+          "id": "f39",
           "ports": "443",
           "srcCloud": "cw",
           "srcGroups": [
@@ -649,9 +691,30 @@ describe('branch-originated flows', () => {
         },
         {
           "dst": "intra-tag",
-          "dstGroups": [],
-          "gbps": 1.1,
-          "id": "f38",
+          "dstGroups": [
+            "west-workloads",
+          ],
+          "dstVpc": "vpcprod",
+          "gbps": 0.5,
+          "id": "f40",
+          "ports": "5432, 8443",
+          "srcCloud": "cw",
+          "srcGroups": [
+            "west-workloads",
+          ],
+          "srcName": "gpu-cluster-01",
+          "srcTag": "rd-helion",
+          "srcVpc": "cwgpu",
+          "viaPublic": true,
+        },
+        {
+          "dst": "intra-tag",
+          "dstGroups": [
+            "west-workloads",
+          ],
+          "dstVpc": "vnetapp",
+          "gbps": 0.5,
+          "id": "f41",
           "ports": "5432, 8443",
           "srcCloud": "cw",
           "srcGroups": [
@@ -666,7 +729,7 @@ describe('branch-originated flows', () => {
           "dst": "storage",
           "dstGroups": [],
           "gbps": 1,
-          "id": "f39",
+          "id": "f42",
           "ports": "443",
           "srcCloud": "neb",
           "srcGroups": [
@@ -681,7 +744,7 @@ describe('branch-originated flows', () => {
           "dst": "internet",
           "dstGroups": [],
           "gbps": 1.7,
-          "id": "f40",
+          "id": "f43",
           "ports": "443",
           "srcCloud": "neb",
           "srcGroups": [
@@ -696,7 +759,7 @@ describe('branch-originated flows', () => {
           "dst": "ai-endpoints",
           "dstGroups": [],
           "gbps": 1.4,
-          "id": "f41",
+          "id": "f44",
           "ports": "443",
           "srcCloud": "neb",
           "srcGroups": [
@@ -711,7 +774,7 @@ describe('branch-originated flows', () => {
           "dst": "dns-exfil",
           "dstGroups": [],
           "gbps": 0.4,
-          "id": "f42",
+          "id": "f45",
           "ports": "53",
           "srcCloud": "neb",
           "srcGroups": [
