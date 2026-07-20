@@ -165,17 +165,30 @@ const DSTS={
   'storage':'object storage endpoints',
   'storage-external':'object storage OUTSIDE the org (aws:ResourceOrgID mismatch)',
   'dns-exfil':'covert DNS tunneling (UDP/53)',
+  'intra-group':'workloads in the same group',
+  'not-intra-group':'anything outside the group',
   'any':'any destination',
 };
 /* deterministic flow table: what this estate actually talks to */
 function flows(){
   const out=[];let n=0;
   const rng=_.mulberry32(_.hashStr('flows'));
+  /* Flat index of every VPC and its primary tag, walked in the same
+     cloud → region → vpc order as the flow loop below. Used to resolve the
+     concrete same-tag peers an intra-tag flow points at. Built before the
+     loop and draws no rng, so flow gbps are untouched by its existence. */
+  const allVpcs=[];
+  clouds.forEach(cl=>(regions[cl.id]||[]).forEach(r=>(vpcs[r.id]||[]).forEach(v=>{
+    allVpcs.push({id:v.id,tag:(v.tags||[])[0]||'untagged'});
+  })));
   clouds.forEach(cl=>(regions[cl.id]||[]).forEach(r=>(vpcs[r.id]||[]).forEach(v=>{
     const tag=(v.tags||[])[0]||'untagged';
     const base=v.subnets*Math.round(2+rng()*6)/10;
-    const mk=(dst,ports,via,gbps)=>out.push({id:'f'+(++n),srcVpc:v.id,srcName:v.name,
-      srcTag:tag,srcCloud:cl.id,dst,ports,viaPublic:via,gbps:Math.round(gbps*10)/10});
+    const mk=(dst,ports,via,gbps)=>{
+      const f={id:'f'+(++n),srcVpc:v.id,srcName:v.name,
+        srcTag:tag,srcCloud:cl.id,dst,ports,viaPublic:via,gbps:Math.round(gbps*10)/10};
+      out.push(f);return f;
+    };
     // every VPC reaches storage
     mk('storage','443',!r.attached,base*0.8);
     // unattached estates (and the DMZ) egress to the internet; finance
@@ -185,8 +198,35 @@ function flows(){
     // AI-adjacent tags call AI endpoints
     if(tag==='rd-helion'||tag==='shared-services')mk('ai-endpoints','443',!r.attached,base*1.8);
     if(tag==='classified-helion')mk('ai-endpoints','443',!r.attached,base*1.2);
-    // rd-helion talks to itself across clouds
-    if(tag==='rd-helion')mk('intra-tag','5432, 8443',!r.attached,base*0.9);
+    /* rd-helion talks to itself across clouds. One flow per same-tag PEER,
+       not one flow per source: 'intra-tag' names a class of destinations, and
+       group membership can only be tested against a concrete instance. The
+       dst string stays 'intra-tag' so every legacy rule keeps matching; the
+       concrete dstVpc is added alongside it. The source's intra-tag gbps is
+       DIVIDED across its peers rather than duplicated onto each, so total
+       modelled traffic does not change. A VPC with no same-tag peer emits
+       nothing - there is nobody for it to reach.
+
+       The split is done in integer TENTHS and the last peer takes the
+       remainder, so the peer flows sum back to the source's own intra-tag
+       gbps exactly. Rounding each peer's share independently does not err
+       reliably downward - the direction depends on the remainder - so it
+       could invent or destroy traffic as the peer count changed. Peer count
+       is not static: rescanning GCP surfaces a fourth rd-helion workload,
+       which is precisely where an odd divisor used to break the total.
+       This gate is a hard literal on rd-helion; only the peer FILTER below
+       is tag-generic, so a second intra-tag tag would need this gate widened
+       before it got peer expansion. */
+    if(tag==='rd-helion'){
+      const peers=allVpcs.filter(p=>p.tag===tag&&p.id!==v.id);
+      const tenths=Math.round(base*0.9*10);
+      let given=0;
+      peers.forEach((p,i)=>{
+        const share=i===peers.length-1?tenths-given:Math.round(tenths/peers.length);
+        given+=share;
+        mk('intra-tag','5432, 8443',!r.attached,share/10).dstVpc=p.id;
+      });
+    }
     // classified-helion can attempt DNS tunneling: data encoded in query
     // names on UDP/53. It looks like benign DNS and slips past TLS/packet
     // inspection — only the resolver DNS firewall (dns-fw) catches it.
@@ -197,13 +237,70 @@ function flows(){
     // stops it — the article's "second authorization layer".
     if(tag==='finance-invoices'&&!fixes.dataPerimeter)mk('storage-external','443',false,base*0.6);
   })));
+  /* Branch-originated flows. A customer branch reaches the cloud regions its
+     on-ramp targets; for each, it talks to that region's VPCs. Appended AFTER
+     the VPC loop so the rng stream the VPC flows drew from is untouched and
+     their gbps stay byte-identical. Without these, a group of branches matches
+     nothing and branch policies dry-run empty. */
+  (CC.branches||[]).forEach(br=>{
+    const onramp=(CC.onramps||[]).find(o=>o.id===br.onrampId);
+    if(!onramp)return;
+    (onramp.targets||[]).forEach(t=>{
+      const cloudId=t[0],regionId=t[1];
+      (vpcs[regionId]||[]).forEach(v=>{
+        // srcTag is null: a customer branch carries no governance tag of
+        // its own, so tag-based rules must never match it here - group
+        // membership is the correct match mechanism (later task). The
+        // destination VPC's tag is still useful, so it's carried honestly
+        // as dstTag rather than mislabeled as the flow's source tag.
+        // Same reasoning for cloud: a branch isn't IN a cloud, it reaches
+        // one over the on-ramp, so srcCloud is null and the reached cloud
+        // is carried honestly as dstCloud rather than mislabeled as origin.
+        out.push({id:'f'+(++n),srcBranch:br.id,srcName:br.name,
+          srcTag:null,dstTag:(v.tags||[])[0]||null,srcCloud:null,dstCloud:cloudId,
+          dst:'intra-tag',dstVpc:v.id,ports:'any',
+          viaPublic:!v.attached,gbps:Math.round(rng()*40)/10});
+      });
+    });
+  });
+  /* Group membership, resolved live on every call - never stored on the
+     estate objects themselves. A workload added to a group tomorrow is
+     matched by that group's policies tomorrow. Runs last so it sees every
+     accumulated flow, and draws no rng, so flow gbps stay byte-identical. */
+  out.forEach(function(f){
+    const srcId=f.srcBranch||f.srcVpc||null;
+    f.srcGroups=srcId?CC.groupsFor(srcId):[];
+    f.dstGroups=f.dstVpc?CC.groupsFor(f.dstVpc):[];
+  });
   return out;
 }
 function ruleMatch(rule,flow){
   if(rule.src.tag&&rule.src.tag!=='any'&&flow.srcTag!==rule.src.tag)return false;
   if(rule.src.cloud&&rule.src.cloud!=='any'&&flow.srcCloud!==rule.src.cloud)return false;
-  if(rule.dst==='not-intra-tag'){if(flow.dst==='intra-tag')return false;}
-  else if(rule.dst!=='any'&&flow.dst!==rule.dst)return false;
+  if(rule.src.group&&(flow.srcGroups||[]).indexOf(rule.src.group)<0)return false;
+
+  /* Destination. A missing dst must fail closed - matching zero flows,
+     never every flow - so it can never be mistaken for an unset filter. */
+  if(!rule.dst)return false;
+
+  /* Guard the object shape FIRST - the legacy string compare below is
+     always true for an object and would match zero flows. An object dst
+     with no group key is also unset-filter shaped and must fail closed
+     rather than match every flow. */
+  if(typeof rule.dst==='object'){
+    if(!rule.dst.group)return false;
+    if((flow.dstGroups||[]).indexOf(rule.dst.group)<0)return false;
+  }else if(rule.dst==='intra-group'){
+    // meaningless without a source group - must match nothing, not everything
+    if(!rule.src.group)return false;
+    if((flow.dstGroups||[]).indexOf(rule.src.group)<0)return false;
+  }else if(rule.dst==='not-intra-group'){
+    if(!rule.src.group)return false;
+    if((flow.dstGroups||[]).indexOf(rule.src.group)>=0)return false;
+  }else if(rule.dst==='not-intra-tag'){
+    if(flow.dst==='intra-tag')return false;
+  }else if(rule.dst&&rule.dst!=='any'&&flow.dst!==rule.dst)return false;
+
   if(rule.ports!=='any'&&!flow.ports.includes(rule.ports))return false;
   return true;
 }

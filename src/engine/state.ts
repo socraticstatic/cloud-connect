@@ -38,6 +38,23 @@ const onramps=[
     targets:[['cw','cwe'],['neb','nbe'],['oci','iad']]},
 ];
 
+/* Customer branch sites. Distinct from onramps[].site, which is the colo
+   facility housing an AT&T on-ramp (Equinix IAD etc). These are the
+   customer's own premises, and they are what "west-branches" groups.
+
+   cloudTags mirrors the hyperscaler key/value shape carried by vpcs[], so
+   one predicate vocabulary selects premises and workloads alike. Branches
+   carry no `tags` array: the governance taxonomy is a cloud-workload
+   concept, so governanceTag predicates match no branch, by design. */
+const branches=[
+  {id:'br-sjc',name:'San Jose campus',city:'San Jose',geo:[37.34,-121.89],cidrs:['10.60.0.0/20'],onrampId:'dx1',cloudTags:{Region:'west',Env:'prod',Owner:'facilities'}},
+  {id:'br-sfo',name:'San Francisco office',city:'San Francisco',geo:[37.77,-122.42],cidrs:['10.60.16.0/20'],onrampId:'dx1',cloudTags:{Region:'west',Env:'prod',Owner:'facilities'}},
+  {id:'br-bkl',name:'Berkeley lab',city:'Berkeley',geo:[37.87,-122.27],cidrs:['10.60.32.0/20'],onrampId:'dx1',cloudTags:{Region:'west',Env:'prod',Owner:'facilities'}},
+  {id:'br-dal',name:'Dallas HQ',city:'Dallas',geo:[32.78,-96.80],cidrs:['10.61.0.0/20'],onrampId:'nb2',cloudTags:{Region:'central',Env:'prod',Owner:'facilities'}},
+  {id:'br-chi',name:'Chicago branch',city:'Chicago',geo:[41.88,-87.63],cidrs:['10.62.0.0/20'],onrampId:'er1',cloudTags:{Region:'central',Env:'prod',Owner:'facilities'}},
+  {id:'br-ash',name:'Ashburn DC',city:'Ashburn',geo:[39.04,-77.49],cidrs:['10.63.0.0/20'],onrampId:'nb1',cloudTags:{Region:'east',Env:'prod',Owner:'facilities'}},
+];
+
 const clouds=[
   {id:'aws',name:'AWS',color:'#ff9900',mk:'aws',workloads:142,attached:true,partial:true},
   {id:'azure',name:'Azure',color:'#3b8bd4',mk:'AZ',workloads:88,attached:false},
@@ -58,21 +75,21 @@ const regions={
   neb:[{id:'nbe',name:'eu-north1',sub:'Finland',subnets:2,lat:44,attached:false,ai:true,geo:[60.6,24.8]}],
 };
 const vpcs={
-  use1:[{id:'vpcprod',name:'vpc-prod-01',cidr:'10.0.0.0/16',azs:3,subnets:6,attached:true,role:'Production · 3-tier',tags:['rd-helion','shared-services']},
-        {id:'vpcdata',name:'vpc-data-02',cidr:'10.1.0.0/16',azs:2,subnets:4,attached:true,role:'Data lake',tags:['finance-invoices','pci','finance']},
-        {id:'vpcdmz',name:'vpc-dmz-03',cidr:'10.2.0.0/16',azs:2,subnets:4,attached:false,role:'DMZ · public',tags:['classified-helion','internet-facing']}],
-  usw2:[{id:'vpcwest',name:'vpc-west-01',cidr:'10.8.0.0/16',azs:2,subnets:4,attached:false,role:'Edge services',tags:['shared-services']},
-        {id:'vpcbak',name:'vpc-backup-02',cidr:'10.9.0.0/16',azs:2,subnets:4,attached:false,role:'Backup'}],
-  euw1:[{id:'vpceu',name:'vpc-eu-01',cidr:'10.12.0.0/16',azs:1,subnets:4,attached:false,role:'EMEA apps',tags:['shared-services']}],
-  wus2:[{id:'vnetapp',name:'vnet-app-02',cidr:'10.4.0.0/16',azs:2,subnets:5,attached:false,role:'App tier',vnet:true,tags:['rd-helion']},
-        {id:'vnetdata',name:'vnet-data-03',cidr:'10.5.0.0/16',azs:2,subnets:4,attached:false,role:'Data',vnet:true}],
-  uks:[{id:'vnetemea',name:'vnet-emea-01',cidr:'10.6.0.0/16',azs:1,subnets:4,attached:false,role:'EMEA · SPOF',vnet:true},
-       {id:'vnetdmz',name:'vnet-dmz-uk',cidr:'10.7.0.0/16',azs:1,subnets:3,attached:false,role:'DMZ',vnet:true}],
-  usc1:[{id:'vpcgcp1',name:'vpc-gke-prod',cidr:'10.16.0.0/16',azs:2,subnets:4,attached:false,role:'GKE'},
-        {id:'vpcgcp2',name:'vpc-svc-02',cidr:'10.4.0.0/16',azs:1,subnets:2,attached:false,role:'Services'}],
-  iad:[{id:'ocivcn',name:'vcn-prod-01',cidr:'10.20.0.0/16',azs:1,subnets:3,attached:false,role:'Production',vnet:true}],
-  cwe:[{id:'cwgpu',name:'gpu-cluster-01',cidr:'10.30.0.0/16',azs:1,subnets:2,attached:false,role:'H100 inference',ai:true,vnet:true,tags:['rd-helion']}],
-  nbe:[{id:'nbgpu',name:'nb-gpu-net',cidr:'10.34.0.0/16',azs:1,subnets:2,attached:false,role:'L40S inference',ai:true,vnet:true,tags:['classified-helion']}],
+  use1:[{id:'vpcprod',name:'vpc-prod-01',cidr:'10.0.0.0/16',azs:3,subnets:6,attached:true,role:'Production · 3-tier',tags:['rd-helion','shared-services'],cloudTags:{Project:'xyz',Env:'prod',Owner:'platform'}},
+        {id:'vpcdata',name:'vpc-data-02',cidr:'10.1.0.0/16',azs:2,subnets:4,attached:true,role:'Data lake',tags:['finance-invoices','pci','finance'],cloudTags:{Project:'abc',Env:'prod',Owner:'finance'}},
+        {id:'vpcdmz',name:'vpc-dmz-03',cidr:'10.2.0.0/16',azs:2,subnets:4,attached:false,role:'DMZ · public',tags:['classified-helion','internet-facing'],cloudTags:{Project:'xyz',Env:'prod',Owner:'security'}}],
+  usw2:[{id:'vpcwest',name:'vpc-west-01',cidr:'10.8.0.0/16',azs:2,subnets:4,attached:false,role:'Edge services',tags:['shared-services'],cloudTags:{Project:'xyz',Env:'prod',Owner:'platform'}},
+        {id:'vpcbak',name:'vpc-backup-02',cidr:'10.9.0.0/16',azs:2,subnets:4,attached:false,role:'Backup',cloudTags:{Project:'ops',Env:'prod',Owner:'platform'}}],
+  euw1:[{id:'vpceu',name:'vpc-eu-01',cidr:'10.12.0.0/16',azs:1,subnets:4,attached:false,role:'EMEA apps',tags:['shared-services'],cloudTags:{Project:'abc',Env:'prod',Owner:'emea'}}],
+  wus2:[{id:'vnetapp',name:'vnet-app-02',cidr:'10.4.0.0/16',azs:2,subnets:5,attached:false,role:'App tier',vnet:true,tags:['rd-helion'],cloudTags:{Project:'xyz',Env:'stage',Owner:'platform'}},
+        {id:'vnetdata',name:'vnet-data-03',cidr:'10.5.0.0/16',azs:2,subnets:4,attached:false,role:'Data',vnet:true,cloudTags:{Project:'abc',Env:'stage',Owner:'data'}}],
+  uks:[{id:'vnetemea',name:'vnet-emea-01',cidr:'10.6.0.0/16',azs:1,subnets:4,attached:false,role:'EMEA · SPOF',vnet:true,cloudTags:{Project:'abc',Env:'prod',Owner:'emea'}},
+       {id:'vnetdmz',name:'vnet-dmz-uk',cidr:'10.7.0.0/16',azs:1,subnets:3,attached:false,role:'DMZ',vnet:true,cloudTags:{Project:'ops',Env:'prod',Owner:'security'}}],
+  usc1:[{id:'vpcgcp1',name:'vpc-gke-prod',cidr:'10.16.0.0/16',azs:2,subnets:4,attached:false,role:'GKE',cloudTags:{Project:'xyz',Env:'prod',Owner:'platform'}},
+        {id:'vpcgcp2',name:'vpc-svc-02',cidr:'10.4.0.0/16',azs:1,subnets:2,attached:false,role:'Services',cloudTags:{Project:'ops',Env:'prod',Owner:'platform'}}],
+  iad:[{id:'ocivcn',name:'vcn-prod-01',cidr:'10.20.0.0/16',azs:1,subnets:3,attached:false,role:'Production',vnet:true,cloudTags:{Project:'abc',Env:'prod',Owner:'platform'}}],
+  cwe:[{id:'cwgpu',name:'gpu-cluster-01',cidr:'10.30.0.0/16',azs:1,subnets:2,attached:false,role:'H100 inference',ai:true,vnet:true,tags:['rd-helion'],cloudTags:{Project:'xyz',Env:'prod',Owner:'ml'}}],
+  nbe:[{id:'nbgpu',name:'nb-gpu-net',cidr:'10.34.0.0/16',azs:1,subnets:2,attached:false,role:'L40S inference',ai:true,vnet:true,tags:['classified-helion'],cloudTags:{Project:'abc',Env:'prod',Owner:'ml'}}],
 };
 
 /* Remediation flags - policies and service insertions applied this session */
@@ -141,8 +158,18 @@ function applyFix(key,silent){
 /* ---------------- projection (preview before commit) ----------------
    Apply a mutation silently against the live model, read the outcome,
    restore from snapshot. Pure function to the caller. */
+/* Groups live in the state-groups.js closure and reach us through the _ bag.
+   They must be deep-copied: a shallow copy aliases members/predicates, so a
+   "restore" would hand back the very arrays the mutation edited. */
+function cloneGroup(g){
+  return {...g,
+    members:(g.members||[]).slice(),
+    predicates:(g.predicates||[]).map(p=>({...p,values:(p.values||[]).slice()})),
+  };
+}
 function snapshot(){
   return {
+    gr:_.groups?Object.fromEntries(Object.entries(_.groups).map(([k,g])=>[k,cloneGroup(g)])):null,
     onr:onramps.map(o=>({active:o.active,planned:o.planned,sub:o.sub})),
     cl:clouds.map(c=>c.attached),
     reg:Object.fromEntries(Object.entries(regions).map(([k,rs])=>[k,rs.map(r=>({attached:r.attached,spof:r.spof}))])),
@@ -162,6 +189,11 @@ function restore(s){
   if(s.rl){_.rules.length=0;s.rl.forEach(r=>_.rules.push({...r,src:{...r.src},chain:r.chain.slice()}));}
   if(s.cp){_.customPolicies.length=0;s.cp.forEach(p=>_.customPolicies.push({...p}));}
   if(s.app!==undefined)CC.settings.requireApproval=s.app;
+  // rebuild in place - state-groups.js closes over this exact object
+  if(s.gr&&_.groups){
+    Object.keys(_.groups).forEach(k=>{delete _.groups[k];});
+    Object.entries(s.gr).forEach(([k,g])=>{_.groups[k]=cloneGroup(g);});
+  }
 }
 
 /* ---------------- undo ----------------
@@ -369,7 +401,7 @@ function posture(){
    time, so the bag is the only load-order coupling between files. */
 const _={emit,hist,sessionAttached,pushUndo};
 
-return {TAGS,onramps,clouds,regions,vpcs,fixes,sim,designedPublic,
+return {TAGS,onramps,branches,clouds,regions,vpcs,fixes,sim,designedPublic,
   auditLog,auditClear,
   undo,canUndo,
   subscribe,activateOnramp,applyFix,

@@ -24,7 +24,6 @@ import { GlobalKeyboardShortcuts } from './components/common/GlobalKeyboardShort
 import { ImpersonationBanner } from './components/common/ImpersonationBanner';
 import { PWAUpdatePrompt, usePWAUpdate } from './components/common/PWAUpdatePrompt';
 import { MaintenanceModal } from './components/common/MaintenanceModal';
-import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
 // Curated Cloud Connect flow pages (the six live screens + /netops).
 const LazyDiscoverPage = lazy(() =>
@@ -69,16 +68,6 @@ const LazyNetOpsPage = lazy(() =>
   import('./features/netops/NetOpsPage').then(module => ({
     default: module.NetOpsPage
   }))
-);
-
-const LazyLoginPage = lazy(() =>
-  import('./components/pages/LoginPage').then(module => ({
-    default: module.LoginPage
-  }))
-);
-
-const LazyMagicLinkLogin = lazy(() =>
-  import('./components/pages/MagicLinkLogin')
 );
 
 const LazyOnboardingWizard = lazy(() =>
@@ -246,19 +235,10 @@ function App() {
             <Route path="/detached/vnf/:connectionId/:windowId" element={<Navigate to="/discover" replace />} />
             <Route path="/detached/insights" element={<Navigate to="/discover" replace />} />
 
-            {/* Magic Link Login - standalone, no layout */}
-            <Route path="/login" element={
-              <Suspense fallback={<LoadingFallback />}>
-                <LazyMagicLinkLogin />
-              </Suspense>
-            } />
-
-            {/* SSO Login (demo) - standalone, no layout */}
-            <Route path="/sso-login" element={
-              <Suspense fallback={<LoadingFallback />}>
-                <LazyLoginPage />
-              </Suspense>
-            } />
+            {/* Sign-in retired — the prototype opens straight onto the estate.
+                Old links redirect rather than 404. */}
+            <Route path="/login" element={<Navigate to="/discover" replace />} />
+            <Route path="/sso-login" element={<Navigate to="/discover" replace />} />
 
             {/* Onboarding - standalone, no layout */}
             <Route path="/onboarding" element={
@@ -289,7 +269,6 @@ function App() {
 
             {/* Main app routes - with layout wrapper, auth-gated */}
             <Route path="*" element={
-              <ProtectedRoute>
               <DashboardLayout>
                 <main id="main-content" tabIndex={-1} className="min-h-screen">
                   <Routes>
@@ -383,7 +362,6 @@ function App() {
                   </Routes>
                 </main>
               </DashboardLayout>
-              </ProtectedRoute>
             } />
           </Routes>
         </ErrorBoundary>
