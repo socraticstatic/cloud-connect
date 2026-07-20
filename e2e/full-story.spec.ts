@@ -57,9 +57,11 @@ test('walks all six sections with real state changes, plus Tour and ⌘K', async
   await page.goto('/#/govern', { waitUntil: 'domcontentloaded' });
   const enforcedBadge = page.getByText(/^Enforced$/i);
   const enforcedBefore = await enforcedBadge.count();
-  const enforceButton = page.getByRole('button', { name: /^Enforce$/i }).first();
-  await expect(enforceButton).toBeVisible();
-  await enforceButton.click();
+  // Row actions live in the overflow menu (kebab), not as inline buttons.
+  const moreOptions = page.getByRole('button', { name: /more options/i }).first();
+  await expect(moreOptions).toBeVisible();
+  await moreOptions.click();
+  await page.getByRole('menu').getByRole('button', { name: /^Enforce$/i }).click();
   await expect
     .poll(async () => enforcedBadge.count())
     .toBeGreaterThan(enforcedBefore);
