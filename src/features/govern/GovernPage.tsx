@@ -6,13 +6,17 @@ import { useCloudControl } from '../../engine/react/useCloudControl';
 import { FlowBar } from '../../components/flow/FlowBar';
 import { RulesPanel } from './RulesPanel';
 import { PosturePanel } from './PosturePanel';
+import { GroupsPanel } from './GroupsPanel';
 import { ServiceInsertion } from './ServiceInsertion';
 
-type GovernTab = 'policies' | 'posture';
+type GovernTab = 'policies' | 'groups' | 'posture';
 
 export function GovernPage() {
   const [activeTab, setActiveTab] = useState<GovernTab>('policies');
   const violations = useCloudControl(cc => cc.violations()) as unknown[];
+  // Subscribing selector — the badge is a live CC derivation, so creating a
+  // group moves the count without a reload.
+  const groupCount = useCloudControl(cc => cc.groupList().length) as number;
 
   const tabs = [
     {
@@ -21,6 +25,9 @@ export function GovernPage() {
       icon: <AttIcon name="check-shield" className="h-4 w-4 mr-1.5" />,
       count: violations.length || undefined,
     },
+    // Groups sits beside Policies because a group is what a policy names —
+    // the two are read together, and a group was until now invisible.
+    { id: 'groups', label: 'Groups', count: groupCount },
     { id: 'posture', label: 'Posture' },
   ];
 
@@ -40,6 +47,8 @@ export function GovernPage() {
             <ServiceInsertion />
           </div>
         )}
+
+        {activeTab === 'groups' && <GroupsPanel />}
 
         {activeTab === 'posture' && <PosturePanel />}
       </PageSection>

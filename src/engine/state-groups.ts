@@ -54,9 +54,15 @@ function copyGroup(g){
    matter how the id got into `members` (typed in, replayed off a share
    link, or written later by updateGroup). Enforcing the constraint here,
    at resolution, rather than only when the group is created, means no
-   mutator can reopen the hole by patching `members` after the fact. */
-function resolveGroup(id){
-  const g=groups[id];
+   mutator can reopen the hole by patching `members` after the fact.
+
+   Resolution takes a SPEC, not an id, so a group being authored - which has
+   no id in `groups` yet - resolves through this exact code path too. The
+   preview a person reads while typing and the membership they get after
+   saving are therefore the same computation, and cannot drift apart the way
+   a re-implemented preview would. resolveGroup(id) is a thin lookup on top
+   of it. */
+function resolveSpec(g){
   if(!g)return {vpcIds:[],branchIds:[],cidrs:[],count:0};
 
   const kind=g.kind||'mixed';
@@ -94,6 +100,10 @@ function resolveGroup(id){
   vpcIds.forEach(function(vid){ addCidr(vpcById[vid].cidr); });
 
   return {vpcIds:vpcIds,branchIds:branchIds,cidrs:cidrs,count:vpcIds.length+branchIds.length};
+}
+
+function resolveGroup(id){
+  return resolveSpec(groups[id]);
 }
 
 function groupList(){return Object.keys(groups).map(function(k){return copyGroup(groups[k]);});}
@@ -174,5 +184,6 @@ function removeGroup(id){
 
 CC._.groups=groups;
 Object.assign(CC,{groupList:groupList,addGroup:addGroup,updateGroup:updateGroup,
-  removeGroup:removeGroup,resolveGroup:resolveGroup,groupsFor:groupsFor});
+  removeGroup:removeGroup,resolveGroup:resolveGroup,resolveGroupSpec:resolveSpec,
+  groupsFor:groupsFor,inferGroupKind:inferKind});
 })();
