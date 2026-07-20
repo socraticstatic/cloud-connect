@@ -7,6 +7,7 @@ import './state-apps';
 import './state-billing';
 import './state-console';
 import './state-findings';
+import './state-groups';
 import './state-share';
 import './state-actions';
 import type { CloudControl } from './types';
