@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Bell, HelpCircle, LogOut, Search, ChevronRight, PenTool as Tool } from 'lucide-react';
+import { X, Bell, HelpCircle, Search } from 'lucide-react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
-import { useAuth } from '../../contexts/AuthContext';
 import { AttIcon } from '../icons/AttIcon';
 import { NAV_ITEMS } from './navItems';
 
@@ -24,27 +23,21 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
   const navigate = useNavigate();
   const location = useLocation();
   const menuRef = useFocusTrap(isOpen);
-  const { signOut } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [animationComplete, setAnimationComplete] = useState(false);
 
-  // Define navigation items with enabled/disabled state
-  const navItems = [
-    ...NAV_ITEMS.map(navItem => ({
-      label: navItem.label,
-      icon: ({ className }: { className?: string }) => <AttIcon name={navItem.icon} className={className} />,
-      href: navItem.to,
-      description: navItem.description,
-      disabled: false
-    })),
-    {
-      label: 'Utilities',
-      icon: Tool,
-      href: '/profile',
-      description: 'Access System Utilities',
-      disabled: false
-    }
-  ];
+  // Define navigation items with enabled/disabled state.
+  // (A trailing "Utilities" item pointing at /profile used to live here —
+  // removed because /profile is a Navigate to /discover, i.e. a no-op that
+  // only closed the menu. See handleNavigation's /profile call below, which
+  // was the same dead end from a second entry point.)
+  const navItems = NAV_ITEMS.map(navItem => ({
+    label: navItem.label,
+    icon: ({ className }: { className?: string }) => <AttIcon name={navItem.icon} className={className} />,
+    href: navItem.to,
+    description: navItem.description,
+    disabled: false
+  }));
 
   // Prevent body scrolling when menu is open
   useEffect(() => {
@@ -167,12 +160,10 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
                   <p className="text-figma-sm font-medium text-fw-bodyLight">{userInfo.role}</p>
                   <p className="text-figma-sm text-fw-bodyLight">{userInfo.account}</p>
                 </div>
-                <button
-                  className="ml-auto p-2 text-fw-bodyLight hover:text-fw-body rounded-full hover:bg-fw-neutral"
-                  onClick={() => handleNavigation('/profile')}
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
+                {/* A chevron here used to navigate to /profile, which is a
+                    Navigate to /discover — a no-op that only closed the
+                    menu. Removed rather than pointing it somewhere real,
+                    since there is no profile screen in this app. */}
               </div>
             </div>
 
@@ -224,19 +215,14 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
             </div>
 
             {/* Footer */}
+            {/* Sign Out used to live here. Authentication was removed from
+                this app — there is no login screen to return to, so
+                signOut() just wiped a stray localStorage key before
+                navigating to /login, which itself redirects to /discover.
+                Removed as a dead affordance rather than left pointing at a
+                feature that no longer exists. */}
             <div className="p-4 border-t border-fw-secondary">
-              <button
-                onClick={async () => {
-                  await signOut();
-                  onClose();
-                  navigate('/login');
-                }}
-                className="w-full flex items-center justify-center px-4 py-3 text-figma-base text-fw-body bg-fw-neutral rounded-full hover:bg-fw-wash transition-colors"
-              >
-                <LogOut className="h-5 w-5 mr-2" />
-                Sign Out
-              </button>
-              <div className="mt-4 text-center text-figma-sm text-fw-bodyLight">
+              <div className="text-center text-figma-sm text-fw-bodyLight">
                 <p className="font-semibold text-fw-heading">AT&T Cloud Connect • v2.0.1</p>
                 <p className="mt-1">© 2025 AT&T Intellectual Property. All rights reserved.</p>
               </div>

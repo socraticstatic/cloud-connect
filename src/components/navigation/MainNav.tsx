@@ -6,13 +6,11 @@ import { SearchBar } from './SearchBar';
 import { NotificationsButton } from './NotificationsButton';
 import { UserMenu } from './UserMenu';
 import { MobileMenu } from './MobileMenu';
-import { AdaptiveNavigation } from './AdaptiveNavigation';
 import { TenantSelector } from './TenantSelector';
 import { TourLauncher } from '../../features/tour/TourLauncher';
 import { CommandPalette } from '../../features/command/CommandPalette';
 import { UndoControl } from '../../features/undo/UndoControl';
 import { NAV_ITEMS } from './navItems';
-import { TabItem } from '../../types/navigation';
 import { Button } from '../common/Button';
 import { useStore } from '../../store/useStore';
 import { usePermissions } from '../../hooks/usePermission';
@@ -41,7 +39,6 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
-  const [isVerticalNav, setIsVerticalNav] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -84,24 +81,6 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
     return false;
   };
 
-  // Transform NavItem[] to navigation sections for AdaptiveNavigation
-  const navSections = [
-    {
-      id: 'main',
-      title: 'Main Navigation',
-      icon: <Menu className="h-5 w-5" />,
-      items: navItems.map(item => {
-        const Icon = item.icon;
-        return {
-          id: item.href.substring(1) || 'manage',
-          label: item.label,
-          icon: <Icon className="h-5 w-5" />,
-        } as TabItem;
-      }),
-      defaultOpen: true
-    }
-  ];
-
   const handleLogoClick = () => {
     // Home = the first stage of the flow. (Previously routed to the NetBond
     // legacy /manage portal — a fork remnant.)
@@ -113,6 +92,7 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
   };
 
   return (
+    <>
     <nav
       className="sticky top-0 z-50 bg-fw-wash/80 backdrop-blur-md border-b border-fw-secondary"
       role="navigation"
@@ -124,9 +104,10 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
           <div className="flex items-center min-w-0">
             {/* Hamburger Menu Button - Now next to the logo */}
             <button
-              onClick={() => setIsVerticalNav(!isVerticalNav)}
+              onClick={toggleMobileMenu}
               className="min-[1280px]:hidden flex items-center justify-center h-9 w-9 rounded-full text-fw-bodyLight hover:text-fw-body hover:bg-fw-wash"
               data-nav-toggle="true"
+              aria-label="Open navigation menu"
             >
               <Menu className="h-5 w-5" />
             </button>
@@ -236,25 +217,23 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
         </div>
       </div>
 
-      {/* Adaptive Navigation - Only render when isVertical is true */}
-      <AdaptiveNavigation
-        isVertical={isVerticalNav}
-        onToggleMode={() => setIsVerticalNav(!isVerticalNav)}
-        sections={navSections}
-        onTabChange={(tabId) => navigate(`/${tabId}`)}
-        className=""
-      />
-
-      {/* Mobile Menu */}
-      <MobileMenu
-        isOpen={isMobileMenuOpen}
-        onClose={() => setIsMobileMenuOpen(false)}
-        userInfo={userInfo}
-        notifications={notifications}
-      />
-
       {/* ⌘K / Ctrl+K command palette — engine-derived, works from anywhere */}
       <CommandPalette />
     </nav>
+
+    {/* Mobile Menu — rendered OUTSIDE <nav> on purpose. <nav> has
+        backdrop-blur-md, and CSS backdrop-filter establishes a containing
+        block for position:fixed descendants, which clips any fixed-position
+        child to the nav's own 64px-tall box instead of the viewport. That's
+        what made the old vertical-nav overlay render as an empty sliver
+        pinned to the header. MobileMenu must stay outside <nav> to fill the
+        real viewport. */}
+    <MobileMenu
+      isOpen={isMobileMenuOpen}
+      onClose={() => setIsMobileMenuOpen(false)}
+      userInfo={userInfo}
+      notifications={notifications}
+    />
+    </>
   );
 }
