@@ -17,4 +17,15 @@ describe('hyperscaler cloud tags', () => {
     expect(projects.has('xyz')).toBe(true);
     expect(projects.has('abc')).toBe(true);
   });
+
+  // MUST RUN LAST — rescanAccount mutates state permanently for rest of file
+  it('survives rescan when hidden VPC is discovered', () => {
+    const found = CC.rescanAccount('gcp');
+    expect(found).toBe('vpc-ml-suite'); // hidden VPC should be discovered
+    const all = Object.values(CC.vpcs).flat() as { id: string; cloudTags?: Record<string, string> }[];
+    all.forEach(v => {
+      expect(v.cloudTags, `${v.id} has no cloudTags after rescan`).toBeTruthy();
+      expect(typeof v.cloudTags!.Project).toBe('string');
+    });
+  });
 });
