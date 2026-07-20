@@ -83,10 +83,17 @@ function serialize(){
     r:_.rules.filter(r=>!r.system).map(r=>({n:r.name,s:r.src,d:r.dst,po:r.ports,a:r.action,ch:r.chain,e:r.enforced})),
     tp:Object.entries(_.tokenPolicies||{}).filter(([,p])=>p.enforced||p.scope!==undefined).map(([t,p])=>({t,s:p.scope,b:p.budget,g:p.guardrail?1:0,e:p.enforced?1:0})),
     s:sim.onrampId||undefined,
+    // Only custom (user-created) groups travel - the seeded groups
+    // (west-branches, west-workloads) already exist on the receiving end,
+    // so re-sending them would duplicate rather than restore.
+    groups:(CC.groupList()||[]).filter(function(g){return g.custom;}).map(function(g){
+      return {id:g.id,label:g.label,kind:g.kind,members:g.members,predicates:g.predicates,desc:g.desc};
+    }),
   };
   if(!d.r.length)delete d.r;
   if(!d.tp.length)delete d.tp;
-  if(!d.o.length&&!d.f.length&&!d.p.length&&!d.r&&!d.s)return '';
+  if(!d.groups.length)delete d.groups;
+  if(!d.o.length&&!d.f.length&&!d.p.length&&!d.r&&!d.s&&!d.groups)return '';
   return btoa(JSON.stringify(d)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
 function shareUrl(){
@@ -118,6 +125,11 @@ function applyShareData(raw){
       if(p)Object.assign(p,{scope:x.s||p.scope,budget:x.b||p.budget,guardrail:!!x.g,enforced:!!x.e});
     });
     if(d.s){const o=onramps.find(x=>x.id===d.s);if(o&&o.active)sim.onrampId=d.s;}
+    // addGroup no-ops (returns null) when the id already exists, so replaying
+    // a payload against an estate that already has the group - the common
+    // case, since the recipient's engine seeds are already present - is
+    // safe: no throw, no overwrite of the existing group.
+    (d.groups||[]).forEach(g=>{if(g&&g.id)CC.addGroup(g);});
     _.hist.push({label:'Restored shared session',posture:CC.posture()});
     return true;
   }catch(e){console.warn('bad share payload',e);return false;}
