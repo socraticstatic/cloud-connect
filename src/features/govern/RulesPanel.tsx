@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Tag, ShieldAlert } from 'lucide-react';
 import { AttIcon } from '../../components/icons/AttIcon';
 import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
+import { RuleBuilder } from './RuleBuilder';
 
 interface RuleSrc {
   tag?: string;
@@ -172,6 +173,8 @@ export function RulesPanel() {
           </tbody>
         </table>
       </div>
+
+      <RuleBuilder />
 
       {violations.length > 0 && (
         <div className="rounded-2xl border border-fw-secondary bg-fw-wash px-5 py-3">
