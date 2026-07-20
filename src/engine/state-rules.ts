@@ -213,8 +213,11 @@ function flows(){
         // membership is the correct match mechanism (later task). The
         // destination VPC's tag is still useful, so it's carried honestly
         // as dstTag rather than mislabeled as the flow's source tag.
+        // Same reasoning for cloud: a branch isn't IN a cloud, it reaches
+        // one over the on-ramp, so srcCloud is null and the reached cloud
+        // is carried honestly as dstCloud rather than mislabeled as origin.
         out.push({id:'f'+(++n),srcBranch:br.id,srcName:br.name,
-          srcTag:null,dstTag:(v.tags||[])[0]||null,srcCloud:cloudId,
+          srcTag:null,dstTag:(v.tags||[])[0]||null,srcCloud:null,dstCloud:cloudId,
           dst:'intra-tag',dstVpc:v.id,ports:'any',
           viaPublic:!v.attached,gbps:Math.round(rng()*40)/10});
       });

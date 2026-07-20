@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CC } from './index';
 
-interface Flow { srcTag?: string | null; dstTag?: string | null; srcCloud?: string; srcBranch?: string; dst: string; dstVpc?: string; gbps: number; ports: string }
+interface Flow { srcTag?: string | null; dstTag?: string | null; srcCloud?: string | null; dstCloud?: string; srcBranch?: string; dst: string; dstVpc?: string; gbps: number; ports: string }
 
 describe('branch-originated flows', () => {
   it('emits flows whose source is a branch', () => {
@@ -59,10 +59,514 @@ describe('branch-originated flows', () => {
   // Branch flows must never match it via srcTag - only group membership
   // (a later task) is a valid way for a branch to be subject to a tag rule.
   it('never matches the seeded "Inspect classified egress" rule against a branch flow', () => {
+    const branchFlows = (CC.flows() as Flow[]).filter(f => f.srcBranch);
+    expect(branchFlows.length).toBeGreaterThan(0);
     const rule = (CC.ruleList() as { id: string }[]).find(r => r.id === 'pol-insp')!;
     expect(rule).toBeTruthy();
     const result = CC.dryRun(rule) as { matched: { flow: Flow }[] };
     const branchMatches = result.matched.filter(m => m.flow.srcBranch);
     expect(branchMatches.length).toBe(0);
+  });
+
+  // A branch is not "in" a cloud - it reaches one over an on-ramp. srcCloud
+  // must therefore be null on branch flows (mirrors srcTag:null above); the
+  // cloud the on-ramp reaches is carried honestly as dstCloud instead of
+  // being mislabeled as the flow's origin cloud.
+  it('sets srcCloud to null and carries the reached cloud as dstCloud on every branch flow', () => {
+    const branchFlows = (CC.flows() as Flow[]).filter(f => f.srcBranch);
+    expect(branchFlows.length).toBeGreaterThan(0);
+    branchFlows.forEach(f => {
+      expect(f.srcCloud).toBe(null);
+      expect(f.dstCloud).toBeTruthy();
+    });
+  });
+
+  // The bug this guards: srcCloud used to hold the DESTINATION cloud, so a
+  // rule authored as src:{tag:'any',cloud:'aws'} would match a branch flow
+  // whose branch merely reaches AWS - matching by destination, not origin.
+  // ruleMatch is a pure read of engine state, safe to call directly here.
+  it('does not let a cloud-scoped rule match a branch flow by the cloud it reaches', () => {
+    const branchFlows = (CC.flows() as Flow[]).filter(f => f.srcBranch);
+    const withCloud = branchFlows.find(f => f.dstCloud);
+    expect(withCloud, 'no branch flow carries a dstCloud').toBeTruthy();
+    const rule = { src: { tag: 'any', cloud: withCloud!.dstCloud }, dst: 'any', ports: 'any' };
+    expect(CC.ruleMatch(rule, withCloud)).toBe(false);
+  });
+
+  // Regression guard: the VPC-originated flows (the pre-existing table) must
+  // stay byte-identical now that branch flows are appended after them. That
+  // property holds today only because the branch block runs AFTER the VPC
+  // loop, so it can't consume any of the VPC loop's RNG draws - nothing
+  // pinned that ordering until this test. Snapshot is generated from the
+  // current (correct) output via `vitest run -u`, not hand-written.
+  it('keeps every pre-existing VPC-originated flow byte-identical', () => {
+    const vpcFlows = (CC.flows() as Flow[]).filter(f => !f.srcBranch);
+    expect(vpcFlows.length).toBeGreaterThan(0);
+    expect(vpcFlows).toMatchInlineSnapshot(`
+      [
+        {
+          "dst": "storage",
+          "gbps": 1.9,
+          "id": "f1",
+          "ports": "443",
+          "srcCloud": "aws",
+          "srcName": "vpc-prod-01",
+          "srcTag": "rd-helion",
+          "srcVpc": "vpcprod",
+          "viaPublic": false,
+        },
+        {
+          "dst": "ai-endpoints",
+          "gbps": 4.3,
+          "id": "f2",
+          "ports": "443",
+          "srcCloud": "aws",
+          "srcName": "vpc-prod-01",
+          "srcTag": "rd-helion",
+          "srcVpc": "vpcprod",
+          "viaPublic": false,
+        },
+        {
+          "dst": "intra-tag",
+          "gbps": 2.2,
+          "id": "f3",
+          "ports": "5432, 8443",
+          "srcCloud": "aws",
+          "srcName": "vpc-prod-01",
+          "srcTag": "rd-helion",
+          "srcVpc": "vpcprod",
+          "viaPublic": false,
+        },
+        {
+          "dst": "storage",
+          "gbps": 1.3,
+          "id": "f4",
+          "ports": "443",
+          "srcCloud": "aws",
+          "srcName": "vpc-data-02",
+          "srcTag": "finance-invoices",
+          "srcVpc": "vpcdata",
+          "viaPublic": false,
+        },
+        {
+          "dst": "internet",
+          "gbps": 2.2,
+          "id": "f5",
+          "ports": "443",
+          "srcCloud": "aws",
+          "srcName": "vpc-data-02",
+          "srcTag": "finance-invoices",
+          "srcVpc": "vpcdata",
+          "viaPublic": true,
+        },
+        {
+          "dst": "storage-external",
+          "gbps": 1,
+          "id": "f6",
+          "ports": "443",
+          "srcCloud": "aws",
+          "srcName": "vpc-data-02",
+          "srcTag": "finance-invoices",
+          "srcVpc": "vpcdata",
+          "viaPublic": false,
+        },
+        {
+          "dst": "storage",
+          "gbps": 1.3,
+          "id": "f7",
+          "ports": "443",
+          "srcCloud": "aws",
+          "srcName": "vpc-dmz-03",
+          "srcTag": "classified-helion",
+          "srcVpc": "vpcdmz",
+          "viaPublic": false,
+        },
+        {
+          "dst": "internet",
+          "gbps": 2.2,
+          "id": "f8",
+          "ports": "443",
+          "srcCloud": "aws",
+          "srcName": "vpc-dmz-03",
+          "srcTag": "classified-helion",
+          "srcVpc": "vpcdmz",
+          "viaPublic": true,
+        },
+        {
+          "dst": "ai-endpoints",
+          "gbps": 1.9,
+          "id": "f9",
+          "ports": "443",
+          "srcCloud": "aws",
+          "srcName": "vpc-dmz-03",
+          "srcTag": "classified-helion",
+          "srcVpc": "vpcdmz",
+          "viaPublic": false,
+        },
+        {
+          "dst": "dns-exfil",
+          "gbps": 0.5,
+          "id": "f10",
+          "ports": "53",
+          "srcCloud": "aws",
+          "srcName": "vpc-dmz-03",
+          "srcTag": "classified-helion",
+          "srcVpc": "vpcdmz",
+          "viaPublic": true,
+        },
+        {
+          "dst": "storage",
+          "gbps": 1.9,
+          "id": "f11",
+          "ports": "443",
+          "srcCloud": "aws",
+          "srcName": "vpc-west-01",
+          "srcTag": "shared-services",
+          "srcVpc": "vpcwest",
+          "viaPublic": true,
+        },
+        {
+          "dst": "internet",
+          "gbps": 3.4,
+          "id": "f12",
+          "ports": "443",
+          "srcCloud": "aws",
+          "srcName": "vpc-west-01",
+          "srcTag": "shared-services",
+          "srcVpc": "vpcwest",
+          "viaPublic": true,
+        },
+        {
+          "dst": "ai-endpoints",
+          "gbps": 4.3,
+          "id": "f13",
+          "ports": "443",
+          "srcCloud": "aws",
+          "srcName": "vpc-west-01",
+          "srcTag": "shared-services",
+          "srcVpc": "vpcwest",
+          "viaPublic": true,
+        },
+        {
+          "dst": "storage",
+          "gbps": 1,
+          "id": "f14",
+          "ports": "443",
+          "srcCloud": "aws",
+          "srcName": "vpc-backup-02",
+          "srcTag": "untagged",
+          "srcVpc": "vpcbak",
+          "viaPublic": true,
+        },
+        {
+          "dst": "internet",
+          "gbps": 1.7,
+          "id": "f15",
+          "ports": "443",
+          "srcCloud": "aws",
+          "srcName": "vpc-backup-02",
+          "srcTag": "untagged",
+          "srcVpc": "vpcbak",
+          "viaPublic": true,
+        },
+        {
+          "dst": "storage",
+          "gbps": 1.3,
+          "id": "f16",
+          "ports": "443",
+          "srcCloud": "aws",
+          "srcName": "vpc-eu-01",
+          "srcTag": "shared-services",
+          "srcVpc": "vpceu",
+          "viaPublic": true,
+        },
+        {
+          "dst": "internet",
+          "gbps": 2.2,
+          "id": "f17",
+          "ports": "443",
+          "srcCloud": "aws",
+          "srcName": "vpc-eu-01",
+          "srcTag": "shared-services",
+          "srcVpc": "vpceu",
+          "viaPublic": true,
+        },
+        {
+          "dst": "ai-endpoints",
+          "gbps": 2.9,
+          "id": "f18",
+          "ports": "443",
+          "srcCloud": "aws",
+          "srcName": "vpc-eu-01",
+          "srcTag": "shared-services",
+          "srcVpc": "vpceu",
+          "viaPublic": true,
+        },
+        {
+          "dst": "storage",
+          "gbps": 2.8,
+          "id": "f19",
+          "ports": "443",
+          "srcCloud": "azure",
+          "srcName": "vnet-app-02",
+          "srcTag": "rd-helion",
+          "srcVpc": "vnetapp",
+          "viaPublic": true,
+        },
+        {
+          "dst": "internet",
+          "gbps": 4.9,
+          "id": "f20",
+          "ports": "443",
+          "srcCloud": "azure",
+          "srcName": "vnet-app-02",
+          "srcTag": "rd-helion",
+          "srcVpc": "vnetapp",
+          "viaPublic": true,
+        },
+        {
+          "dst": "ai-endpoints",
+          "gbps": 6.3,
+          "id": "f21",
+          "ports": "443",
+          "srcCloud": "azure",
+          "srcName": "vnet-app-02",
+          "srcTag": "rd-helion",
+          "srcVpc": "vnetapp",
+          "viaPublic": true,
+        },
+        {
+          "dst": "intra-tag",
+          "gbps": 3.2,
+          "id": "f22",
+          "ports": "5432, 8443",
+          "srcCloud": "azure",
+          "srcName": "vnet-app-02",
+          "srcTag": "rd-helion",
+          "srcVpc": "vnetapp",
+          "viaPublic": true,
+        },
+        {
+          "dst": "storage",
+          "gbps": 1,
+          "id": "f23",
+          "ports": "443",
+          "srcCloud": "azure",
+          "srcName": "vnet-data-03",
+          "srcTag": "untagged",
+          "srcVpc": "vnetdata",
+          "viaPublic": true,
+        },
+        {
+          "dst": "internet",
+          "gbps": 1.7,
+          "id": "f24",
+          "ports": "443",
+          "srcCloud": "azure",
+          "srcName": "vnet-data-03",
+          "srcTag": "untagged",
+          "srcVpc": "vnetdata",
+          "viaPublic": true,
+        },
+        {
+          "dst": "storage",
+          "gbps": 1.6,
+          "id": "f25",
+          "ports": "443",
+          "srcCloud": "azure",
+          "srcName": "vnet-emea-01",
+          "srcTag": "untagged",
+          "srcVpc": "vnetemea",
+          "viaPublic": true,
+        },
+        {
+          "dst": "internet",
+          "gbps": 2.8,
+          "id": "f26",
+          "ports": "443",
+          "srcCloud": "azure",
+          "srcName": "vnet-emea-01",
+          "srcTag": "untagged",
+          "srcVpc": "vnetemea",
+          "viaPublic": true,
+        },
+        {
+          "dst": "storage",
+          "gbps": 1.4,
+          "id": "f27",
+          "ports": "443",
+          "srcCloud": "azure",
+          "srcName": "vnet-dmz-uk",
+          "srcTag": "untagged",
+          "srcVpc": "vnetdmz",
+          "viaPublic": true,
+        },
+        {
+          "dst": "internet",
+          "gbps": 2.5,
+          "id": "f28",
+          "ports": "443",
+          "srcCloud": "azure",
+          "srcName": "vnet-dmz-uk",
+          "srcTag": "untagged",
+          "srcVpc": "vnetdmz",
+          "viaPublic": true,
+        },
+        {
+          "dst": "storage",
+          "gbps": 0.6,
+          "id": "f29",
+          "ports": "443",
+          "srcCloud": "gcp",
+          "srcName": "vpc-gke-prod",
+          "srcTag": "untagged",
+          "srcVpc": "vpcgcp1",
+          "viaPublic": true,
+        },
+        {
+          "dst": "internet",
+          "gbps": 1.1,
+          "id": "f30",
+          "ports": "443",
+          "srcCloud": "gcp",
+          "srcName": "vpc-gke-prod",
+          "srcTag": "untagged",
+          "srcVpc": "vpcgcp1",
+          "viaPublic": true,
+        },
+        {
+          "dst": "storage",
+          "gbps": 0.8,
+          "id": "f31",
+          "ports": "443",
+          "srcCloud": "gcp",
+          "srcName": "vpc-svc-02",
+          "srcTag": "untagged",
+          "srcVpc": "vpcgcp2",
+          "viaPublic": true,
+        },
+        {
+          "dst": "internet",
+          "gbps": 1.4,
+          "id": "f32",
+          "ports": "443",
+          "srcCloud": "gcp",
+          "srcName": "vpc-svc-02",
+          "srcTag": "untagged",
+          "srcVpc": "vpcgcp2",
+          "viaPublic": true,
+        },
+        {
+          "dst": "storage",
+          "gbps": 1.7,
+          "id": "f33",
+          "ports": "443",
+          "srcCloud": "oci",
+          "srcName": "vcn-prod-01",
+          "srcTag": "untagged",
+          "srcVpc": "ocivcn",
+          "viaPublic": true,
+        },
+        {
+          "dst": "internet",
+          "gbps": 2.9,
+          "id": "f34",
+          "ports": "443",
+          "srcCloud": "oci",
+          "srcName": "vcn-prod-01",
+          "srcTag": "untagged",
+          "srcVpc": "ocivcn",
+          "viaPublic": true,
+        },
+        {
+          "dst": "storage",
+          "gbps": 1,
+          "id": "f35",
+          "ports": "443",
+          "srcCloud": "cw",
+          "srcName": "gpu-cluster-01",
+          "srcTag": "rd-helion",
+          "srcVpc": "cwgpu",
+          "viaPublic": true,
+        },
+        {
+          "dst": "internet",
+          "gbps": 1.7,
+          "id": "f36",
+          "ports": "443",
+          "srcCloud": "cw",
+          "srcName": "gpu-cluster-01",
+          "srcTag": "rd-helion",
+          "srcVpc": "cwgpu",
+          "viaPublic": true,
+        },
+        {
+          "dst": "ai-endpoints",
+          "gbps": 2.2,
+          "id": "f37",
+          "ports": "443",
+          "srcCloud": "cw",
+          "srcName": "gpu-cluster-01",
+          "srcTag": "rd-helion",
+          "srcVpc": "cwgpu",
+          "viaPublic": true,
+        },
+        {
+          "dst": "intra-tag",
+          "gbps": 1.1,
+          "id": "f38",
+          "ports": "5432, 8443",
+          "srcCloud": "cw",
+          "srcName": "gpu-cluster-01",
+          "srcTag": "rd-helion",
+          "srcVpc": "cwgpu",
+          "viaPublic": true,
+        },
+        {
+          "dst": "storage",
+          "gbps": 1,
+          "id": "f39",
+          "ports": "443",
+          "srcCloud": "neb",
+          "srcName": "nb-gpu-net",
+          "srcTag": "classified-helion",
+          "srcVpc": "nbgpu",
+          "viaPublic": true,
+        },
+        {
+          "dst": "internet",
+          "gbps": 1.7,
+          "id": "f40",
+          "ports": "443",
+          "srcCloud": "neb",
+          "srcName": "nb-gpu-net",
+          "srcTag": "classified-helion",
+          "srcVpc": "nbgpu",
+          "viaPublic": true,
+        },
+        {
+          "dst": "ai-endpoints",
+          "gbps": 1.4,
+          "id": "f41",
+          "ports": "443",
+          "srcCloud": "neb",
+          "srcName": "nb-gpu-net",
+          "srcTag": "classified-helion",
+          "srcVpc": "nbgpu",
+          "viaPublic": true,
+        },
+        {
+          "dst": "dns-exfil",
+          "gbps": 0.4,
+          "id": "f42",
+          "ports": "53",
+          "srcCloud": "neb",
+          "srcName": "nb-gpu-net",
+          "srcTag": "classified-helion",
+          "srcVpc": "nbgpu",
+          "viaPublic": true,
+        },
+      ]
+    `);
   });
 });
