@@ -5,27 +5,57 @@ import { useCloudControlActions } from '../../engine/react/useCloudControl';
 const ACTIONS = ['deny', 'inspect', 'route-private', 'allow'] as const;
 const PORTS = ['any', '443', '5432', '8443'] as const;
 
+const INITIAL_FORM = {
+  name: '',
+  tag: 'any',
+  cloud: 'any',
+  dst: 'any',
+  ports: 'any',
+  action: 'deny',
+};
+
 export function RuleBuilder() {
   const actions = useCloudControlActions();
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [tag, setTag] = useState('any');
-  const [cloud, setCloud] = useState('any');
-  const [dst, setDst] = useState('any');
-  const [ports, setPorts] = useState<string>('any');
-  const [action, setAction] = useState<string>('deny');
+  const [name, setName] = useState(INITIAL_FORM.name);
+  const [tag, setTag] = useState(INITIAL_FORM.tag);
+  const [cloud, setCloud] = useState(INITIAL_FORM.cloud);
+  const [dst, setDst] = useState(INITIAL_FORM.dst);
+  const [ports, setPorts] = useState<string>(INITIAL_FORM.ports);
+  const [action, setAction] = useState<string>(INITIAL_FORM.action);
   const [preview, setPreview] = useState<{ matched: unknown[]; gbps: number; blocked: number; pending: number; shadowed: unknown[] } | null>(null);
 
   const spec = () => ({ name, src: { tag, cloud }, dst, ports, action, chain: [] });
 
-  const submit = () => {
-    actions.addRule({ ...spec(), enforceNow: false });
-    setName('');
-    setOpen(false);
+  const resetForm = () => {
+    setName(INITIAL_FORM.name);
+    setTag(INITIAL_FORM.tag);
+    setCloud(INITIAL_FORM.cloud);
+    setDst(INITIAL_FORM.dst);
+    setPorts(INITIAL_FORM.ports);
+    setAction(INITIAL_FORM.action);
     setPreview(null);
   };
 
+  const cancel = () => {
+    resetForm();
+    setOpen(false);
+  };
+
+  const submit = () => {
+    actions.addRule({ ...spec(), enforceNow: false });
+    resetForm();
+    setOpen(false);
+  };
+
   const runDry = () => setPreview(CC.dryRun(spec()));
+
+  // Any field edit invalidates the last dry-run readout: it described a
+  // spec that no longer matches what's on screen.
+  const onField = <T,>(setter: (v: T) => void) => (v: T) => {
+    setter(v);
+    setPreview(null);
+  };
 
   if (!open) {
     return (
@@ -47,14 +77,14 @@ export function RuleBuilder() {
       <input
         id="rb-name"
         value={name}
-        onChange={e => setName(e.target.value)}
+        onChange={e => onField(setName)(e.target.value)}
         className="w-full h-9 px-3 rounded-lg border border-fw-secondary bg-fw-wash text-figma-sm"
       />
 
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-figma-xs text-fw-bodyLight" htmlFor="rb-tag">Source tag</label>
-          <select id="rb-tag" value={tag} onChange={e => setTag(e.target.value)}
+          <select id="rb-tag" value={tag} onChange={e => onField(setTag)(e.target.value)}
             className="w-full h-9 px-2 rounded-lg border border-fw-secondary bg-fw-wash text-figma-sm">
             <option value="any">any workload</option>
             {Object.keys(CC.TAGS).map(t => <option key={t} value={t}>{t}</option>)}
@@ -62,7 +92,7 @@ export function RuleBuilder() {
         </div>
         <div>
           <label className="block text-figma-xs text-fw-bodyLight" htmlFor="rb-cloud">Cloud</label>
-          <select id="rb-cloud" value={cloud} onChange={e => setCloud(e.target.value)}
+          <select id="rb-cloud" value={cloud} onChange={e => onField(setCloud)(e.target.value)}
             className="w-full h-9 px-2 rounded-lg border border-fw-secondary bg-fw-wash text-figma-sm">
             <option value="any">any cloud</option>
             {CC.clouds.map((c: { id: string; name: string }) => (
@@ -72,7 +102,7 @@ export function RuleBuilder() {
         </div>
         <div>
           <label className="block text-figma-xs text-fw-bodyLight" htmlFor="rb-dst">Destination</label>
-          <select id="rb-dst" value={dst} onChange={e => setDst(e.target.value)}
+          <select id="rb-dst" value={dst} onChange={e => onField(setDst)(e.target.value)}
             className="w-full h-9 px-2 rounded-lg border border-fw-secondary bg-fw-wash text-figma-sm">
             {Object.entries(CC.DSTS).map(([k, v]) => (
               <option key={k} value={k}>{v as string}</option>
@@ -81,14 +111,14 @@ export function RuleBuilder() {
         </div>
         <div>
           <label className="block text-figma-xs text-fw-bodyLight" htmlFor="rb-action">Action</label>
-          <select id="rb-action" value={action} onChange={e => setAction(e.target.value)}
+          <select id="rb-action" value={action} onChange={e => onField(setAction)(e.target.value)}
             className="w-full h-9 px-2 rounded-lg border border-fw-secondary bg-fw-wash text-figma-sm">
             {ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
         </div>
         <div>
           <label className="block text-figma-xs text-fw-bodyLight" htmlFor="rb-ports">Ports</label>
-          <select id="rb-ports" value={ports} onChange={e => setPorts(e.target.value)}
+          <select id="rb-ports" value={ports} onChange={e => onField(setPorts)(e.target.value)}
             className="w-full h-9 px-2 rounded-lg border border-fw-secondary bg-fw-wash text-figma-sm">
             {PORTS.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
@@ -104,7 +134,7 @@ export function RuleBuilder() {
           className="h-9 px-4 rounded-full text-figma-sm font-medium border border-fw-secondary text-fw-body hover:bg-fw-wash transition-colors">
           Dry run
         </button>
-        <button type="button" onClick={() => setOpen(false)}
+        <button type="button" onClick={cancel}
           className="h-9 px-4 rounded-full text-figma-sm font-medium border border-fw-secondary text-fw-body hover:bg-fw-wash transition-colors">
           Cancel
         </button>
