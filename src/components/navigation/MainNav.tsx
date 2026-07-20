@@ -221,13 +221,15 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
       <CommandPalette />
     </nav>
 
-    {/* Mobile Menu — rendered OUTSIDE <nav> on purpose. <nav> has
-        backdrop-blur-md, and CSS backdrop-filter establishes a containing
-        block for position:fixed descendants, which clips any fixed-position
-        child to the nav's own 64px-tall box instead of the viewport. That's
-        what made the old vertical-nav overlay render as an empty sliver
-        pinned to the header. MobileMenu must stay outside <nav> to fill the
-        real viewport. */}
+    {/* Mobile Menu — kept as a sibling of <nav> here for readability, but
+        MobileMenu itself portals to document.body (see MobileMenu.tsx), so
+        its actual DOM position doesn't depend on where it's mounted in this
+        tree. <nav> has backdrop-blur-md, and CSS backdrop-filter establishes
+        a containing block for position:fixed descendants, which would clip
+        any fixed-position child to the nav's own 64px-tall box instead of
+        the viewport — that's what made the old vertical-nav overlay render
+        as an empty sliver pinned to the header. The portal is what actually
+        prevents that; staying out of <nav> here is just belt-and-suspenders. */}
     <MobileMenu
       isOpen={isMobileMenuOpen}
       onClose={() => setIsMobileMenuOpen(false)}

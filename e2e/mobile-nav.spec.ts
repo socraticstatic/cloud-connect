@@ -60,3 +60,43 @@ test('AI Fabric is unreachable from the horizontal nav, but the hamburger drawer
   // And the drawer closed itself after navigating.
   await expect(page.getByLabel('Close menu')).not.toBeVisible();
 });
+
+test('the drawer panel and backdrop actually fill the viewport, not a clipped strip', async ({
+  page,
+}) => {
+  // Reachability assertions (above, and in the rest of this file) confirm the
+  // drawer's contents exist and respond to clicks — but that's exactly what
+  // sailed past the real bug once: `<nav>` carries `backdrop-blur-md`, and
+  // CSS backdrop-filter establishes a containing block for `position: fixed`
+  // descendants. Any fixed-position drawer whose containing block resolves to
+  // `<nav>` instead of the viewport renders as a strip clipped to the nav's
+  // own ~64px height — fully present in the DOM, fully clickable via
+  // Playwright's actionability checks (which don't require visible pixels
+  // outside a clipped ancestor the way a human eye would), and totally
+  // invisible as a rendered surface. This is the assertion that catches that
+  // geometrically, against the actual viewport size rather than a hardcoded
+  // pixel value.
+  await firstVisit(page);
+
+  await page.locator('[data-nav-toggle="true"]').click();
+  await expect(page.getByLabel('Close menu')).toBeVisible();
+
+  const viewport = page.viewportSize();
+  if (!viewport) throw new Error('viewport size unavailable');
+
+  const panel = page
+    .getByLabel('Close menu')
+    .locator('xpath=ancestor::div[contains(@class,"fixed")][1]');
+  const panelBox = await panel.boundingBox();
+  expect(panelBox).not.toBeNull();
+  expect(panelBox!.height).toBeGreaterThan(viewport.height * 0.9);
+
+  // Backdrop is the other `fixed inset-0` element the drawer renders — the
+  // click-outside-to-close scrim. It must cover the full viewport too, or a
+  // 64px containing-block clip would shrink it right alongside the panel.
+  const backdrop = page.locator('.fixed.inset-0.bg-black\\/50');
+  const backdropBox = await backdrop.boundingBox();
+  expect(backdropBox).not.toBeNull();
+  expect(backdropBox!.width).toBeGreaterThan(viewport.width * 0.9);
+  expect(backdropBox!.height).toBeGreaterThan(viewport.height * 0.9);
+});
