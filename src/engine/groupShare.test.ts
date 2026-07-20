@@ -100,7 +100,7 @@ describe('group session plumbing - hydrate', () => {
 
     const CC2 = await freshCC();
     const before = CC2.groupList().find((g: { id: string }) => g.id === 'west-workloads');
-    expect(before.predicates).toEqual([{ source: 'cloudTag', key: 'Project', values: ['xyz', 'abc'] }]);
+    expect(before.predicates).toEqual([{ source: 'cloudTag', key: 'Region', values: ['west'] }]);
 
     window.history.replaceState(null, '', '?s=' + payload);
     const ok = CC2.hydrate();

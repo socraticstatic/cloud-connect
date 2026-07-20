@@ -17,6 +17,13 @@ const GROUP_DST_PREFIX = 'group:';
    user gets from reading the page. */
 const GROUP_WARNING_ID = 'rb-group-warning';
 
+/* id of the "source group resolves to branches only" warning — a branch
+   carries no governance tag (srcTag is null on every branch flow, by
+   design), so a rule combining a branch-only group with a tag can never
+   match anything. Shared between the <p> that renders it and the
+   aria-describedby on the two controls it concerns (#rb-group, #rb-tag). */
+const TAG_GROUP_WARNING_ID = 'rb-tag-group-warning';
+
 /* How many matched flows the dry-run surface names before it summarises the
    rest. Enough to recognise the blast radius; not so many the form becomes
    a table. */
@@ -141,7 +148,7 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
     // a disabled control is a UI affordance, not a contract — refuse here
     // too so the silent-zero-match rule stays unreachable even if submit()
     // is ever reached some other way.
-    if (groupNeeded) return;
+    if (groupNeeded || tagGroupMismatch) return;
     actions.addRule({ ...spec(), enforceNow: false });
     resetForm();
     setOpen(false);
@@ -176,6 +183,16 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
 
   const groupNeeded = (dst === 'intra-group' || dst === 'not-intra-group') && group === 'any';
 
+  /* Precise condition: NOT "group and tag both set" in general — a group
+     resolving to at least one VPC (e.g. west-workloads) can legitimately
+     combine with a tag, since the tag still narrows the VPC side. Only a
+     group that resolves to branches with zero VPCs guarantees a silent
+     zero, because every branch flow carries srcTag: null. Mutually
+     exclusive with groupNeeded above: this requires group !== 'any', that
+     requires group === 'any'. */
+  const groupInfo = group !== 'any' ? (CC.resolveGroup(group) as { vpcIds: string[]; branchIds: string[] }) : null;
+  const tagGroupMismatch = !!groupInfo && tag !== 'any' && groupInfo.vpcIds.length === 0 && groupInfo.branchIds.length > 0;
+
   return (
     <div className="rounded-2xl border border-fw-secondary bg-fw-base p-5 space-y-3">
       <label className="block text-figma-xs text-fw-bodyLight" htmlFor="rb-name">
@@ -195,7 +212,7 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
         <div>
           <label className="block text-figma-xs text-fw-bodyLight" htmlFor="rb-group">Source group</label>
           <select id="rb-group" value={group} onChange={e => onField(setGroup)(e.target.value)}
-            aria-describedby={groupNeeded ? GROUP_WARNING_ID : undefined}
+            aria-describedby={groupNeeded ? GROUP_WARNING_ID : tagGroupMismatch ? TAG_GROUP_WARNING_ID : undefined}
             className={selectClass}>
             <option value="any">any source</option>
             {groups.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
@@ -204,6 +221,7 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
         <div>
           <label className="block text-figma-xs text-fw-bodyLight" htmlFor="rb-tag">Source tag</label>
           <select id="rb-tag" value={tag} onChange={e => onField(setTag)(e.target.value)}
+            aria-describedby={tagGroupMismatch ? TAG_GROUP_WARNING_ID : undefined}
             className={selectClass}>
             <option value="any">any workload</option>
             {Object.keys(CC.TAGS).map(t => <option key={t} value={t}>{t}</option>)}
@@ -265,10 +283,24 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
         </p>
       )}
 
+      {/* A branch carries no governance tag — srcTag is null on every
+          branch-originated flow, by design. A group that resolves to
+          branches only (zero VPCs) combined with any tag other than "any"
+          is therefore unsatisfiable, the same silent-zero-match failure the
+          relative-destination warning above exists to prevent. */}
+      {tagGroupMismatch && (
+        <p id={TAG_GROUP_WARNING_ID} role="alert" className="text-figma-xs text-fw-body">
+          “{groups.find(g => g.id === group)?.label ?? group}” resolves to branches only, and a branch
+          carries no governance tag — combined with “{tag}” this rule matches nothing. Clear the tag or
+          pick a group that includes a workload.
+        </p>
+      )}
+
       <div className="flex gap-2">
-        <button type="button" onClick={submit} disabled={groupNeeded}
-          aria-disabled={groupNeeded}
-          title={groupNeeded ? 'Pick a source group before adding this rule' : undefined}
+        <button type="button" onClick={submit} disabled={groupNeeded || tagGroupMismatch}
+          aria-disabled={groupNeeded || tagGroupMismatch}
+          title={groupNeeded ? 'Pick a source group before adding this rule'
+            : tagGroupMismatch ? 'This source group and tag combination matches nothing' : undefined}
           className="h-9 px-4 rounded-full text-figma-sm font-medium bg-fw-active text-white hover:bg-fw-linkHover transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-fw-active">
           Add rule
         </button>

@@ -74,22 +74,28 @@ const regions={
   cw:[{id:'cwe',name:'US-EAST-04A',sub:'GPU region',subnets:2,lat:28,attached:false,ai:true,geo:[40.2,-74.7]}],
   neb:[{id:'nbe',name:'eu-north1',sub:'Finland',subnets:2,lat:44,attached:false,ai:true,geo:[60.6,24.8]}],
 };
+/* Region cloudTags reuse the same west/central/east(+emea) vocabulary the
+   branches carry above, so one predicate vocabulary groups premises and
+   workloads honestly by geography. us-central1 (Iowa) is bucketed into
+   'west' - the branches' own 'central' value (Dallas/Chicago) is never
+   applied to a VPC, so the two vocabularies stay compatible without
+   forcing every value to appear on both sides. */
 const vpcs={
-  use1:[{id:'vpcprod',name:'vpc-prod-01',cidr:'10.0.0.0/16',azs:3,subnets:6,attached:true,role:'Production · 3-tier',tags:['rd-helion','shared-services'],cloudTags:{Project:'xyz',Env:'prod',Owner:'platform'}},
-        {id:'vpcdata',name:'vpc-data-02',cidr:'10.1.0.0/16',azs:2,subnets:4,attached:true,role:'Data lake',tags:['finance-invoices','pci','finance'],cloudTags:{Project:'abc',Env:'prod',Owner:'finance'}},
-        {id:'vpcdmz',name:'vpc-dmz-03',cidr:'10.2.0.0/16',azs:2,subnets:4,attached:false,role:'DMZ · public',tags:['classified-helion','internet-facing'],cloudTags:{Project:'xyz',Env:'prod',Owner:'security'}}],
-  usw2:[{id:'vpcwest',name:'vpc-west-01',cidr:'10.8.0.0/16',azs:2,subnets:4,attached:false,role:'Edge services',tags:['shared-services'],cloudTags:{Project:'xyz',Env:'prod',Owner:'platform'}},
-        {id:'vpcbak',name:'vpc-backup-02',cidr:'10.9.0.0/16',azs:2,subnets:4,attached:false,role:'Backup',cloudTags:{Project:'ops',Env:'prod',Owner:'platform'}}],
-  euw1:[{id:'vpceu',name:'vpc-eu-01',cidr:'10.12.0.0/16',azs:1,subnets:4,attached:false,role:'EMEA apps',tags:['shared-services'],cloudTags:{Project:'abc',Env:'prod',Owner:'emea'}}],
-  wus2:[{id:'vnetapp',name:'vnet-app-02',cidr:'10.4.0.0/16',azs:2,subnets:5,attached:false,role:'App tier',vnet:true,tags:['rd-helion'],cloudTags:{Project:'xyz',Env:'stage',Owner:'platform'}},
-        {id:'vnetdata',name:'vnet-data-03',cidr:'10.5.0.0/16',azs:2,subnets:4,attached:false,role:'Data',vnet:true,cloudTags:{Project:'abc',Env:'stage',Owner:'data'}}],
-  uks:[{id:'vnetemea',name:'vnet-emea-01',cidr:'10.6.0.0/16',azs:1,subnets:4,attached:false,role:'EMEA · SPOF',vnet:true,cloudTags:{Project:'abc',Env:'prod',Owner:'emea'}},
-       {id:'vnetdmz',name:'vnet-dmz-uk',cidr:'10.7.0.0/16',azs:1,subnets:3,attached:false,role:'DMZ',vnet:true,cloudTags:{Project:'ops',Env:'prod',Owner:'security'}}],
-  usc1:[{id:'vpcgcp1',name:'vpc-gke-prod',cidr:'10.16.0.0/16',azs:2,subnets:4,attached:false,role:'GKE',cloudTags:{Project:'xyz',Env:'prod',Owner:'platform'}},
-        {id:'vpcgcp2',name:'vpc-svc-02',cidr:'10.4.0.0/16',azs:1,subnets:2,attached:false,role:'Services',cloudTags:{Project:'ops',Env:'prod',Owner:'platform'}}],
-  iad:[{id:'ocivcn',name:'vcn-prod-01',cidr:'10.20.0.0/16',azs:1,subnets:3,attached:false,role:'Production',vnet:true,cloudTags:{Project:'abc',Env:'prod',Owner:'platform'}}],
-  cwe:[{id:'cwgpu',name:'gpu-cluster-01',cidr:'10.30.0.0/16',azs:1,subnets:2,attached:false,role:'H100 inference',ai:true,vnet:true,tags:['rd-helion'],cloudTags:{Project:'xyz',Env:'prod',Owner:'ml'}}],
-  nbe:[{id:'nbgpu',name:'nb-gpu-net',cidr:'10.34.0.0/16',azs:1,subnets:2,attached:false,role:'L40S inference',ai:true,vnet:true,tags:['classified-helion'],cloudTags:{Project:'abc',Env:'prod',Owner:'ml'}}],
+  use1:[{id:'vpcprod',name:'vpc-prod-01',cidr:'10.0.0.0/16',azs:3,subnets:6,attached:true,role:'Production · 3-tier',tags:['rd-helion','shared-services'],cloudTags:{Project:'xyz',Env:'prod',Owner:'platform',Region:'east'}},
+        {id:'vpcdata',name:'vpc-data-02',cidr:'10.1.0.0/16',azs:2,subnets:4,attached:true,role:'Data lake',tags:['finance-invoices','pci','finance'],cloudTags:{Project:'abc',Env:'prod',Owner:'finance',Region:'east'}},
+        {id:'vpcdmz',name:'vpc-dmz-03',cidr:'10.2.0.0/16',azs:2,subnets:4,attached:false,role:'DMZ · public',tags:['classified-helion','internet-facing'],cloudTags:{Project:'xyz',Env:'prod',Owner:'security',Region:'east'}}],
+  usw2:[{id:'vpcwest',name:'vpc-west-01',cidr:'10.8.0.0/16',azs:2,subnets:4,attached:false,role:'Edge services',tags:['shared-services'],cloudTags:{Project:'xyz',Env:'prod',Owner:'platform',Region:'west'}},
+        {id:'vpcbak',name:'vpc-backup-02',cidr:'10.9.0.0/16',azs:2,subnets:4,attached:false,role:'Backup',cloudTags:{Project:'ops',Env:'prod',Owner:'platform',Region:'west'}}],
+  euw1:[{id:'vpceu',name:'vpc-eu-01',cidr:'10.12.0.0/16',azs:1,subnets:4,attached:false,role:'EMEA apps',tags:['shared-services'],cloudTags:{Project:'abc',Env:'prod',Owner:'emea',Region:'emea'}}],
+  wus2:[{id:'vnetapp',name:'vnet-app-02',cidr:'10.4.0.0/16',azs:2,subnets:5,attached:false,role:'App tier',vnet:true,tags:['rd-helion'],cloudTags:{Project:'xyz',Env:'stage',Owner:'platform',Region:'west'}},
+        {id:'vnetdata',name:'vnet-data-03',cidr:'10.5.0.0/16',azs:2,subnets:4,attached:false,role:'Data',vnet:true,cloudTags:{Project:'abc',Env:'stage',Owner:'data',Region:'west'}}],
+  uks:[{id:'vnetemea',name:'vnet-emea-01',cidr:'10.6.0.0/16',azs:1,subnets:4,attached:false,role:'EMEA · SPOF',vnet:true,cloudTags:{Project:'abc',Env:'prod',Owner:'emea',Region:'emea'}},
+       {id:'vnetdmz',name:'vnet-dmz-uk',cidr:'10.7.0.0/16',azs:1,subnets:3,attached:false,role:'DMZ',vnet:true,cloudTags:{Project:'ops',Env:'prod',Owner:'security',Region:'emea'}}],
+  usc1:[{id:'vpcgcp1',name:'vpc-gke-prod',cidr:'10.16.0.0/16',azs:2,subnets:4,attached:false,role:'GKE',cloudTags:{Project:'xyz',Env:'prod',Owner:'platform',Region:'west'}},
+        {id:'vpcgcp2',name:'vpc-svc-02',cidr:'10.4.0.0/16',azs:1,subnets:2,attached:false,role:'Services',cloudTags:{Project:'ops',Env:'prod',Owner:'platform',Region:'west'}}],
+  iad:[{id:'ocivcn',name:'vcn-prod-01',cidr:'10.20.0.0/16',azs:1,subnets:3,attached:false,role:'Production',vnet:true,cloudTags:{Project:'abc',Env:'prod',Owner:'platform',Region:'east'}}],
+  cwe:[{id:'cwgpu',name:'gpu-cluster-01',cidr:'10.30.0.0/16',azs:1,subnets:2,attached:false,role:'H100 inference',ai:true,vnet:true,tags:['rd-helion'],cloudTags:{Project:'xyz',Env:'prod',Owner:'ml',Region:'east'}}],
+  nbe:[{id:'nbgpu',name:'nb-gpu-net',cidr:'10.34.0.0/16',azs:1,subnets:2,attached:false,role:'L40S inference',ai:true,vnet:true,tags:['classified-helion'],cloudTags:{Project:'abc',Env:'prod',Owner:'ml',Region:'emea'}}],
 };
 
 /* Remediation flags - policies and service insertions applied this session */

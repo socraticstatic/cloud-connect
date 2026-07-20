@@ -70,8 +70,21 @@ describe('workload-to-workload intra-group', () => {
     expect(tagged.length).toBeGreaterThan(0);
   });
 
+  /* west-workloads is now honestly region-scoped (Region:west), so it holds
+     only one of the three rd-helion VPCs (vnetapp - vpcprod is us-east-1,
+     cwgpu is US-EAST-04A). That is correct behaviour for Task C2, but it
+     means west-workloads itself can no longer demonstrate a VPC-to-VPC
+     cross-region intra-group match - there is only one western node in the
+     mesh. The property under test ("same group, DIFFERENT regions, one
+     rule") is still a real engine capability, so it is proven here against
+     a group that actually spans the mesh: every rd-helion VPC, by
+     governance tag rather than by region. */
   it('matches a workload-to-workload intra-group rule across regions', () => {
-    const rule = { src: { group: 'west-workloads' }, dst: 'intra-group', ports: 'any', action: 'allow', chain: [] };
+    CC.addGroup({
+      id: 'rd-helion-mesh', label: 'RD Helion mesh (test)', kind: 'workload', members: [],
+      predicates: [{ source: 'governanceTag', values: ['rd-helion'] }],
+    });
+    const rule = { src: { group: 'rd-helion-mesh' }, dst: 'intra-group', ports: 'any', action: 'allow', chain: [] };
     const matched = CC.dryRun(rule).matched as { flow: Flow }[];
     expect(matched.length).toBeGreaterThan(0);
 
@@ -87,6 +100,7 @@ describe('workload-to-workload intra-group', () => {
     });
     expect(crossRegion.length,
       'no matched flow connects two VPCs in different regions').toBeGreaterThan(0);
+    CC.removeGroup('rd-helion-mesh');
   });
 
   it('is deterministic', () => {

@@ -16,8 +16,8 @@ const groups={
     members:['br-sjc','br-sfo','br-bkl'],predicates:[],
     desc:'Bay Area premises'},
   'west-workloads':{id:'west-workloads',label:'West workloads',kind:'workload',
-    members:[],predicates:[{source:'cloudTag',key:'Project',values:['xyz','abc']}],
-    desc:'Anything tagged Project=xyz or Project=abc'},
+    members:[],predicates:[{source:'cloudTag',key:'Region',values:['west']}],
+    desc:'Anything tagged Region=west'},
 };
 
 function allVpcs(){

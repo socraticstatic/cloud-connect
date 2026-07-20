@@ -206,6 +206,86 @@ describe('RuleBuilder', () => {
     });
   });
 
+  /* Verified in the running app: src:{group:'west-branches', tag:'rd-helion'}
+     dry-runs to 0 matched flows, with no warning. Branch-originated flows
+     carry srcTag: null by design (a branch has no governance tag), so any
+     rule combining a branch-only group with a tag is unsatisfiable - the
+     same silent-zero-match failure class the intra-group fix above exists
+     to prevent, applied to the source side. A group resolving to at least
+     one VPC (e.g. west-workloads) can legitimately combine with a tag, so
+     the guard must key off CC.resolveGroup(group) rather than "group and
+     tag both set". */
+  describe('source group combined with a tag that only branches carry', () => {
+    it('warns and disables Add rule when the group resolves to branches only', () => {
+      render(<RuleBuilder />);
+      fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
+      fireEvent.change(screen.getByLabelText(/source group/i), { target: { value: 'west-branches' } });
+      fireEvent.change(screen.getByLabelText(/source tag/i), { target: { value: 'rd-helion' } });
+
+      const warning = screen.getByRole('alert');
+      expect(warning).toHaveTextContent(/branch/i);
+
+      const addRuleBtn = screen.getByRole('button', { name: /^add rule$/i });
+      expect(addRuleBtn).toBeDisabled();
+
+      const groupSelect = screen.getByLabelText(/source group/i);
+      const tagSelect = screen.getByLabelText(/source tag/i);
+      expect(groupSelect.getAttribute('aria-describedby')).toBe(warning.id);
+      expect(tagSelect.getAttribute('aria-describedby')).toBe(warning.id);
+    });
+
+    it('confirms the unsatisfiable spec really does dry-run to zero, proving the warning is honest', () => {
+      render(<RuleBuilder />);
+      fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
+      fireEvent.change(screen.getByLabelText(/source group/i), { target: { value: 'west-branches' } });
+      fireEvent.change(screen.getByLabelText(/source tag/i), { target: { value: 'rd-helion' } });
+
+      const result = CC.dryRun({
+        name: '', src: { tag: 'rd-helion', cloud: 'any', group: 'west-branches' },
+        dst: 'any', ports: 'any', action: 'deny', chain: [],
+      }) as { matched: unknown[] };
+      expect(result.matched.length).toBe(0);
+    });
+
+    it('does not warn once the tag is cleared back to "any"', () => {
+      render(<RuleBuilder />);
+      fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
+      fireEvent.change(screen.getByLabelText(/source group/i), { target: { value: 'west-branches' } });
+      fireEvent.change(screen.getByLabelText(/source tag/i), { target: { value: 'rd-helion' } });
+      expect(screen.getByRole('button', { name: /^add rule$/i })).toBeDisabled();
+
+      fireEvent.change(screen.getByLabelText(/source tag/i), { target: { value: 'any' } });
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^add rule$/i })).not.toBeDisabled();
+    });
+
+    it('does not warn for a group that resolves to at least one VPC, even combined with a tag', () => {
+      render(<RuleBuilder />);
+      fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
+      fireEvent.change(screen.getByLabelText(/source group/i), { target: { value: 'west-workloads' } });
+      fireEvent.change(screen.getByLabelText(/source tag/i), { target: { value: 'rd-helion' } });
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^add rule$/i })).not.toBeDisabled();
+    });
+
+    it('cannot be committed: clicking a disabled Add rule adds nothing to the engine', () => {
+      const before = (CC.ruleList() as unknown[]).length;
+      render(<RuleBuilder />);
+      fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
+      fireEvent.change(screen.getByLabelText(/rule name/i), { target: { value: 'should-never-exist-2' } });
+      fireEvent.change(screen.getByLabelText(/source group/i), { target: { value: 'west-branches' } });
+      fireEvent.change(screen.getByLabelText(/source tag/i), { target: { value: 'rd-helion' } });
+
+      fireEvent.click(screen.getByRole('button', { name: /^add rule$/i }));
+
+      const after = CC.ruleList() as { name: string }[];
+      expect(after.length).toBe(before);
+      expect(after.map(r => r.name)).not.toContain('should-never-exist-2');
+    });
+  });
+
   /* useCloudControlActions() returns the engine handle but does not
      subscribe — groups must be read through the subscribing hook so a group
      added while the builder is open shows up without an unrelated field

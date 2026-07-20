@@ -12,7 +12,7 @@ const _=CC._||(CC._={});
    gcp hides an undiscovered VPC; the first rescan surfaces it and the
    whole portal ripples - counts, flows, apps, treemap, addressing. */
 const HIDDEN={
-  gcp:{regionId:'usc1',vpc:{id:'vpcml',name:'vpc-ml-suite',cidr:'10.19.0.0/16',azs:1,subnets:3,attached:false,role:'ML pipelines',tags:['rd-helion'],cloudTags:{Project:'xyz',Env:'prod',Owner:'ml'}}},
+  gcp:{regionId:'usc1',vpc:{id:'vpcml',name:'vpc-ml-suite',cidr:'10.19.0.0/16',azs:1,subnets:3,attached:false,role:'ML pipelines',tags:['rd-helion'],cloudTags:{Project:'xyz',Env:'prod',Owner:'ml',Region:'west'}}},
 };
 const lastScan={};
 CC.rescanAccount=function(cloudId){
