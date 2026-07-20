@@ -35,10 +35,11 @@
     @apply text-gray-600;
   }
 
-  /* Ensure all buttons are rounded EXCEPT nav buttons and tab buttons */
-  button:not(nav button, .no-rounded, .mode-selection-card, .tab-button, .choice-card) {
-    @apply rounded-full;
-  }
+  /* NOTE: no blanket button radius. Buttons declare their own shape with a
+     Tailwind utility — `rounded-full` for pills (chips, status, compact
+     actions), `rounded-lg`/`rounded-xl` for card-shaped and container
+     controls. The old NetBond-era blanket pill rule forced 9999px on every
+     button and had to be fought with per-selector overrides; it is gone. */
 
   /* Normalize all native select elements — fixes cross-OS size variance.
      Tailwind h-* / px-* utilities on the element will still override. */
@@ -125,23 +126,6 @@
   animation: matrix-rain 2s linear infinite;
   color: #00ff00;
   opacity: 0;
-}
-
-/* Critical button styles */
-button,
-.button,
-[type="button"],
-.flex.items-center.px-4.py-2,
-button.flex.items-center.px-4.py-2 {
-  border-radius: 9999px !important;
-}
-
-/* Card-shaped buttons are rounded rectangles, not pills. The inherited
-   NetBond rule above forces a 9999px pill on every <button> with !important;
-   these selectable card controls need a modest corner radius instead. Higher
-   specificity + !important overrides the global pill. */
-[data-tour="connect-attach-types"] button {
-  border-radius: 0.5rem !important;
 }
 
 /* Navigation exceptions */
