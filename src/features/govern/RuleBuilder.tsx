@@ -5,6 +5,15 @@ import { useCloudControlActions } from '../../engine/react/useCloudControl';
 const ACTIONS = ['deny', 'inspect', 'route-private', 'allow'] as const;
 const PORTS = ['any', '443', '5432', '8443'] as const;
 
+// intra-group / not-intra-group are correct and needed in CC.DSTS - the
+// engine matches them today. But this form has no control for src.group
+// (only src.tag + src.cloud), so picking either one here would silently
+// match zero flows with no explanation - the exact failure the group-aware
+// engine was built to avoid. This is a sequencing gate, not an oversight:
+// a later task adds a src.group control to the builder and removes this
+// filter to re-enable both options. Do not remove them from CC.DSTS.
+const DSTS_PENDING_SRC_GROUP_CONTROL = new Set(['intra-group', 'not-intra-group']);
+
 const INITIAL_FORM = {
   name: '',
   tag: 'any',
@@ -104,9 +113,11 @@ export function RuleBuilder() {
           <label className="block text-figma-xs text-fw-bodyLight" htmlFor="rb-dst">Destination</label>
           <select id="rb-dst" value={dst} onChange={e => onField(setDst)(e.target.value)}
             className="w-full h-9 px-2 rounded-lg border border-fw-secondary bg-fw-wash text-figma-sm">
-            {Object.entries(CC.DSTS).map(([k, v]) => (
-              <option key={k} value={k}>{v as string}</option>
-            ))}
+            {Object.entries(CC.DSTS)
+              .filter(([k]) => !DSTS_PENDING_SRC_GROUP_CONTROL.has(k))
+              .map(([k, v]) => (
+                <option key={k} value={k}>{v as string}</option>
+              ))}
           </select>
         </div>
         <div>

@@ -62,6 +62,21 @@ describe('group-aware matching', () => {
     });
   });
 
+  // A missing dst must fail closed. The legacy destination branch guards
+  // with `rule.dst && ...`, so a falsy dst skips the filter entirely and
+  // would match every flow instead of none.
+  it('fails closed when dst is missing rather than matching every flow', () => {
+    const rule = { src: { tag: 'any' }, ports: 'any', action: 'allow', chain: [] };
+    expect(CC.dryRun(rule).matched.length).toBe(0);
+  });
+
+  // An empty structured dst ({}) must also fail closed - no group key means
+  // no filter was applied, which would otherwise match every flow.
+  it('fails closed when dst is an empty object rather than matching every flow', () => {
+    const rule = { src: { tag: 'any' }, dst: {}, ports: 'any', action: 'allow', chain: [] };
+    expect(CC.dryRun(rule).matched.length).toBe(0);
+  });
+
   /* MUTATING - keep last.
 
      `intra-group` means "the source group talking to itself". The two seeded

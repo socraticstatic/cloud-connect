@@ -241,10 +241,17 @@ function ruleMatch(rule,flow){
   if(rule.src.cloud&&rule.src.cloud!=='any'&&flow.srcCloud!==rule.src.cloud)return false;
   if(rule.src.group&&(flow.srcGroups||[]).indexOf(rule.src.group)<0)return false;
 
-  /* Destination. Guard the object shape FIRST - the legacy string compare
-     below is always true for an object and would match zero flows. */
-  if(rule.dst&&typeof rule.dst==='object'){
-    if(rule.dst.group&&(flow.dstGroups||[]).indexOf(rule.dst.group)<0)return false;
+  /* Destination. A missing dst must fail closed - matching zero flows,
+     never every flow - so it can never be mistaken for an unset filter. */
+  if(!rule.dst)return false;
+
+  /* Guard the object shape FIRST - the legacy string compare below is
+     always true for an object and would match zero flows. An object dst
+     with no group key is also unset-filter shaped and must fail closed
+     rather than match every flow. */
+  if(typeof rule.dst==='object'){
+    if(!rule.dst.group)return false;
+    if((flow.dstGroups||[]).indexOf(rule.dst.group)<0)return false;
   }else if(rule.dst==='intra-group'){
     // meaningless without a source group - must match nothing, not everything
     if(!rule.src.group)return false;

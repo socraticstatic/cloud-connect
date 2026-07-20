@@ -73,6 +73,15 @@ describe('RuleBuilder', () => {
     expect(screen.queryByText(/matched/i)).not.toBeInTheDocument();
   });
 
+  it('does not offer intra-group / not-intra-group as destinations (no src.group control exists yet)', () => {
+    render(<RuleBuilder />);
+    fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
+    const dstSelect = screen.getByLabelText(/destination/i) as HTMLSelectElement;
+    const values = Array.from(dstSelect.options).map(o => o.value);
+    expect(values).not.toContain('intra-group');
+    expect(values).not.toContain('not-intra-group');
+  });
+
   it('adds a rule to the engine when submitted', () => {
     const before = (CC.ruleList() as unknown[]).length;
     render(<RuleBuilder />);
