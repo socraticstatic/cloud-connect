@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { CC } from '../../engine';
-import { useCloudControlActions } from '../../engine/react/useCloudControl';
+import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
 
 const ACTIONS = ['deny', 'inspect', 'route-private', 'allow'] as const;
 const PORTS = ['any', '443', '5432', '8443'] as const;
@@ -10,6 +10,12 @@ const PORTS = ['any', '443', '5432', '8443'] as const;
    "group:<id>" so one control expresses both destination families. Nothing
    downstream sees the prefix — spec() turns it back into {group}. */
 const GROUP_DST_PREFIX = 'group:';
+
+/* id of the "pick a source group" warning — shared between the <p> that
+   renders it and the aria-describedby on the two controls it concerns
+   (#rb-dst, #rb-group), so assistive tech gets the same signal a sighted
+   user gets from reading the page. */
+const GROUP_WARNING_ID = 'rb-group-warning';
 
 /* How many matched flows the dry-run surface names before it summarises the
    rest. Enough to recognise the blast radius; not so many the form becomes
@@ -96,7 +102,11 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
   const [action, setAction] = useState<string>(INITIAL_FORM.action);
   const [preview, setPreview] = useState<Preview | null>(null);
 
-  const groups = CC.groupList() as Group[];
+  // Subscribed via useCloudControl (not useCloudControlActions, which hands
+  // back the engine handle without wiring a re-render). A group added or
+  // renamed in the estate while the builder is open shows up here without
+  // needing an unrelated field edit to force a re-render first.
+  const groups = useCloudControl(cc => cc.groupList()) as Group[];
 
   /* src.group is OMITTED rather than set to 'any' when no group is chosen:
      the engine treats any truthy src.group as a filter, so the literal
@@ -127,6 +137,11 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
   };
 
   const submit = () => {
+    // Defense in depth: the Add rule button is disabled in this state, but
+    // a disabled control is a UI affordance, not a contract — refuse here
+    // too so the silent-zero-match rule stays unreachable even if submit()
+    // is ever reached some other way.
+    if (groupNeeded) return;
     actions.addRule({ ...spec(), enforceNow: false });
     resetForm();
     setOpen(false);
@@ -180,6 +195,7 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
         <div>
           <label className="block text-figma-xs text-fw-bodyLight" htmlFor="rb-group">Source group</label>
           <select id="rb-group" value={group} onChange={e => onField(setGroup)(e.target.value)}
+            aria-describedby={groupNeeded ? GROUP_WARNING_ID : undefined}
             className={selectClass}>
             <option value="any">any source</option>
             {groups.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
@@ -210,6 +226,7 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
               group they are relative to; it does. */}
           <label className="block text-figma-xs text-fw-bodyLight" htmlFor="rb-dst">Destination</label>
           <select id="rb-dst" value={dst} onChange={e => onField(setDst)(e.target.value)}
+            aria-describedby={groupNeeded ? GROUP_WARNING_ID : undefined}
             className={selectClass}>
             {Object.entries(CC.DSTS).map(([k, v]) => (
               <option key={k} value={k}>{v as string}</option>
@@ -242,15 +259,17 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
           Say that in the form rather than letting a person watch an empty
           dry run and guess why. */}
       {groupNeeded && (
-        <p className="text-figma-xs text-fw-body">
+        <p id={GROUP_WARNING_ID} role="alert" className="text-figma-xs text-fw-body">
           Pick a source group — “{(CC.DSTS as Record<string, string>)[dst]}” is relative to one, and
           matches nothing until this rule names which group it is about.
         </p>
       )}
 
       <div className="flex gap-2">
-        <button type="button" onClick={submit}
-          className="h-9 px-4 rounded-full text-figma-sm font-medium bg-fw-active text-white hover:bg-fw-linkHover transition-colors">
+        <button type="button" onClick={submit} disabled={groupNeeded}
+          aria-disabled={groupNeeded}
+          title={groupNeeded ? 'Pick a source group before adding this rule' : undefined}
+          className="h-9 px-4 rounded-full text-figma-sm font-medium bg-fw-active text-white hover:bg-fw-linkHover transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-fw-active">
           Add rule
         </button>
         <button type="button" onClick={runDry}

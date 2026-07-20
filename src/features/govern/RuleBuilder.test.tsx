@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { RuleBuilder } from './RuleBuilder';
 import { CC } from '../../engine';
 
@@ -155,5 +155,71 @@ describe('RuleBuilder', () => {
     const after = CC.ruleList() as { name: string }[];
     expect(after.length).toBe(before + 1);
     expect(after.map(r => r.name)).toContain('test-rule-task1');
+  });
+
+  /* intra-group / not-intra-group are relative to whatever source group the
+     rule names. Choosing one without a source group used to be silently
+     committable (the warning informed but didn't block) — this rebuilds
+     that guarantee as an unreachable-state test, not just an annotation. */
+  describe('relative destination without a source group', () => {
+    it('warns and disables Add rule, announced to assistive tech and tied to the controls it concerns', () => {
+      render(<RuleBuilder />);
+      fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
+      fireEvent.change(screen.getByLabelText(/destination/i), { target: { value: 'intra-group' } });
+
+      const warning = screen.getByRole('alert');
+      expect(warning).toHaveTextContent(/pick a source group/i);
+
+      const addRuleBtn = screen.getByRole('button', { name: /^add rule$/i });
+      expect(addRuleBtn).toBeDisabled();
+
+      const dstSelect = screen.getByLabelText(/destination/i);
+      const groupSelect = screen.getByLabelText(/source group/i);
+      expect(dstSelect.getAttribute('aria-describedby')).toBe(warning.id);
+      expect(groupSelect.getAttribute('aria-describedby')).toBe(warning.id);
+    });
+
+    it('clears once a source group is named, and Add rule re-enables', () => {
+      render(<RuleBuilder />);
+      fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
+      fireEvent.change(screen.getByLabelText(/destination/i), { target: { value: 'not-intra-group' } });
+      expect(screen.getByRole('button', { name: /^add rule$/i })).toBeDisabled();
+
+      fireEvent.change(screen.getByLabelText(/source group/i), { target: { value: 'west-branches' } });
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^add rule$/i })).not.toBeDisabled();
+    });
+
+    it('cannot be committed: clicking a disabled Add rule adds nothing to the engine', () => {
+      const before = (CC.ruleList() as unknown[]).length;
+      render(<RuleBuilder />);
+      fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
+      fireEvent.change(screen.getByLabelText(/rule name/i), { target: { value: 'should-never-exist' } });
+      fireEvent.change(screen.getByLabelText(/destination/i), { target: { value: 'intra-group' } });
+
+      fireEvent.click(screen.getByRole('button', { name: /^add rule$/i }));
+
+      const after = CC.ruleList() as { name: string }[];
+      expect(after.length).toBe(before);
+      expect(after.map(r => r.name)).not.toContain('should-never-exist');
+    });
+  });
+
+  /* useCloudControlActions() returns the engine handle but does not
+     subscribe — groups must be read through the subscribing hook so a group
+     added while the builder is open shows up without an unrelated field
+     edit forcing a re-render first. */
+  it('offers a group added to the engine while the builder is open, without any unrelated field edit', () => {
+    render(<RuleBuilder />);
+    fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
+
+    act(() => {
+      CC.addGroup({ id: 'rb-test-live-group', label: 'RB Test Live Group', kind: 'mixed' });
+    });
+
+    const srcGroup = screen.getByLabelText(/source group/i) as HTMLSelectElement;
+    const values = Array.from(srcGroup.options).map(o => o.value);
+    expect(values).toContain('rb-test-live-group');
   });
 });

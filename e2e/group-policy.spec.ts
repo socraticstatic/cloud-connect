@@ -113,3 +113,46 @@ test('a person can author, preview, read back and enforce a group-to-group polic
     )
     .toBe(true);
 });
+
+/* intra-group / not-intra-group are relative to whatever source group the
+   rule names — they match nothing without one. The form used to only warn
+   about this; a person could still click Add rule and commit a policy that
+   silently matches zero flows. This walks that exact path and asserts the
+   commit itself is blocked, not just annotated. */
+test('a relative destination without a source group cannot be committed', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  await page.goto('/#/govern', { waitUntil: 'domcontentloaded' });
+  await dismissFirstVisitOverlays(page);
+
+  const rulesBefore = await page.evaluate(
+    () => (window as unknown as { CC: { ruleList: () => unknown[] } }).CC.ruleList().length,
+  );
+
+  await page.getByRole('button', { name: /^New rule$/i }).click();
+  await page.getByLabel('Destination').selectOption('intra-group');
+
+  const addRuleBtn = page.getByRole('button', { name: /^Add rule$/i });
+  await expect(addRuleBtn).toBeDisabled();
+
+  // The warning is real assistive-tech content, not decorative filler.
+  const warning = page.getByRole('alert');
+  await expect(warning).toContainText(/pick a source group/i);
+
+  // A disabled button ignores clicks natively, but assert the outcome
+  // directly against the engine — the thing that actually matters — rather
+  // than trusting the disabled attribute alone.
+  await addRuleBtn.click({ force: true }).catch(() => {});
+  const rulesAfterBlockedAttempt = await page.evaluate(
+    () => (window as unknown as { CC: { ruleList: () => unknown[] } }).CC.ruleList().length,
+  );
+  expect(rulesAfterBlockedAttempt).toBe(rulesBefore);
+
+  // Naming the source group clears the warning and unblocks the commit.
+  await page.getByLabel('Source group').selectOption('west-branches');
+  await expect(warning).not.toBeVisible();
+  await expect(addRuleBtn).toBeEnabled();
+});
