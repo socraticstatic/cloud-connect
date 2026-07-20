@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Tag, ShieldAlert } from 'lucide-react';
+import { Tag, ShieldAlert, ShieldCheck, Eye, Wrench } from 'lucide-react';
+import { OverflowMenu, type OverflowMenuItem } from '../../components/common/OverflowMenu';
+import { RuleBuilder } from './RuleBuilder';
 import { AttIcon } from '../../components/icons/AttIcon';
 import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
-import { RuleBuilder } from './RuleBuilder';
 
 interface RuleSrc {
   tag?: string;
@@ -56,6 +57,7 @@ export function RulesPanel() {
   const actions = useCloudControlActions();
 
   const [previews, setPreviews] = useState<Record<string, FixPreview | null>>({});
+  const [builderOpen, setBuilderOpen] = useState(false);
 
   const handleEnforce = (rule: Rule) => {
     actions.enforceAny(rule.id);
@@ -73,6 +75,37 @@ export function RulesPanel() {
     setPreviews(prev => ({ ...prev, [rule.id]: null }));
   };
 
+  // Enforce leads — it is the primary act on this screen. Preview and Apply
+  // only exist for rules bound to a known remediation, so they are omitted
+  // rather than shown disabled on the rules that have no fix.
+  const menuItems = (rule: Rule): OverflowMenuItem[] => {
+    const items: OverflowMenuItem[] = [
+      {
+        id: 'enforce',
+        label: 'Enforce',
+        icon: <ShieldCheck className="h-4 w-4" aria-hidden="true" />,
+        onClick: () => handleEnforce(rule),
+      },
+    ];
+    if (rule.fix) {
+      items.push(
+        {
+          id: 'preview',
+          label: 'Preview impact',
+          icon: <Eye className="h-4 w-4" aria-hidden="true" />,
+          onClick: () => handlePreview(rule),
+        },
+        {
+          id: 'apply',
+          label: 'Apply',
+          icon: <Wrench className="h-4 w-4" aria-hidden="true" />,
+          onClick: () => handleApply(rule),
+        },
+      );
+    }
+    return items;
+  };
+
   return (
     <div className="space-y-4" data-tour="govern-rules">
       <div className="rounded-2xl border border-fw-secondary bg-fw-base overflow-hidden">
@@ -86,6 +119,14 @@ export function RulesPanel() {
           <span className="text-figma-xs text-fw-bodyLight">
             {violations.length} violation{violations.length === 1 ? '' : 's'}
           </span>
+          {/* Create action belongs in the card header, not trailing the table. */}
+          <button
+            type="button"
+            onClick={() => setBuilderOpen(true)}
+            className="ml-auto inline-flex items-center h-8 px-3.5 rounded-full text-figma-xs font-medium bg-fw-active text-white hover:bg-fw-linkHover transition-colors"
+          >
+            New rule
+          </button>
         </div>
 
         <table className="w-full text-figma-sm">
@@ -95,7 +136,12 @@ export function RulesPanel() {
               <th className="px-5 py-2 font-medium">Match</th>
               <th className="px-5 py-2 font-medium">Requirement</th>
               <th className="px-5 py-2 font-medium text-center">Status</th>
-              <th className="px-5 py-2 font-medium text-center whitespace-nowrap">Action</th>
+              {/* Row actions collapse into an overflow menu so Rule / Match /
+                  Requirement get the width back — they were wrapping badly
+                  while ~264px went to buttons that are secondary on most rows. */}
+              <th className="w-12 px-2 py-2 font-medium">
+                <span className="sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-fw-secondary">
@@ -110,9 +156,11 @@ export function RulesPanel() {
                       <div className="text-figma-xs text-fw-bodyLight">Custom rule</div>
                     )}
                   </td>
-                  <td className="px-5 py-3 text-fw-body">
+                  {/* Tag names are single tokens — never break them mid-word
+                      ("classified-" / "helion" reads as two tags). */}
+                  <td className="px-5 py-3 text-fw-body whitespace-nowrap">
                     <span className="inline-flex items-center gap-1.5">
-                      <Tag className="w-3.5 h-3.5 text-fw-bodyLight" aria-hidden="true" />
+                      <Tag className="w-3.5 h-3.5 shrink-0 text-fw-bodyLight" aria-hidden="true" />
                       {matchLabel(rule)}
                     </span>
                   </td>
@@ -134,38 +182,12 @@ export function RulesPanel() {
                       </div>
                     )}
                   </td>
-                  <td className="px-5 py-3">
-                    {/* The action group is centered under the centered "Action"
-                        header; secondary fix actions sit left of the primary Enforce. */}
-                    <div className="flex items-center justify-center gap-2">
-                      {!enforced && rule.fix && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => handlePreview(rule)}
-                            className="inline-flex items-center justify-center h-8 px-3 rounded-full text-figma-xs font-medium whitespace-nowrap border border-fw-secondary text-fw-body hover:bg-fw-wash transition-colors"
-                          >
-                            Preview impact
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleApply(rule)}
-                            className="inline-flex items-center justify-center h-8 px-3 rounded-full text-figma-xs font-medium whitespace-nowrap border border-fw-secondary text-fw-body hover:bg-fw-wash transition-colors"
-                          >
-                            Apply
-                          </button>
-                        </>
-                      )}
-                      {!enforced && (
-                        <button
-                          type="button"
-                          onClick={() => handleEnforce(rule)}
-                          className="inline-flex items-center justify-center h-8 min-w-[84px] px-3 rounded-full text-figma-xs font-medium whitespace-nowrap bg-fw-active text-white hover:bg-fw-linkHover transition-colors"
-                        >
-                          Enforce
-                        </button>
-                      )}
-                    </div>
+                  <td className="w-12 px-2 py-3">
+                    {!enforced && (
+                      <div className="flex justify-end">
+                        <OverflowMenu items={menuItems(rule)} />
+                      </div>
+                    )}
                   </td>
                 </tr>
               );
@@ -174,7 +196,7 @@ export function RulesPanel() {
         </table>
       </div>
 
-      <RuleBuilder />
+      <RuleBuilder open={builderOpen} onOpenChange={setBuilderOpen} />
 
       {violations.length > 0 && (
         <div className="rounded-2xl border border-fw-secondary bg-fw-wash px-5 py-3">

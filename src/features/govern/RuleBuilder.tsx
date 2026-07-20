@@ -23,9 +23,20 @@ const INITIAL_FORM = {
   action: 'deny',
 };
 
-export function RuleBuilder() {
+interface RuleBuilderProps {
+  /** Controlled open state. When provided, the parent owns the trigger and
+   *  this component renders only the form. Omit for the self-contained
+   *  variant that renders its own "New rule" button. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderProps = {}) {
   const actions = useCloudControlActions();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (v: boolean) => (onOpenChange ? onOpenChange(v) : setInternalOpen(v));
   const [name, setName] = useState(INITIAL_FORM.name);
   const [tag, setTag] = useState(INITIAL_FORM.tag);
   const [cloud, setCloud] = useState(INITIAL_FORM.cloud);
@@ -67,6 +78,9 @@ export function RuleBuilder() {
   };
 
   if (!open) {
+    // Controlled: the parent owns the trigger (it lives in the card header,
+    // where a create action belongs — not trailing the table).
+    if (isControlled) return null;
     return (
       <button
         type="button"
