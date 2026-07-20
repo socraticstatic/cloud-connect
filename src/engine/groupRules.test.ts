@@ -100,3 +100,22 @@ describe('group-aware matching', () => {
     inverse.forEach(m => expect(m.flow.dstGroups).not.toContain('west-all'));
   });
 });
+
+/* Separate describe so it runs after the mutating test above without
+   depending on its state: it authors its own group rule. */
+describe('group rules are readable wherever they are summarised', () => {
+  it('policies() renders a group rule without stringifying the objects', () => {
+    CC.addRule({
+      name: 'west-to-west',
+      src: { group: 'west-branches' },
+      dst: { group: 'west-workloads' },
+      ports: 'any', action: 'allow', chain: [],
+    });
+    const p = (CC.policies() as { name: string; match: string }[]).find(x => x.name === 'west-to-west');
+    expect(p).toBeTruthy();
+    expect(p!.match).not.toContain('[object Object]');
+    expect(p!.match).not.toContain('undefined');
+    expect(p!.match).toContain('west-branches');
+    expect(p!.match).toContain('west-workloads');
+  });
+});

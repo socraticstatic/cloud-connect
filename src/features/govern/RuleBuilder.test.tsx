@@ -73,13 +73,75 @@ describe('RuleBuilder', () => {
     expect(screen.queryByText(/matched/i)).not.toBeInTheDocument();
   });
 
-  it('does not offer intra-group / not-intra-group as destinations (no src.group control exists yet)', () => {
+  it('offers intra-group / not-intra-group as destinations now that a source-group control exists', () => {
     render(<RuleBuilder />);
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
     const dstSelect = screen.getByLabelText(/destination/i) as HTMLSelectElement;
     const values = Array.from(dstSelect.options).map(o => o.value);
-    expect(values).not.toContain('intra-group');
-    expect(values).not.toContain('not-intra-group');
+    expect(values).toContain('intra-group');
+    expect(values).toContain('not-intra-group');
+  });
+
+  it('offers every live group as a source', () => {
+    render(<RuleBuilder />);
+    fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
+    const srcGroup = screen.getByLabelText(/source group/i) as HTMLSelectElement;
+    const values = Array.from(srcGroup.options).map(o => o.value);
+    (CC.groupList() as { id: string }[]).forEach(g => expect(values).toContain(g.id));
+  });
+
+  it('offers every live group as a destination', () => {
+    render(<RuleBuilder />);
+    fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
+    const dstSelect = screen.getByLabelText(/destination/i) as HTMLSelectElement;
+    const values = Array.from(dstSelect.options).map(o => o.value);
+    (CC.groupList() as { id: string }[]).forEach(g => expect(values).toContain(`group:${g.id}`));
+  });
+
+  /* The whole point of the feature: west-branches → west-workloads must be
+     expressible in the form AND must dry-run to a non-empty match set. A
+     group policy that silently matches nothing is the failure this exists
+     to prevent. */
+  it('dry-runs a group-to-group rule to the same non-empty result the engine returns', () => {
+    render(<RuleBuilder />);
+    fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
+    fireEvent.change(screen.getByLabelText(/source group/i), { target: { value: 'west-branches' } });
+    fireEvent.change(screen.getByLabelText(/destination/i), { target: { value: 'group:west-workloads' } });
+    fireEvent.change(screen.getByLabelText(/action/i), { target: { value: 'allow' } });
+    fireEvent.click(screen.getByRole('button', { name: /dry run/i }));
+
+    const expected = CC.dryRun({
+      name: '',
+      src: { tag: 'any', cloud: 'any', group: 'west-branches' },
+      dst: { group: 'west-workloads' },
+      ports: 'any',
+      action: 'allow',
+      chain: [],
+    }) as { matched: { flow: { srcName: string } }[]; gbps: number; blocked: number };
+
+    expect(expected.matched.length).toBeGreaterThan(0);
+    const summary = `${expected.matched.length} flows matched · ${expected.gbps} Gbps · ${expected.blocked} blocked`;
+    expect(screen.getByText(new RegExp(escapeRegExp(summary)))).toBeInTheDocument();
+
+    // and it NAMES what it matched, not just a count
+    const firstSrc = expected.matched[0].flow.srcName;
+    expect(screen.getAllByText(new RegExp(escapeRegExp(firstSrc))).length).toBeGreaterThan(0);
+  });
+
+  it('persists src.group and dst.group onto the rule it adds', () => {
+    render(<RuleBuilder />);
+    fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
+    fireEvent.change(screen.getByLabelText(/rule name/i), { target: { value: 'group-rule-c2' } });
+    fireEvent.change(screen.getByLabelText(/source group/i), { target: { value: 'west-branches' } });
+    fireEvent.change(screen.getByLabelText(/destination/i), { target: { value: 'group:west-workloads' } });
+    fireEvent.change(screen.getByLabelText(/action/i), { target: { value: 'allow' } });
+    fireEvent.click(screen.getByRole('button', { name: /^add rule$/i }));
+
+    const added = (CC.ruleList() as { name: string; src: { group?: string }; dst: unknown }[])
+      .find(r => r.name === 'group-rule-c2');
+    expect(added).toBeTruthy();
+    expect(added!.src.group).toBe('west-branches');
+    expect(added!.dst).toEqual({ group: 'west-workloads' });
   });
 
   it('adds a rule to the engine when submitted', () => {

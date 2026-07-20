@@ -466,7 +466,11 @@ function pendingRules(){return rules.filter(r=>r.pending);}
 function policies(){
   return [
     ...ruleList().map(r=>({id:r.id,name:r.name,custom:!r.system,
-      match:`${r.src.tag||'any'}${r.src.cloud&&r.src.cloud!=='any'?' @ '+r.src.cloud:''} → ${r.dst}${r.ports!=='any'?' :'+r.ports:''}`,
+      /* Read both endpoints through ruleEndpointLabel, never interpolate
+         them raw: a group rule carries an object on BOTH sides, and
+         `${r.dst}` on an object is the "[object Object]" this summary used
+         to print. */
+      match:`${ruleEndpointLabel(r.src)}${r.src.cloud&&r.src.cloud!=='any'?' @ '+r.src.cloud:''} → ${ruleEndpointLabel(r.dst)}${r.ports!=='any'?' :'+r.ports:''}`,
       tag:TAGS[r.src.tag]?r.src.tag:null,
       chain:r.chain.join(' → ')||r.action,action:r.action,
       enforced:ruleEnforced(r),rule:true})),
