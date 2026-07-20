@@ -112,6 +112,12 @@ function updateGroup(id,patch){
   if(patch.members)g.members=patch.members.slice();
   if(patch.predicates)g.predicates=patch.predicates.slice();
   if(patch.label)g.label=patch.label;
+  // A seeded group that has been edited is no longer the seed definition -
+  // mark it custom so serialize() (which only carries custom:true groups)
+  // stops dropping the edit on a shared link. Without this, editing
+  // west-workloads and sharing the link silently replays the pristine seed
+  // on the receiving end.
+  g.custom=true;
   CC._.emit({type:'policy',label:'Group updated · '+id});
   return copyGroup(g);
 }

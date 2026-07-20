@@ -68,11 +68,46 @@ describe('group session plumbing - hydrate', () => {
 
   it('is safe to hydrate a group id that already exists - no throw, no half-restored state', async () => {
     const CC2 = await freshCC();
+    // No `custom` marker on this hand-built payload - real serialize() output
+    // always carries one (see below), so this simulates a stray/adversarial
+    // payload that merely happens to name an existing seed id. That must
+    // stay inert: no throw, no overwrite.
     const payload = toShareParam({ groups: [{ id: 'west-branches', label: 'clobber via hydrate', kind: 'workload', members: [], predicates: [] }] });
     window.history.replaceState(null, '', '?s=' + payload);
-    expect(() => CC2.hydrate()).not.toThrow();
+    const ok = CC2.hydrate();
+    expect(ok).toBe(true);
     const after = CC2.groupList().find((g: { id: string }) => g.id === 'west-branches');
     expect(after.label).toBe('West branches');
     expect(after.custom).toBeFalsy();
+  });
+
+  // Finding: updateGroup() on a seeded group used to leave `custom` unset,
+  // so serialize() (which only ever carries custom:true groups) silently
+  // dropped the edit - the recipient replayed the pristine seed and the
+  // edit vanished with no error. Proves the whole round trip: edit the
+  // seed, serialize it, hydrate into a receiver that already has the seed,
+  // and confirm the edited definition - not the original - wins.
+  it('carries an edited seed through serialize+hydrate so the edit wins on a receiver that already has the seed', async () => {
+    const edited = CC.updateGroup('west-workloads', {
+      predicates: [{ source: 'cloudTag', key: 'Project', values: ['edited-only'] }],
+    });
+    expect(edited.custom).toBe(true);
+
+    const payload = CC.serialize();
+    const decoded = JSON.parse(atob(payload));
+    const wired = (decoded.groups || []).find((g: { id: string }) => g.id === 'west-workloads');
+    expect(wired).toBeTruthy(); // the edit actually made it onto the wire
+
+    const CC2 = await freshCC();
+    const before = CC2.groupList().find((g: { id: string }) => g.id === 'west-workloads');
+    expect(before.predicates).toEqual([{ source: 'cloudTag', key: 'Project', values: ['xyz', 'abc'] }]);
+
+    window.history.replaceState(null, '', '?s=' + payload);
+    const ok = CC2.hydrate();
+    expect(ok).toBe(true);
+
+    const after = CC2.groupList().find((g: { id: string }) => g.id === 'west-workloads');
+    expect(after.predicates).toEqual([{ source: 'cloudTag', key: 'Project', values: ['edited-only'] }]);
+    expect(after.custom).toBe(true);
   });
 });

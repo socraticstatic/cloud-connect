@@ -87,7 +87,12 @@ function serialize(){
     // (west-branches, west-workloads) already exist on the receiving end,
     // so re-sending them would duplicate rather than restore.
     groups:(CC.groupList()||[]).filter(function(g){return g.custom;}).map(function(g){
-      return {id:g.id,label:g.label,kind:g.kind,members:g.members,predicates:g.predicates,desc:g.desc};
+      // custom:true travels explicitly (every entry here is custom by the
+      // filter above, but the flag has to ride the wire too) - it is the
+      // receiving end's signal that this definition is authoritative and
+      // should win even if the id collides with an existing group (e.g. an
+      // edited seed like west-workloads). See applyShareData below.
+      return {id:g.id,label:g.label,kind:g.kind,members:g.members,predicates:g.predicates,desc:g.desc,custom:true};
     }),
   };
   if(!d.r.length)delete d.r;
@@ -128,8 +133,17 @@ function applyShareData(raw){
     // addGroup no-ops (returns null) when the id already exists, so replaying
     // a payload against an estate that already has the group - the common
     // case, since the recipient's engine seeds are already present - is
-    // safe: no throw, no overwrite of the existing group.
-    (d.groups||[]).forEach(g=>{if(g&&g.id)CC.addGroup(g);});
+    // safe by default: no throw, no overwrite of the existing group. But
+    // when the incoming entry is explicitly marked custom (the only kind
+    // serialize() ever emits - see above), it is an authoritative
+    // definition the sender owns, possibly an edited seed. In that case the
+    // edit must win over the local copy, or it vanishes on replay a second
+    // time even after updateGroup marks the source group custom.
+    (d.groups||[]).forEach(g=>{
+      if(!g||!g.id)return;
+      const created=CC.addGroup(g);
+      if(!created&&g.custom)CC.updateGroup(g.id,{members:g.members,predicates:g.predicates,label:g.label});
+    });
     _.hist.push({label:'Restored shared session',posture:CC.posture()});
     return true;
   }catch(e){console.warn('bad share payload',e);return false;}
