@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Bell, HelpCircle, Search } from 'lucide-react';
@@ -61,7 +62,19 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
     }, 100);
   };
 
-  return (
+  // Portalled straight to document.body (same pattern OverflowMenu uses).
+  // `fixed` descendants resolve against the nearest ancestor that
+  // establishes a containing block — transform, filter, backdrop-filter,
+  // perspective, contain:paint, or will-change on that property all
+  // qualify. <nav> already has backdrop-blur-md for the sticky header, and
+  // rendering this drawer as a plain sibling in the React tree isn't
+  // enough insurance: any future ancestor between here and <body> that
+  // picks up one of those properties would silently clip the drawer to
+  // its own box again, exactly like the header did. Portalling to
+  // document.body sidesteps the whole ancestor chain — the panel and
+  // backdrop always resolve against the real viewport, no matter where in
+  // the React tree <MobileMenu /> gets mounted.
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
@@ -230,6 +243,7 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
