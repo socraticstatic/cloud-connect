@@ -165,6 +165,8 @@ const DSTS={
   'storage':'object storage endpoints',
   'storage-external':'object storage OUTSIDE the org (aws:ResourceOrgID mismatch)',
   'dns-exfil':'covert DNS tunneling (UDP/53)',
+  'intra-group':'workloads in the same group',
+  'not-intra-group':'anything outside the group',
   'any':'any destination',
 };
 /* deterministic flow table: what this estate actually talks to */
@@ -223,13 +225,37 @@ function flows(){
       });
     });
   });
+  /* Group membership, resolved live on every call - never stored on the
+     estate objects themselves. A workload added to a group tomorrow is
+     matched by that group's policies tomorrow. Runs last so it sees every
+     accumulated flow, and draws no rng, so flow gbps stay byte-identical. */
+  out.forEach(function(f){
+    const srcId=f.srcBranch||f.srcVpc||null;
+    f.srcGroups=srcId?CC.groupsFor(srcId):[];
+    f.dstGroups=f.dstVpc?CC.groupsFor(f.dstVpc):[];
+  });
   return out;
 }
 function ruleMatch(rule,flow){
   if(rule.src.tag&&rule.src.tag!=='any'&&flow.srcTag!==rule.src.tag)return false;
   if(rule.src.cloud&&rule.src.cloud!=='any'&&flow.srcCloud!==rule.src.cloud)return false;
-  if(rule.dst==='not-intra-tag'){if(flow.dst==='intra-tag')return false;}
-  else if(rule.dst!=='any'&&flow.dst!==rule.dst)return false;
+  if(rule.src.group&&(flow.srcGroups||[]).indexOf(rule.src.group)<0)return false;
+
+  /* Destination. Guard the object shape FIRST - the legacy string compare
+     below is always true for an object and would match zero flows. */
+  if(rule.dst&&typeof rule.dst==='object'){
+    if(rule.dst.group&&(flow.dstGroups||[]).indexOf(rule.dst.group)<0)return false;
+  }else if(rule.dst==='intra-group'){
+    // meaningless without a source group - must match nothing, not everything
+    if(!rule.src.group)return false;
+    if((flow.dstGroups||[]).indexOf(rule.src.group)<0)return false;
+  }else if(rule.dst==='not-intra-group'){
+    if(!rule.src.group)return false;
+    if((flow.dstGroups||[]).indexOf(rule.src.group)>=0)return false;
+  }else if(rule.dst==='not-intra-tag'){
+    if(flow.dst==='intra-tag')return false;
+  }else if(rule.dst&&rule.dst!=='any'&&flow.dst!==rule.dst)return false;
+
   if(rule.ports!=='any'&&!flow.ports.includes(rule.ports))return false;
   return true;
 }
