@@ -367,10 +367,24 @@ function dryRun(rule){
     blocked:matched.filter(m=>m.v==='blocked').length,
     pending:matched.filter(m=>m.bad).length};
 }
+/* dst is either a legacy DSTS string enum or a structured {group:'<id>'}.
+   A string must be a known DSTS key; an object must name a group that
+   actually exists - fail closed on both, same as the string case always
+   has, rather than weakening the guard to accept any shape. */
+function validDst(dst){
+  if(dst&&typeof dst==='object')return !!(dst.group&&(CC.groupList()||[]).some(g=>g.id===dst.group));
+  return !!DSTS[dst];
+}
+/* Human-readable fallback-name endpoint label. src/dst can each be
+   tag-based or group-based; read whichever key is present rather than
+   assuming .tag or stringifying the object, which is what produced
+   "deny undefined → [object Object]" for group rules. */
+function ruleEndpointLabel(x){return (x&&typeof x==='object')?(x.group||x.tag||'any'):x;}
 function addRule({name,src,dst,ports,action,chain,enforceNow}){
-  if(!DSTS[dst]||!src)return null;
+  if(!src||!validDst(dst))return null;
   _.pushUndo('Author rule');
-  const r={id:'rule-'+(++ruleSeq),pri:rules.length+1,name:name||`${action} ${src.tag||'any'} → ${dst}`,
+  const r={id:'rule-'+(++ruleSeq),pri:rules.length+1,
+    name:name||`${action} ${ruleEndpointLabel(src)} → ${ruleEndpointLabel(dst)}`,
     src,dst,ports:ports||'any',action,chain:chain||[],enforced:false,system:false};
   rules.push(r);
   if(enforceNow)enforceRule(r.id,true);
