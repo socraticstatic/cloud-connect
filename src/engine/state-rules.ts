@@ -197,6 +197,24 @@ function flows(){
     // stops it — the article's "second authorization layer".
     if(tag==='finance-invoices'&&!fixes.dataPerimeter)mk('storage-external','443',false,base*0.6);
   })));
+  /* Branch-originated flows. A customer branch reaches the cloud regions its
+     on-ramp targets; for each, it talks to that region's VPCs. Appended AFTER
+     the VPC loop so the rng stream the VPC flows drew from is untouched and
+     their gbps stay byte-identical. Without these, a group of branches matches
+     nothing and branch policies dry-run empty. */
+  (CC.branches||[]).forEach(br=>{
+    const onramp=(CC.onramps||[]).find(o=>o.id===br.onrampId);
+    if(!onramp)return;
+    (onramp.targets||[]).forEach(t=>{
+      const cloudId=t[0],regionId=t[1];
+      (vpcs[regionId]||[]).forEach(v=>{
+        out.push({id:'f'+(++n),srcBranch:br.id,srcName:br.name,
+          srcTag:(v.tags||[])[0]||null,srcCloud:cloudId,
+          dst:'intra-tag',dstVpc:v.id,ports:'any',
+          viaPublic:!v.attached,gbps:Math.round(rng()*40)/10});
+      });
+    });
+  });
   return out;
 }
 function ruleMatch(rule,flow){
