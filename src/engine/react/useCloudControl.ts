@@ -35,11 +35,12 @@ function subscribe(cb: () => void) {
     };
     wrappedByCallback.set(cb, wrapped);
   }
-  // The ported engine's subscribe() is append-only (no unsubscribe API), so
-  // teardown here is a documented no-op — safe for the app's lifetime. If a
-  // later phase needs real teardown, the engine needs an `unsubscribe` added.
-  CC.subscribe(wrapped);
-  return () => {};
+  // The engine's subscribe() returns a real unsubscribe (state.ts), which is
+  // what useSyncExternalStore's contract requires here — returning a no-op
+  // left every component that ever mounted subscribed for the life of the
+  // page. `wrapped` is stable per `cb` via the WeakMap above, so the teardown
+  // removes exactly the listener this call registered.
+  return CC.subscribe(wrapped);
 }
 
 function getSnapshot() {

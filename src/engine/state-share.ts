@@ -75,6 +75,32 @@ function answerFor(text){
    location.search, so the param survives every client-side navigation
    untouched, and a share link can still carry the current #/route after
    it (?s=<payload>#/discover) so the recipient lands on the right page. */
+/* ---------------- base64 that survives real text ----------------
+   btoa() is defined over Latin-1 only: it throws InvalidCharacterError on any
+   code point above U+00FF. The payload carries free text - a group's label and
+   desc, and addRule()'s generated fallback name, which is built as
+   `${action} ${src} → ${dst}` with U+2192 - so authoring an unnamed rule and
+   hitting Share produced no link at all, just a throw.
+
+   Encode UTF-8 bytes rather than code units. Decoding is deliberately
+   asymmetric: a link minted by the OLD encoder holds raw Latin-1 bytes (e.g.
+   U+00B7 written as a lone 0xB7), which is not valid UTF-8, so a strict decode
+   is tried first and falls back to the raw byte string. Every pre-existing
+   share link still hydrates. */
+function b64encode(str){
+  const bytes=new TextEncoder().encode(str);
+  let bin='';
+  for(let i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+function b64decode(b64){
+  const bin=atob(b64);
+  const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  try{return new TextDecoder('utf-8',{fatal:true}).decode(bytes);}
+  catch(e){return bin;} // legacy payload: the old encoder wrote Latin-1 bytes
+}
+
 function serialize(){
   const d={
     o:onramps.filter(o=>o.active&&o.id!=='nb1').map(o=>o.id),
@@ -99,7 +125,7 @@ function serialize(){
   if(!d.tp.length)delete d.tp;
   if(!d.groups.length)delete d.groups;
   if(!d.o.length&&!d.f.length&&!d.p.length&&!d.r&&!d.s&&!d.groups)return '';
-  return btoa(JSON.stringify(d)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  return b64encode(JSON.stringify(d)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
 function shareUrl(){
   const s=serialize();
@@ -111,7 +137,7 @@ function shareUrl(){
    pulled the raw ?s= value off the URL itself. */
 function applyShareData(raw){
   try{
-    const d=JSON.parse(atob(raw.replace(/-/g,'+').replace(/_/g,'/')));
+    const d=JSON.parse(b64decode(raw.replace(/-/g,'+').replace(/_/g,'/')));
     if(!d||typeof d!=='object'||Array.isArray(d))throw new Error('share payload is not an object');
     (d.o||[]).forEach(id=>CC.activateOnramp(id,true));
     (d.o||[]).forEach(id=>{const o=onramps.find(x=>x.id===id);if(o)o.targets.forEach(([cid,rid])=>{const k=cid+'/'+rid;if(!_.sessionAttached.includes(k))_.sessionAttached.push(k);});});
@@ -180,5 +206,5 @@ function stream(elm,html,done){
   },420);
 }
 
-Object.assign(CC,{answerFor,serialize,shareUrl,hydrate,stream});
+Object.assign(CC,{answerFor,serialize,shareUrl,hydrate,stream,b64encode,b64decode});
 })(window.CC);

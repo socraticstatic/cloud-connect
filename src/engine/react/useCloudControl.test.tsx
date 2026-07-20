@@ -17,6 +17,17 @@ function CountsObject() {
 }
 
 describe('useCloudControl', () => {
+  // Ordered first deliberately: it measures the engine's listener array, and
+  // the mount-and-mutate tests below leave their components mounted.
+  it('unsubscribes from the engine on unmount', () => {
+    const listeners = (CC as unknown as { _: { listeners: unknown[] } })._.listeners;
+    const before = listeners.length;
+    const { unmount } = render(<Attached />);
+    expect(listeners.length).toBeGreaterThan(before);
+    unmount();
+    expect(listeners.length).toBe(before);
+  });
+
   it('re-renders when the engine mutates (primitive selector)', () => {
     render(<Attached />);
     const before = Number(screen.getByTestId('n').textContent);

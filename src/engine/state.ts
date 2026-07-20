@@ -127,11 +127,21 @@ function auditClear(){try{localStorage.removeItem(AUDIT_KEY);}catch(e){}emit({ty
 /* ---------------- pub/sub + history ---------------- */
 const listeners=[];
 const hist=[];
-function subscribe(fn){listeners.push(fn);}
+/* Returns an unsubscribe function. It used to return nothing, so React's
+   useSyncExternalStore - whose subscribe callback is contractually required to
+   hand back a teardown - had to return a no-op, and every component that ever
+   mounted stayed subscribed for the life of the page. */
+function subscribe(fn){
+  listeners.push(fn);
+  return function(){const i=listeners.indexOf(fn);if(i>=0)listeners.splice(i,1);};
+}
 function emit(ev){
   if(ev&&(ev.type==='onramp'||ev.type==='fix'))hist.push({label:ev.label||ev.id||ev.key,posture:posture()});
   if(ev&&(ev.type==='onramp'||ev.type==='fix'||ev.type==='policy'))auditWrite(ev.label||ev.id||ev.key,posture());
-  listeners.forEach(f=>{try{f(ev);}catch(e){console.error(e);}});
+  // iterate a COPY: a listener is now allowed to unsubscribe itself (React
+  // does exactly this when a notification unmounts a subscriber), and splicing
+  // the live array mid-forEach would silently skip the next listener.
+  listeners.slice().forEach(f=>{try{f(ev);}catch(e){console.error(e);}});
 }
 function history(){return hist.slice();}
 
@@ -186,11 +196,23 @@ function snapshot(){
     app:CC.settings.requireApproval,
   };
 }
+/* The estate is not a fixed shape. rescanAccount() pushes a newly DISCOVERED
+   VPC and deliberately records no undo entry, and orderCircuit() appends an
+   on-ramp the same way, so a snapshot taken before either one is shorter than
+   the live arrays it is restored onto. restore() used to index s.vp[k][i]
+   blind and threw on the surplus.
+
+   Restoring means "put back what this snapshot actually recorded". A
+   discovered VPC therefore SURVIVES an undo: discovery reports what was
+   already out there rather than changing it, it pushed no undo entry, and
+   un-finding a workload the user can still see in their cloud console because
+   they undid an unrelated action would make the engine lie about the estate.
+   Every reconciliation below skips indices the snapshot never covered. */
 function restore(s){
-  onramps.forEach((o,i)=>{o.active=s.onr[i].active;o.planned=s.onr[i].planned;o.sub=s.onr[i].sub;});
-  clouds.forEach((c,i)=>{c.attached=s.cl[i];});
-  Object.entries(regions).forEach(([k,rs])=>rs.forEach((r,i)=>{r.attached=s.reg[k][i].attached;r.spof=s.reg[k][i].spof;}));
-  Object.entries(vpcs).forEach(([k,vs])=>vs.forEach((v,i)=>{v.attached=s.vp[k][i].attached;v.cidr=s.vp[k][i].cidr;}));
+  onramps.forEach((o,i)=>{const so=s.onr[i];if(!so)return;o.active=so.active;o.planned=so.planned;o.sub=so.sub;});
+  clouds.forEach((c,i)=>{if(s.cl[i]===undefined)return;c.attached=s.cl[i];});
+  Object.entries(regions).forEach(([k,rs])=>rs.forEach((r,i)=>{const sr=s.reg[k]&&s.reg[k][i];if(!sr)return;r.attached=sr.attached;r.spof=sr.spof;}));
+  Object.entries(vpcs).forEach(([k,vs])=>vs.forEach((v,i)=>{const sv=s.vp[k]&&s.vp[k][i];if(!sv)return;v.attached=sv.attached;v.cidr=sv.cidr;}));
   Object.assign(fixes,s.fx);
   if(s.rl){_.rules.length=0;s.rl.forEach(r=>_.rules.push({...r,src:{...r.src},chain:r.chain.slice()}));}
   if(s.cp){_.customPolicies.length=0;s.cp.forEach(p=>_.customPolicies.push({...p}));}
@@ -405,7 +427,7 @@ function posture(){
 /* the internal bag: privates the sibling state*.js modules share.
    Members land here as each module loads; consumers read them at call
    time, so the bag is the only load-order coupling between files. */
-const _={emit,hist,sessionAttached,pushUndo};
+const _={emit,hist,sessionAttached,pushUndo,listeners};
 
 return {TAGS,onramps,branches,clouds,regions,vpcs,fixes,sim,designedPublic,
   auditLog,auditClear,

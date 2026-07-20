@@ -222,7 +222,15 @@ function flows(){
       const tenths=Math.round(base*0.9*10);
       let given=0;
       peers.forEach((p,i)=>{
-        const share=i===peers.length-1?tenths-given:Math.round(tenths/peers.length);
+        // FLOOR, not round: with round(), the first n-1 shares can together
+        // exceed the total (round(2/4)*3 = 3 > 2) and the last peer absorbs a
+        // NEGATIVE remainder - a peer modelled as carrying less than no
+        // traffic. Flooring can only under-allocate, so the remainder the last
+        // peer takes is non-negative by construction and the sum still lands
+        // on `tenths` exactly. The conservation this comment's neighbour
+        // describes is preserved; only the direction of the rounding error is
+        // pinned. See peerSplit.test.ts.
+        const share=i===peers.length-1?tenths-given:Math.floor(tenths/peers.length);
         given+=share;
         mk('intra-tag','5432, 8443',!r.attached,share/10).dstVpc=p.id;
       });
@@ -532,7 +540,19 @@ function tickHits(){
   if(_.tickTokens(rng))any=true;
   if(any)_.emit({type:'hits'});
 }
-setInterval(tickHits,3000);
+/* The ticker drives live product state - CC.policyHits counters and, through
+   _.tickTokens, the AI token meters the Observe page reads - so it has to keep
+   running in the app. It used to be a bare setInterval fired at module load
+   with no handle kept: unstoppable, and started fresh in every test file that
+   imported the engine, where a 3s timer mutating shared counters is noise the
+   suite can neither clear nor rely on. It is now a managed handle, started
+   automatically everywhere EXCEPT under test. */
+let hitTimer=null;
+function startHits(){if(hitTimer!==null)return false;hitTimer=setInterval(tickHits,3000);return true;}
+function stopHits(){if(hitTimer===null)return false;clearInterval(hitTimer);hitTimer=null;return true;}
+function hitsRunning(){return hitTimer!==null;}
+const underTest=typeof process!=='undefined'&&!!process.env&&(!!process.env.VITEST||process.env.NODE_ENV==='test');
+if(!underTest)startHits();
 function policyHits(id){return polHits[id]||null;}
 
 /* the core's snapshot/restore and the share module's replay reach the
@@ -546,5 +566,5 @@ Object.assign(CC,{REQUIREMENTS,addPolicy,removePolicy,enforcePolicy,policyMatche
   SERVICES,DSTS,flows,ruleList,ruleMatch,dryRun,addRule,enforceRule,removeRule,moveRule,enforceAny,ruleEnforced,
   serviceCatalog,insertService,
   settings,setRequireApproval,requestRule,approveRule,rejectRule,pendingRules,
-  policies,policyHits});
+  policies,policyHits,startHits,stopHits,hitsRunning});
 })(window.CC);
