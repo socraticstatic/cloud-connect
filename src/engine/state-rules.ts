@@ -204,12 +204,27 @@ function flows(){
        dst string stays 'intra-tag' so every legacy rule keeps matching; the
        concrete dstVpc is added alongside it. The source's intra-tag gbps is
        DIVIDED across its peers rather than duplicated onto each, so total
-       modelled traffic does not inflate. A VPC with no same-tag peer emits
-       nothing - there is nobody for it to reach. */
+       modelled traffic does not change. A VPC with no same-tag peer emits
+       nothing - there is nobody for it to reach.
+
+       The split is done in integer TENTHS and the last peer takes the
+       remainder, so the peer flows sum back to the source's own intra-tag
+       gbps exactly. Rounding each peer's share independently does not err
+       reliably downward - the direction depends on the remainder - so it
+       could invent or destroy traffic as the peer count changed. Peer count
+       is not static: rescanning GCP surfaces a fourth rd-helion workload,
+       which is precisely where an odd divisor used to break the total.
+       This gate is a hard literal on rd-helion; only the peer FILTER below
+       is tag-generic, so a second intra-tag tag would need this gate widened
+       before it got peer expansion. */
     if(tag==='rd-helion'){
       const peers=allVpcs.filter(p=>p.tag===tag&&p.id!==v.id);
-      peers.forEach(p=>{
-        mk('intra-tag','5432, 8443',!r.attached,base*0.9/peers.length).dstVpc=p.id;
+      const tenths=Math.round(base*0.9*10);
+      let given=0;
+      peers.forEach((p,i)=>{
+        const share=i===peers.length-1?tenths-given:Math.round(tenths/peers.length);
+        given+=share;
+        mk('intra-tag','5432, 8443',!r.attached,share/10).dstVpc=p.id;
       });
     }
     // classified-helion can attempt DNS tunneling: data encoded in query

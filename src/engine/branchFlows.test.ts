@@ -695,7 +695,7 @@ describe('branch-originated flows', () => {
             "west-workloads",
           ],
           "dstVpc": "vpcprod",
-          "gbps": 0.5,
+          "gbps": 0.6,
           "id": "f40",
           "ports": "5432, 8443",
           "srcCloud": "cw",
