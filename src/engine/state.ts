@@ -130,10 +130,23 @@ const hist=[];
 /* Returns an unsubscribe function. It used to return nothing, so React's
    useSyncExternalStore - whose subscribe callback is contractually required to
    hand back a teardown - had to return a no-op, and every component that ever
-   mounted stayed subscribed for the life of the page. */
+   mounted stayed subscribed for the life of the page.
+
+   The teardown closes over a `done` flag rather than re-deriving the
+   listener's position with indexOf(fn): indexOf finds *a* registration of fn,
+   not *this* one, so if the same function is ever subscribed twice, calling
+   one teardown twice - or calling it after the other registration's teardown
+   already ran - would remove whichever matching entry indexOf happens to find
+   first, which can belong to someone else. The done flag makes each teardown
+   remove only its own registration and safe to call any number of times. */
 function subscribe(fn){
+  let done=false;
   listeners.push(fn);
-  return function(){const i=listeners.indexOf(fn);if(i>=0)listeners.splice(i,1);};
+  return function(){
+    if(done)return;
+    done=true;
+    const i=listeners.indexOf(fn);if(i>=0)listeners.splice(i,1);
+  };
 }
 function emit(ev){
   if(ev&&(ev.type==='onramp'||ev.type==='fix'))hist.push({label:ev.label||ev.id||ev.key,posture:posture()});
@@ -141,6 +154,12 @@ function emit(ev){
   // iterate a COPY: a listener is now allowed to unsubscribe itself (React
   // does exactly this when a notification unmounts a subscriber), and splicing
   // the live array mid-forEach would silently skip the next listener.
+  // This is a deliberate trade, not an oversight: a listener unsubscribed by
+  // an EARLIER listener during this same emit still gets called this tick,
+  // because it was still present when the copy was taken. A stale
+  // notification (one extra call to a listener that's on its way out) is far
+  // safer than a skipped one (a live listener that silently misses an
+  // update), and React tolerates redundant notifications fine.
   listeners.slice().forEach(f=>{try{f(ev);}catch(e){console.error(e);}});
 }
 function history(){return hist.slice();}
@@ -207,7 +226,20 @@ function snapshot(){
    already out there rather than changing it, it pushed no undo entry, and
    un-finding a workload the user can still see in their cloud console because
    they undid an unrelated action would make the engine lie about the estate.
-   Every reconciliation below skips indices the snapshot never covered. */
+   Every reconciliation below skips indices the snapshot never covered.
+
+   PRECONDITION: this reconciles snapshot to live estate BY ARRAY INDEX, which
+   is only sound because estate growth is append-only - nothing in src/ ever
+   splices, shifts, pops, sorts, or reverses vpcs/onramps/regions, so index i
+   always names the same logical entity it named when the snapshot was taken.
+   The bounds guards above (the `if(!so)return` / `if(s.vp[k]&&...)` checks)
+   only stop this from throwing on a snapshot shorter than the live arrays;
+   they do nothing to protect against an array that was reordered or had a
+   middle element removed. If anything ever mutates one of these arrays by
+   position rather than by append, restore() will silently apply one entity's
+   snapshot fields to a DIFFERENT entity at the same index - no crash, no
+   warning, just a wrong answer. Whoever touches estate mutation next needs to
+   preserve append-only growth or rework this reconciliation. */
 function restore(s){
   onramps.forEach((o,i)=>{const so=s.onr[i];if(!so)return;o.active=so.active;o.planned=so.planned;o.sub=so.sub;});
   clouds.forEach((c,i)=>{if(s.cl[i]===undefined)return;c.attached=s.cl[i];});

@@ -39,4 +39,26 @@ describe('CC.subscribe teardown', () => {
     expect(seen).toEqual(['a', 'b']);
     unB();
   });
+
+  /* F2b. indexOf(fn) finds *a* registration of fn, not *this* one. Subscribe
+     the same function twice, call the FIRST teardown twice, and both
+     registrations vanished — the second call silently removed a subscription
+     that belonged to someone else. Not reachable through the React hook today
+     (one stable wrapped callback per component, nobody double-subscribes),
+     but subscribe is public typed API now and any consumer will reasonably
+     assume teardown is idempotent. */
+  it('double-subscribing the same function and double-tearing-down the first only removes its own registration', () => {
+    const seen: string[] = [];
+    const fn = () => { seen.push('x'); };
+    const unFirst = CC.subscribe(fn);
+    const unSecond = CC.subscribe(fn);
+
+    unFirst();
+    unFirst(); // must be a safe no-op, not a second removal
+
+    bag().emit({ type: 'policy' });
+    expect(seen).toEqual(['x']); // the second registration is still live
+
+    unSecond();
+  });
 });
