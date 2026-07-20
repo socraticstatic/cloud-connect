@@ -185,6 +185,14 @@ function SitesPanel({
 /** What the selection is, and the one thing you can do with it. Naming what
  *  you found is the only mutation Discover sanctions — there is no attach,
  *  fix or provision here, deliberately. */
+/* id of the id-preview note — swapped into the name input's aria-describedby
+   when the id is not taken. Same idiom as GroupBuilder's gb-id-note /
+   ID_TAKEN_WARNING_ID (GroupBuilder.tsx:29-34): without this, the generated
+   id and the "already taken" warning are visible only, and a screen-reader
+   user typing a name never hears either. */
+const ID_NOTE_ID = 'disc-id-note';
+const ID_TAKEN_WARNING_ID = 'disc-id-taken-warning';
+
 function SelectionBar({
   cc,
   selected,
@@ -220,6 +228,19 @@ function SelectionBar({
     setNaming(false);
     setFailed(false);
     onCreated(name.trim(), id);
+  };
+
+  // A failed create describes a specific, now-stale attempt (a specific id,
+  // claimed the instant it was submitted). Editing the name or backing out
+  // of the form makes that description belong to nothing that was actually
+  // attempted, so both close the banner it would otherwise leave behind.
+  const changeName = (next: string) => {
+    setName(next);
+    setFailed(false);
+  };
+  const cancelNaming = () => {
+    setNaming(false);
+    setFailed(false);
   };
 
   return (
@@ -270,13 +291,14 @@ function SelectionBar({
             <input
               id="disc-group-name"
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={e => changeName(e.target.value)}
+              aria-describedby={taken ? ID_TAKEN_WARNING_ID : ID_NOTE_ID}
               className="h-9 w-full max-w-sm rounded-lg border border-fw-secondary bg-fw-wash px-3 text-figma-sm"
             />
           </div>
           {/* The id, before the commit — it is what every policy stores, and
               showing it after saving would be showing it too late. */}
-          <p className="text-figma-xs text-fw-bodyLight">
+          <p id={ID_NOTE_ID} className="text-figma-xs text-fw-bodyLight">
             Policies will store this group as{' '}
             <code
               data-testid="discover-group-id"
@@ -289,7 +311,7 @@ function SelectionBar({
             {ID_RENAME_WARNING}
           </p>
           {taken && (
-            <p role="alert" className="text-figma-xs text-fw-body">
+            <p id={ID_TAKEN_WARNING_ID} role="alert" className="text-figma-xs text-fw-body">
               “{id}” is already taken. Policies reference this id, so it has to be unique — pick a
               different name.
             </p>
@@ -312,7 +334,7 @@ function SelectionBar({
             </button>
             <button
               type="button"
-              onClick={() => setNaming(false)}
+              onClick={cancelNaming}
               className="h-8 rounded-full border border-fw-secondary px-4 text-figma-xs font-medium text-fw-body transition-colors hover:bg-fw-wash"
             >
               Cancel

@@ -127,6 +127,89 @@ describe('Discover selection → group', () => {
     const bar = screen.getByTestId('discover-selection');
     expect(within(bar).queryByRole('button', { name: /attach|fix|provision|connect/i })).toBeNull();
   });
+  it('wires aria-describedby on the name input, swapping to the taken-id warning on collision (GroupBuilder precedent, GroupBuilder.tsx:237)', () => {
+    renderUD();
+    selectBranch('Dallas HQ');
+    fireEvent.click(screen.getByRole('button', { name: /group these/i }));
+    const input = screen.getByLabelText('Group name');
+
+    const noteId = input.getAttribute('aria-describedby');
+    expect(noteId).toBeTruthy();
+    expect(document.getElementById(noteId!)).toHaveTextContent('Policies will store this group as');
+
+    // "West Branches" -> "west-branches", a seeded group id — a genuine
+    // collision, not a contrived string.
+    fireEvent.change(input, { target: { value: 'West Branches' } });
+    const takenId = input.getAttribute('aria-describedby');
+    expect(takenId).toBeTruthy();
+    expect(takenId).not.toBe(noteId);
+    expect(document.getElementById(takenId!)).toHaveTextContent('is already taken');
+  });
+
+  it('clears a failed-create banner when the name is edited, instead of naming something never attempted', () => {
+    renderUD();
+    selectBranch('Dallas HQ');
+    fireEvent.click(screen.getByRole('button', { name: /group these/i }));
+    fireEvent.change(screen.getByLabelText('Group name'), { target: { value: 'Race Group One' } });
+
+    // Force the addGroup race addGroup's own null-return contract exists
+    // for (state-groups.ts:149): an id claimed between the reactive `taken`
+    // check and this click.
+    const original = CC.addGroup;
+    CC.addGroup = () => null;
+    fireEvent.click(screen.getByRole('button', { name: /^Create group$/i }));
+    CC.addGroup = original;
+
+    expect(screen.getByText(/Could not create/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Group name'), { target: { value: 'Race Group Two' } });
+    expect(screen.queryByText(/Could not create/)).not.toBeInTheDocument();
+  });
+
+  it('Cancel clears a failed-create banner, so reopening the form does not show a stale failure', () => {
+    renderUD();
+    selectBranch('Dallas HQ');
+    fireEvent.click(screen.getByRole('button', { name: /group these/i }));
+    fireEvent.change(screen.getByLabelText('Group name'), { target: { value: 'Race Group Three' } });
+
+    const original = CC.addGroup;
+    CC.addGroup = () => null;
+    fireEvent.click(screen.getByRole('button', { name: /^Create group$/i }));
+    CC.addGroup = original;
+    expect(screen.getByText(/Could not create/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Cancel$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /group these/i }));
+    expect(screen.queryByText(/Could not create/)).not.toBeInTheDocument();
+  });
+
+  it('after a failed create from a genuine id race, the taken-id state recomputes fresh — Create stays correctly disabled with no further fix', () => {
+    renderUD();
+    selectBranch('Dallas HQ');
+    fireEvent.click(screen.getByRole('button', { name: /group these/i }));
+    fireEvent.change(screen.getByLabelText('Group name'), { target: { value: 'Race Group Four' } });
+    const id = 'race-group-four';
+
+    const original = CC.addGroup;
+    CC.addGroup = (spec: { id: string; kind: string }) => {
+      // Simulate another actor claiming the id in the exact gap addGroup's
+      // null-return contract exists for: something else wrote `groups[id]`
+      // between the reactive `taken` check and this click.
+      CC._.groups[spec.id] = {
+        id: spec.id, label: 'Claimed elsewhere', kind: spec.kind,
+        members: [], predicates: [], desc: '', custom: true,
+      };
+      return null;
+    };
+    fireEvent.click(screen.getByRole('button', { name: /^Create group$/i }));
+    CC.addGroup = original;
+
+    expect(screen.getByRole('button', { name: /^Create group$/i })).toBeDisabled();
+    expect(screen.getByText(/is already taken/)).toBeInTheDocument();
+
+    // cleanup — this engine singleton is shared across tests in this file.
+    delete CC._.groups[id];
+  });
 
   // --- MUTATING: creates a group in the shared engine. Ordered last. ---
   it('creates a group holding exactly the picked sites', () => {
