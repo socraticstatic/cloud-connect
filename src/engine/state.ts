@@ -38,6 +38,18 @@ const onramps=[
     targets:[['cw','cwe'],['neb','nbe'],['oci','iad']]},
 ];
 
+/* Customer branch sites. Distinct from onramps[].site, which is the colo
+   facility housing an AT&T on-ramp (Equinix IAD etc). These are the
+   customer's own premises, and they are what "west-branches" groups. */
+const branches=[
+  {id:'br-sjc',name:'San Jose campus',city:'San Jose',geo:[37.34,-121.89],cidrs:['10.60.0.0/20'],onrampId:'dx1'},
+  {id:'br-sfo',name:'San Francisco office',city:'San Francisco',geo:[37.77,-122.42],cidrs:['10.60.16.0/20'],onrampId:'dx1'},
+  {id:'br-bkl',name:'Berkeley lab',city:'Berkeley',geo:[37.87,-122.27],cidrs:['10.60.32.0/20'],onrampId:'dx1'},
+  {id:'br-dal',name:'Dallas HQ',city:'Dallas',geo:[32.78,-96.80],cidrs:['10.61.0.0/20'],onrampId:'nb2'},
+  {id:'br-chi',name:'Chicago branch',city:'Chicago',geo:[41.88,-87.63],cidrs:['10.62.0.0/20'],onrampId:'er1'},
+  {id:'br-ash',name:'Ashburn DC',city:'Ashburn',geo:[39.04,-77.49],cidrs:['10.63.0.0/20'],onrampId:'nb1'},
+];
+
 const clouds=[
   {id:'aws',name:'AWS',color:'#ff9900',mk:'aws',workloads:142,attached:true,partial:true},
   {id:'azure',name:'Azure',color:'#3b8bd4',mk:'AZ',workloads:88,attached:false},
@@ -369,7 +381,7 @@ function posture(){
    time, so the bag is the only load-order coupling between files. */
 const _={emit,hist,sessionAttached,pushUndo};
 
-return {TAGS,onramps,clouds,regions,vpcs,fixes,sim,designedPublic,
+return {TAGS,onramps,branches,clouds,regions,vpcs,fixes,sim,designedPublic,
   auditLog,auditClear,
   undo,canUndo,
   subscribe,activateOnramp,applyFix,
