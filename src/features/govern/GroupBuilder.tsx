@@ -5,6 +5,7 @@ import { useCloudControl, useCloudControlActions } from '../../engine/react/useC
 import {
   groupIdFromName,
   definitionSentences,
+  emptyResolutionHints,
   KIND_LABEL,
   KIND_SCOPE,
   type GroupKind,
@@ -30,6 +31,18 @@ const IMPOSSIBLE_WARNING_ID = 'gb-impossible-warning';
    duplicate id rather than throwing, so without this the failure would be
    a button that silently does nothing. */
 const ID_TAKEN_WARNING_ID = 'gb-id-taken-warning';
+
+/* id of the "create failed" warning. The idTaken check above is a reactive
+   guard, not a lock — it reads `existing` as of the last render, and
+   addGroup itself is the only thing that checks at the instant of the
+   write. If another actor creates the same id between this render and the
+   click, addGroup returns null instead of throwing, and reset()+close()
+   running unconditionally after it would make the group the person just
+   described vanish with no explanation. Not reachable through this form
+   today (the reactive guard already disables Create for a known-taken id),
+   but a null return must still fail loud, not silent, if that guard is ever
+   wrong or the check window is ever missed. */
+const CREATE_FAILED_WARNING_ID = 'gb-create-failed-warning';
 
 /* How many resolved objects the preview NAMES before summarising the rest.
    Enough to recognise one and confirm the group means what you think; not
@@ -74,6 +87,7 @@ export function GroupBuilder({ open, onOpenChange }: GroupBuilderProps) {
   const [kind, setKind] = useState<'' | GroupKind>('');
   const [members, setMembers] = useState<string[]>([]);
   const [predicates, setPredicates] = useState<DraftPredicate[]>([]);
+  const [createFailed, setCreateFailed] = useState(false);
 
   if (!open) return null;
 
@@ -156,12 +170,20 @@ export function GroupBuilder({ open, onOpenChange }: GroupBuilderProps) {
   };
   const resolvedIds = [...resolved.branchIds, ...resolved.vpcIds];
 
+  // What to say when the resolution above comes back empty. Named live
+  // values, not just "check for a typo": matching is case-sensitive while
+  // the tag-value <datalist> below filters case-insensitively, so someone
+  // who types "Region is West" sees "west" offered back in the suggestions
+  // and reads that as confirmation they typed the right thing.
+  const tagValueHints = emptyResolutionHints(completePredicates, cloudTagKeys(), cloudTagValues);
+
   const reset = () => {
     setName('');
     setDesc('');
     setKind('');
     setMembers([]);
     setPredicates([]);
+    setCreateFailed(false);
   };
 
   const cancel = () => {
@@ -173,7 +195,23 @@ export function GroupBuilder({ open, onOpenChange }: GroupBuilderProps) {
     // Defense in depth: the button is disabled in this state, but a disabled
     // control is an affordance, not a contract.
     if (!canCreate) return;
-    actions.addGroup({ id, label: name.trim(), kind, members, predicates: completePredicates, desc });
+    const created = actions.addGroup({
+      id,
+      label: name.trim(),
+      kind,
+      members,
+      predicates: completePredicates,
+      desc,
+    });
+    // addGroup returns null on a duplicate id. idTaken above should already
+    // have caught that and disabled this button — but if the id was claimed
+    // by someone else in the gap between that check and this click, closing
+    // and resetting anyway would make the group the person just described
+    // vanish with no explanation. Stay open, keep the draft, say why.
+    if (!created) {
+      setCreateFailed(true);
+      return;
+    }
     reset();
     onOpenChange(false);
   };
@@ -369,6 +407,13 @@ export function GroupBuilder({ open, onOpenChange }: GroupBuilderProps) {
         </p>
       )}
 
+      {createFailed && (
+        <p id={CREATE_FAILED_WARNING_ID} role="alert" className="text-figma-xs text-fw-body">
+          Could not create “{id}” — that id was already taken the instant this was submitted. Nothing
+          was lost; pick a different name and try again.
+        </p>
+      )}
+
       {impossible && (
         <p id={IMPOSSIBLE_WARNING_ID} role="alert" className="text-figma-xs text-fw-body">
           A branch site carries no governance tag — the taxonomy is a cloud-workload concept, so this
@@ -404,6 +449,8 @@ export function GroupBuilder({ open, onOpenChange }: GroupBuilderProps) {
               ? 'Pick a member or add a tag rule, and what this group resolves to appears here.'
               : impossible
                 ? 'This definition matches nothing, and never will — see the warning above. A typo is not the problem here; the rule is asking branch sites for a tag they do not carry.'
+                : tagValueHints.length > 0
+                ? `This definition matches nothing in the estate. ${tagValueHints.join('; ')} — matching is case-sensitive, so check the value against exactly what's there.`
                 : 'This definition matches nothing in the estate. Check the tag key and value for a typo — a group that resolves to nothing will make every policy naming it match nothing too.'}
           </p>
         ) : (

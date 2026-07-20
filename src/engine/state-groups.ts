@@ -17,7 +17,7 @@ const groups={
     desc:'Bay Area premises'},
   'west-workloads':{id:'west-workloads',label:'West workloads',kind:'workload',
     members:[],predicates:[{source:'cloudTag',key:'Region',values:['west']}],
-    desc:'Anything tagged Region=west'},
+    desc:'Spans three different clouds - AWS, Azure and GCP'},
 };
 
 function allVpcs(){

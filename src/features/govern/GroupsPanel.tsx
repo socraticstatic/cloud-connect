@@ -54,7 +54,12 @@ export function GroupsPanel() {
           </span>
           <span className="text-fw-bodyLight">·</span>
           <span className="text-figma-xs text-fw-bodyLight">
-            {groups.reduce((n, g) => n + g.resolved.count, 0)} objects resolved
+            {/* Deduplicated across groups, not summed — an object that
+                belongs to two groups is one estate object, and summing
+                resolved.count per group would count it twice under a label
+                that reads as a distinct-estate figure. */}
+            {new Set(groups.flatMap(({ resolved }) => [...resolved.branchIds, ...resolved.vpcIds])).size}{' '}
+            objects resolved
           </span>
           <button
             type="button"

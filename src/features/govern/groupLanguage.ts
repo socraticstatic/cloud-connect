@@ -88,6 +88,30 @@ export function memberSentence(count: number, kind?: string): string {
   return `${count} ${kindNoun(kind, count)} picked by hand`;
 }
 
+/** For a rule that resolved to nothing, what the estate actually carries for
+ *  each cloudTag predicate whose KEY the estate knows — never "check for a
+ *  typo" alone, which accuses without giving anything to check against.
+ *
+ *  Two deliberate exclusions:
+ *  - governanceTag predicates: there is no live cloud-tag value list for
+ *    the AT&T taxonomy, and offering one would imply cloud-tag vocabulary
+ *    for a governance-tag rule, which groupLanguage keeps distinct on
+ *    purpose (see predicateSentence).
+ *  - a key the estate does not carry at all: naming values for a key
+ *    nothing has would be nonsense, not a hint. */
+export function emptyResolutionHints(
+  predicates: GroupPredicate[],
+  knownCloudTagKeys: string[],
+  cloudTagValuesFor: (key: string) => string[],
+): string[] {
+  return predicates
+    .filter(
+      (p): p is GroupPredicate & { key: string } =>
+        p.source === 'cloudTag' && !!p.key && knownCloudTagKeys.includes(p.key),
+    )
+    .map(p => `${p.key} carries: ${cloudTagValuesFor(p.key).join(', ')}`);
+}
+
 /** The whole definition, as a list of clauses — members first (they are the
  *  concrete part), then each predicate. A group defined by nothing says so
  *  in words rather than rendering as a blank cell. */

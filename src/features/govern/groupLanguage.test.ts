@@ -4,6 +4,7 @@ import {
   predicateSentence,
   memberSentence,
   definitionSentences,
+  emptyResolutionHints,
   KIND_LABEL,
   KIND_SCOPE,
 } from './groupLanguage';
@@ -123,5 +124,56 @@ describe('kind vocabulary', () => {
     expect(KIND_SCOPE.workload).toMatch(/VPCs/);
     expect(KIND_SCOPE.site).toMatch(/branch/i);
     expect(KIND_SCOPE.mixed).toMatch(/both/i);
+  });
+});
+
+/* I1 — a rule that resolves to nothing has to say what the estate actually
+   carries, not just accuse the person of a typo. This matters because tag
+   VALUE matching is case-sensitive while the <datalist> suggesting values
+   filters case-insensitively: someone who types "Region is West" gets zero
+   results, opens the suggestions, sees "west" offered back, and reads that
+   as confirmation they typed the right thing. Naming the live values is the
+   only way to make the miss diagnosable. */
+describe('emptyResolutionHints — what the estate carries, for a rule that hit nothing', () => {
+  const valuesFor = (key: string) => (key === 'Region' ? ['central', 'east', 'west'] : []);
+
+  it('names the live values for a cloudTag predicate on a key the estate carries', () => {
+    expect(
+      emptyResolutionHints(
+        [{ source: 'cloudTag', key: 'Region', values: ['West'] }],
+        ['Region', 'Env'],
+        valuesFor,
+      ),
+    ).toEqual(['Region carries: central, east, west']);
+  });
+
+  it('says nothing for a key the estate does not carry at all — enumerating it would be nonsense', () => {
+    expect(
+      emptyResolutionHints(
+        [{ source: 'cloudTag', key: 'Zone', values: ['West'] }],
+        ['Region', 'Env'],
+        valuesFor,
+      ),
+    ).toEqual([]);
+  });
+
+  it('says nothing for a governanceTag predicate — there is no live cloud-tag value list for it', () => {
+    expect(
+      emptyResolutionHints([{ source: 'governanceTag', values: ['pci'] }], ['Region'], valuesFor),
+    ).toEqual([]);
+  });
+
+  it('names each known-key cloudTag predicate when a rule has more than one', () => {
+    const multi = (key: string) => (key === 'Region' ? ['west'] : key === 'Env' ? ['prod', 'stage'] : []);
+    expect(
+      emptyResolutionHints(
+        [
+          { source: 'cloudTag', key: 'Region', values: ['West'] },
+          { source: 'cloudTag', key: 'Env', values: ['Prod'] },
+        ],
+        ['Region', 'Env'],
+        multi,
+      ),
+    ).toEqual(['Region carries: west', 'Env carries: prod, stage']);
   });
 });
