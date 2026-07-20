@@ -208,8 +208,13 @@ function flows(){
     (onramp.targets||[]).forEach(t=>{
       const cloudId=t[0],regionId=t[1];
       (vpcs[regionId]||[]).forEach(v=>{
+        // srcTag is null: a customer branch carries no governance tag of
+        // its own, so tag-based rules must never match it here - group
+        // membership is the correct match mechanism (later task). The
+        // destination VPC's tag is still useful, so it's carried honestly
+        // as dstTag rather than mislabeled as the flow's source tag.
         out.push({id:'f'+(++n),srcBranch:br.id,srcName:br.name,
-          srcTag:(v.tags||[])[0]||null,srcCloud:cloudId,
+          srcTag:null,dstTag:(v.tags||[])[0]||null,srcCloud:cloudId,
           dst:'intra-tag',dstVpc:v.id,ports:'any',
           viaPublic:!v.attached,gbps:Math.round(rng()*40)/10});
       });
