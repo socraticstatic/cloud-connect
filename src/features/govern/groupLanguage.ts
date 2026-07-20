@@ -59,6 +59,13 @@ export function kindNoun(kind: string | undefined, count: number): string {
  * the name here, and the form shows the result BEFORE the group is
  * committed, because renaming the group afterwards does not rewrite the
  * policies that already reference the old id. */
+/* Said wherever an id is minted — Govern's builder and Discover's selection
+ * bar alike. One sentence, one place: two surfaces that create groups must
+ * not warn about the same consequence in two different wordings, or the
+ * weaker wording reads as the lesser risk. */
+export const ID_RENAME_WARNING =
+  'Renaming the group later will not update policies that already reference this id.';
+
 export function groupIdFromName(name: string): string {
   return (name || '')
     .toLowerCase()

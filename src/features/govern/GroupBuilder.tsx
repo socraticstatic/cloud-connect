@@ -3,6 +3,7 @@ import { Plus, X } from 'lucide-react';
 import { CC } from '../../engine';
 import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
 import {
+  ID_RENAME_WARNING,
   groupIdFromName,
   definitionSentences,
   emptyResolutionHints,
@@ -249,7 +250,7 @@ export function GroupBuilder({ open, onOpenChange }: GroupBuilderProps) {
             </code>
           </p>
           <p data-testid="group-id-warning" className="mt-1 text-figma-xs text-fw-bodyLight">
-            Renaming the group later will not update policies that already reference this id.
+            {ID_RENAME_WARNING}
           </p>
         </div>
 
