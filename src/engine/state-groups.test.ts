@@ -88,4 +88,131 @@ describe('group resolution', () => {
   it('returns null when updating an unknown group', () => {
     expect(CC.updateGroup('does-not-exist', { members: [] })).toBe(null);
   });
+
+  // I4 — the governanceTag branch of matchesPredicate. `tags` is the AT&T
+  // governance taxonomy; `cloudTags` is the hyperscaler key/value map. The
+  // two must never be conflated, so the governance axis needs its own proof.
+  it('resolves governanceTag predicates against the AT&T taxonomy', () => {
+    CC.addGroup({
+      id: 'gov-grp', label: 'Gov', kind: 'workload', members: [],
+      predicates: [{ source: 'governanceTag', values: ['rd-helion'] }],
+    });
+    const r = CC.resolveGroup('gov-grp');
+    expect(r.vpcIds).toContain('vpcprod');
+    expect(r.vpcIds).toContain('vnetapp');
+    expect(r.vpcIds).toContain('cwgpu');
+    expect(r.vpcIds).not.toContain('vpcbak'); // carries no `tags` key at all
+    CC.removeGroup('gov-grp');
+  });
+
+  // I5 — branches carry cloudTags, so a predicate can select premises.
+  // governanceTag predicates match no branch (branches have no `tags`), which
+  // is expected: governance taxonomy is a cloud-workload concept.
+  it('resolves cloudTag predicates against branches, not just VPCs', () => {
+    CC.addGroup({
+      id: 'west-pred', label: 'West by predicate', kind: 'site', members: [],
+      predicates: [{ source: 'cloudTag', key: 'Region', values: ['west'] }],
+    });
+    const r = CC.resolveGroup('west-pred');
+    expect(r.branchIds.slice().sort()).toEqual(['br-bkl', 'br-sfo', 'br-sjc']);
+    expect(r.vpcIds).toEqual([]);
+    expect(r.count).toBe(3);
+    CC.removeGroup('west-pred');
+  });
+
+  // I3 — a literal member id that names nothing real must not inflate count.
+  it('drops literal member ids that match no real branch or VPC', () => {
+    CC.addGroup({
+      id: 'phantom-grp', label: 'Phantom', kind: 'workload',
+      members: ['vpcbak', 'typo-vpc'], predicates: [],
+    });
+    const r = CC.resolveGroup('phantom-grp');
+    expect(r.vpcIds).toEqual(['vpcbak']);
+    expect(r.count).toBe(1);
+    expect(r.cidrs).toEqual(['10.9.0.0/16']);
+    expect(CC.groupsFor('typo-vpc')).not.toContain('phantom-grp');
+    CC.removeGroup('phantom-grp');
+  });
+
+  // M6 — vnetapp and vpcgcp2 genuinely share 10.4.0.0/16 in the seed.
+  it('deduplicates CIDRs shared by two members', () => {
+    CC.addGroup({
+      id: 'dup-grp', label: 'Dup', kind: 'workload',
+      members: ['vnetapp', 'vpcgcp2'], predicates: [],
+    });
+    const r = CC.resolveGroup('dup-grp');
+    expect(r.count).toBe(2);
+    expect(r.cidrs.filter((c: string) => c === '10.4.0.0/16')).toHaveLength(1);
+    CC.removeGroup('dup-grp');
+  });
+
+  // M8 — mutators must not hand back live internal references.
+  it('returns copies, so a caller cannot silently rewrite a group', () => {
+    const g = CC.addGroup({
+      id: 'copy-grp', label: 'Copy', kind: 'workload',
+      members: ['vpcbak'], predicates: [],
+    });
+    g.members.push('vpcprod');
+    g.label = 'hijacked';
+    expect(CC.resolveGroup('copy-grp').vpcIds).toEqual(['vpcbak']);
+    expect(CC.groupList().find((x: any) => x.id === 'copy-grp').label).toBe('Copy');
+
+    const listed = CC.groupList().find((x: any) => x.id === 'copy-grp');
+    listed.members.push('vpcprod');
+    expect(CC.resolveGroup('copy-grp').vpcIds).toEqual(['vpcbak']);
+    CC.removeGroup('copy-grp');
+  });
+
+  // C2 — undo has to actually undo. A restore that leaves the group in place
+  // while writing 'Undid · …' into the audit trail is worse than no undo.
+  it('undo actually removes a created group', () => {
+    CC.addGroup({ id: 'undo-grp', label: 'Undo me', kind: 'workload', members: ['vpcbak'], predicates: [] });
+    expect(CC.groupList().some((g: any) => g.id === 'undo-grp')).toBe(true);
+    expect(CC.undo()).toBe(true);
+    expect(CC.groupList().some((g: any) => g.id === 'undo-grp')).toBe(false);
+    expect(CC.resolveGroup('undo-grp').count).toBe(0);
+  });
+
+  it('undo restores a removed group', () => {
+    CC.addGroup({ id: 'undo-rm', label: 'Undo remove', kind: 'workload', members: ['vpcbak'], predicates: [] });
+    expect(CC.removeGroup('undo-rm')).toBe(true);
+    expect(CC.groupList().some((g: any) => g.id === 'undo-rm')).toBe(false);
+    expect(CC.undo()).toBe(true);
+    expect(CC.resolveGroup('undo-rm').vpcIds).toEqual(['vpcbak']);
+    CC.removeGroup('undo-rm');
+    CC.undo(); // pop the remove we just pushed
+    CC.removeGroup('undo-rm');
+    CC.undo();
+    CC.undo(); // pop the original create — leaves the store as we found it
+    expect(CC.groupList().some((g: any) => g.id === 'undo-rm')).toBe(false);
+  });
+
+  it('undo reverts a group update', () => {
+    CC.addGroup({ id: 'undo-upd', label: 'Undo update', kind: 'workload', members: ['vpcbak'], predicates: [] });
+    CC.updateGroup('undo-upd', { members: ['vpcprod'], label: 'Renamed' });
+    expect(CC.resolveGroup('undo-upd').vpcIds).toEqual(['vpcprod']);
+    expect(CC.undo()).toBe(true);
+    expect(CC.resolveGroup('undo-upd').vpcIds).toEqual(['vpcbak']);
+    expect(CC.groupList().find((g: any) => g.id === 'undo-upd').label).toBe('Undo update');
+    CC.removeGroup('undo-upd');
+  });
+
+  // C1 — THE defining property: resolution is derived at call time, never
+  // stored. rescanAccount('gcp') discovers vpc-ml-suite (Project=xyz), and
+  // west-workloads must pick it up with no re-registration of anything.
+  //
+  // MUST STAY LAST IN THIS FILE: rescanAccount permanently mutates the shared
+  // singleton for every test that follows it.
+  it('resolves live — a VPC discovered after group creation joins the group', () => {
+    const before = CC.resolveGroup('west-workloads');
+    expect(before.vpcIds).not.toContain('vpcml');
+
+    expect(CC.rescanAccount('gcp')).toBe('vpc-ml-suite');
+
+    const after = CC.resolveGroup('west-workloads');
+    expect(after.vpcIds).toContain('vpcml');
+    expect(after.count).toBe(before.count + 1);
+    expect(after.cidrs).toContain('10.19.0.0/16');
+    expect(CC.groupsFor('vpcml')).toContain('west-workloads');
+  });
 });

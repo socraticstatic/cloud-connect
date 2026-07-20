@@ -40,14 +40,19 @@ const onramps=[
 
 /* Customer branch sites. Distinct from onramps[].site, which is the colo
    facility housing an AT&T on-ramp (Equinix IAD etc). These are the
-   customer's own premises, and they are what "west-branches" groups. */
+   customer's own premises, and they are what "west-branches" groups.
+
+   cloudTags mirrors the hyperscaler key/value shape carried by vpcs[], so
+   one predicate vocabulary selects premises and workloads alike. Branches
+   carry no `tags` array: the governance taxonomy is a cloud-workload
+   concept, so governanceTag predicates match no branch, by design. */
 const branches=[
-  {id:'br-sjc',name:'San Jose campus',city:'San Jose',geo:[37.34,-121.89],cidrs:['10.60.0.0/20'],onrampId:'dx1'},
-  {id:'br-sfo',name:'San Francisco office',city:'San Francisco',geo:[37.77,-122.42],cidrs:['10.60.16.0/20'],onrampId:'dx1'},
-  {id:'br-bkl',name:'Berkeley lab',city:'Berkeley',geo:[37.87,-122.27],cidrs:['10.60.32.0/20'],onrampId:'dx1'},
-  {id:'br-dal',name:'Dallas HQ',city:'Dallas',geo:[32.78,-96.80],cidrs:['10.61.0.0/20'],onrampId:'nb2'},
-  {id:'br-chi',name:'Chicago branch',city:'Chicago',geo:[41.88,-87.63],cidrs:['10.62.0.0/20'],onrampId:'er1'},
-  {id:'br-ash',name:'Ashburn DC',city:'Ashburn',geo:[39.04,-77.49],cidrs:['10.63.0.0/20'],onrampId:'nb1'},
+  {id:'br-sjc',name:'San Jose campus',city:'San Jose',geo:[37.34,-121.89],cidrs:['10.60.0.0/20'],onrampId:'dx1',cloudTags:{Region:'west',Env:'prod',Owner:'facilities'}},
+  {id:'br-sfo',name:'San Francisco office',city:'San Francisco',geo:[37.77,-122.42],cidrs:['10.60.16.0/20'],onrampId:'dx1',cloudTags:{Region:'west',Env:'prod',Owner:'facilities'}},
+  {id:'br-bkl',name:'Berkeley lab',city:'Berkeley',geo:[37.87,-122.27],cidrs:['10.60.32.0/20'],onrampId:'dx1',cloudTags:{Region:'west',Env:'prod',Owner:'facilities'}},
+  {id:'br-dal',name:'Dallas HQ',city:'Dallas',geo:[32.78,-96.80],cidrs:['10.61.0.0/20'],onrampId:'nb2',cloudTags:{Region:'central',Env:'prod',Owner:'facilities'}},
+  {id:'br-chi',name:'Chicago branch',city:'Chicago',geo:[41.88,-87.63],cidrs:['10.62.0.0/20'],onrampId:'er1',cloudTags:{Region:'central',Env:'prod',Owner:'facilities'}},
+  {id:'br-ash',name:'Ashburn DC',city:'Ashburn',geo:[39.04,-77.49],cidrs:['10.63.0.0/20'],onrampId:'nb1',cloudTags:{Region:'east',Env:'prod',Owner:'facilities'}},
 ];
 
 const clouds=[
@@ -153,8 +158,18 @@ function applyFix(key,silent){
 /* ---------------- projection (preview before commit) ----------------
    Apply a mutation silently against the live model, read the outcome,
    restore from snapshot. Pure function to the caller. */
+/* Groups live in the state-groups.js closure and reach us through the _ bag.
+   They must be deep-copied: a shallow copy aliases members/predicates, so a
+   "restore" would hand back the very arrays the mutation edited. */
+function cloneGroup(g){
+  return {...g,
+    members:(g.members||[]).slice(),
+    predicates:(g.predicates||[]).map(p=>({...p,values:(p.values||[]).slice()})),
+  };
+}
 function snapshot(){
   return {
+    gr:_.groups?Object.fromEntries(Object.entries(_.groups).map(([k,g])=>[k,cloneGroup(g)])):null,
     onr:onramps.map(o=>({active:o.active,planned:o.planned,sub:o.sub})),
     cl:clouds.map(c=>c.attached),
     reg:Object.fromEntries(Object.entries(regions).map(([k,rs])=>[k,rs.map(r=>({attached:r.attached,spof:r.spof}))])),
@@ -174,6 +189,11 @@ function restore(s){
   if(s.rl){_.rules.length=0;s.rl.forEach(r=>_.rules.push({...r,src:{...r.src},chain:r.chain.slice()}));}
   if(s.cp){_.customPolicies.length=0;s.cp.forEach(p=>_.customPolicies.push({...p}));}
   if(s.app!==undefined)CC.settings.requireApproval=s.app;
+  // rebuild in place - state-groups.js closes over this exact object
+  if(s.gr&&_.groups){
+    Object.keys(_.groups).forEach(k=>{delete _.groups[k];});
+    Object.entries(s.gr).forEach(([k,g])=>{_.groups[k]=cloneGroup(g);});
+  }
 }
 
 /* ---------------- undo ----------------
