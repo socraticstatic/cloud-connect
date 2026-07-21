@@ -228,12 +228,51 @@ button[class*="flex-1 flex flex-col items-center py-3 px-1"] {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Reduced motion for better performance */
+/* ── Reduced motion — THE authoritative block ─────────────────────────────
+   The only prefers-reduced-motion block in the app. Two dead copies (one in
+   styles/index.css, one variable-zeroing block in styles/tokens.css) were
+   consolidated here — three blocks that all lost the same cascade fight were
+   worse than one that wins it.
+
+   WHY TWO SELECTOR TIERS. tailwind.config.js sets `important: true`, so
+   every `animate-*` / `transition-*` utility emits its declarations
+   `!important` from a CLASS selector — specificity (0,1,0). When two
+   important author declarations collide, higher specificity wins, so the
+   universal tier below ((0,0,0)) loses to every Tailwind utility and only
+   covers plain-element animation. The `html [class]` tier is the one that
+   actually beats the utilities: (0,1,1) outranks (0,1,0), and every
+   Tailwind-animated element by definition carries a class. Verified on
+   computed style in e2e/reduced-motion.spec.ts, not by cascade reasoning.
+
+   Sites that gate motion themselves (motion-safe: variants, the matchMedia
+   check in useRevealStagger.ts, FabricHero's own reduce block) never apply
+   their animation under reduce, so these tiers are a backstop they never
+   meet — and under no-preference this block does not exist at all. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  html [class],
+  html [class]::before,
+  html [class]::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* Transition tokens (defined in styles/tokens.css) zeroed alongside. */
+  :root {
+    --transition-duration-75: 0ms;
+    --transition-duration-100: 0ms;
+    --transition-duration-150: 0ms;
+    --transition-duration-200: 0ms;
+    --transition-duration-300: 0ms;
+    --transition-duration-500: 0ms;
+    --transition-duration-700: 0ms;
+    --transition-duration-1000: 0ms;
   }
 }
