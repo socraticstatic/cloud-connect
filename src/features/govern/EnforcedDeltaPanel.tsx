@@ -39,19 +39,37 @@ import { splitDelta, heldSentence, type EnforcementDelta } from './enforcementDe
  * policy violations (the list below), and neither an improvement nor an
  * unmoved figure is one.
  */
-export function EnforcedDeltaPanel({ delta }: { delta: EnforcementDelta }) {
-  const { moved, held } = splitDelta(delta);
-
+export function EnforcedDeltaPanel({ delta }: { delta: EnforcementDelta | null }) {
   return (
     <div
       data-testid="govern-enforced-delta"
       /* The band swaps in place with no visible navigation, and the whole
          point of it is that a person learns something changed — so it must
-         announce, exactly as NextMoveBand does. */
+         announce, exactly as NextMoveBand does.
+
+         LIFECYCLE. This live region mounts EMPTY on first render and stays
+         mounted for the panel's whole life; only its contents change. Both
+         halves of that matter: screen readers announce CHANGES to an
+         existing live region, and commonly say nothing for a region that is
+         inserted (or remounted) already populated. So the wrapper takes no
+         key and no conditional — RulesPanel renders it unconditionally with
+         `delta = null` — and the per-enforce remount that replays the
+         reveal happens on the inner content div below, never here. All
+         box styling lives on the content too, so the empty region costs no
+         visible border or padding. */
       role="status"
       aria-live="polite"
-      className="border-b border-fw-secondary bg-fw-base px-5 py-4 motion-safe:[animation:cc-reveal_300ms_ease-out]"
     >
+      {delta && <EnforcedDeltaContent key={delta.ruleId} delta={delta} />}
+    </div>
+  );
+}
+
+function EnforcedDeltaContent({ delta }: { delta: EnforcementDelta }) {
+  const { moved, held } = splitDelta(delta);
+
+  return (
+    <div className="border-b border-fw-secondary bg-fw-base px-5 py-4 motion-safe:[animation:cc-reveal_300ms_ease-out]">
       <div className="rounded-xl border border-fw-secondary bg-fw-wash overflow-hidden">
         <div className="px-4 py-3 border-b border-fw-secondary">
           <div className="flex items-center gap-2 text-figma-xs uppercase tracking-wide text-fw-success">
@@ -103,8 +121,14 @@ export function EnforcedDeltaPanel({ delta }: { delta: EnforcementDelta }) {
             data-testid="govern-enforced-held"
             className="flex items-start gap-2 px-4 py-2 border-t border-fw-secondary text-figma-xs text-fw-bodyLight"
           >
+            {/* Named, not "this rule": NextMoveBand renders directly beneath
+                with "Enforcing <next rule> guards against future drift" about
+                a DIFFERENT rule — a bare "this rule" here binds to whichever
+                the eye lands on. Past tense, because here the act is done. */}
             <Minus className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
-            <span>{heldSentence(delta, held)}. Enforcing this rule guards against future drift.</span>
+            <span>
+              {heldSentence(delta, held)}. {delta.ruleName} now guards against future drift.
+            </span>
           </div>
         )}
       </div>

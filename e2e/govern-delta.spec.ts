@@ -54,8 +54,12 @@ test('enforcing from the overflow menu shows the delta the engine actually produ
 }) => {
   await firstMove(page);
 
-  // Nothing has been acted on yet, so there is nothing to report.
-  await expect(page.locator(PANEL)).toHaveCount(0);
+  // Nothing has been acted on yet, so there is nothing to report — but the
+  // live region itself is already mounted, EMPTY. A region inserted only at
+  // announcement time is commonly not announced at all; this emptiness is
+  // the fix, not an accident.
+  await expect(page.locator(PANEL)).toHaveCount(1);
+  await expect(page.locator(PANEL)).toBeEmpty();
 
   const target = await page.evaluate(() => {
     const CC = (window as unknown as { CC: any }).CC;
@@ -174,7 +178,11 @@ test('the consequence panel does not animate under prefers-reduced-motion', asyn
 
   const panel = page.locator(PANEL);
   await expect(panel).toBeVisible();
-  const animation = await panel.evaluate(el => getComputedStyle(el).animationName);
+  // The reveal animation rides on the panel's inner content div (the live
+  // region wrapper itself never animates — it must never remount or move).
+  const animation = await panel
+    .locator(':scope > div')
+    .evaluate(el => getComputedStyle(el).animationName);
   expect(animation).toBe('none');
 
   // Still fully readable — reduced motion removes the arrival, not the content.

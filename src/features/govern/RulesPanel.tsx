@@ -186,10 +186,13 @@ export function RulesPanel() {
             "where do I start". The band answers that once, in the currency of
             the violation list below, before anyone commits to anything. */}
         {/* Consequence first, then the re-pointed recommendation — that is
-            the order the two things happen in. Keyed on the rule so enforcing
-            a second rule remounts the panel and the reveal plays again rather
-            than the figures silently swapping under a static frame. */}
-        {lastDelta && <EnforcedDeltaPanel key={lastDelta.ruleId} delta={lastDelta} />}
+            the order the two things happen in. Rendered UNCONDITIONALLY and
+            unkeyed: the panel is a live region, and a live region must exist
+            (empty) before its first announcement — one inserted or remounted
+            already populated is commonly not announced at all. The panel
+            keys its own inner content per rule, so the reveal still replays
+            on a second enforce without the region node ever remounting. */}
+        <EnforcedDeltaPanel delta={lastDelta} />
 
         <NextMoveBand onEnforce={enforceMeasured} />
 
