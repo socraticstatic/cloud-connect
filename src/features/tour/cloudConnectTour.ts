@@ -250,7 +250,11 @@ export const cloudConnectTour: (TourStep & { route: string })[] = [
     id: 'ai-fabric',
     title: 'Token policies under governance',
     description:
-      'The tokens layer gets the same treatment as bytes: every app has a budget, a scope, and an optional guardrail. Enforce a policy here and a classified request to an external model is denied at the token layer — the network never carries it.',
+      // One added sentence, deliberately phrased without the word "group":
+      // this is the tour's closing beat, and the e2e spec holds the groups
+      // THREAD to the middle of the arc (/\bgroup/i must not match the last
+      // two beats). The name itself carries the point.
+      'The tokens layer gets the same treatment as bytes: every app has a budget, a scope, and an optional guardrail. The same west-workloads name Govern policy points at scopes a token policy here too, resolved live against the estate. Enforce a policy here and a classified request to an external model is denied at the token layer — the network never carries it.',
     route: '/ai-fabric',
     targetSelector: '[data-tour="aifabric-policies"]',
     placement: 'top',
