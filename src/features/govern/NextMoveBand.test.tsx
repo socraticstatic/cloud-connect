@@ -1,8 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { NextMoveBand } from './NextMoveBand';
 import { rankMoves } from './nextMove';
 import { CC } from '../../engine';
+
+/** The band's enforcer is REQUIRED (see NextMoveBandProps): RulesPanel hands
+ *  it the measured enforcer so the band's button and the row menu produce the
+ *  same consequence panel. Tests stub it — a stub is exactly the point: the
+ *  band routes, it does not enforce. */
+const noEnforce = () => {};
 
 describe('NextMoveBand · rankMoves call count', () => {
   it('ranks the estate once per render, not twice', () => {
@@ -14,7 +20,7 @@ describe('NextMoveBand · rankMoves call count', () => {
     // baseline this asserts against, so the count moves with the estate
     // instead of being pinned to a rule count that could drift.
     const spy = vi.spyOn(CC, 'previewFix');
-    render(<NextMoveBand />);
+    render(<NextMoveBand onEnforce={noEnforce} />);
     const renderCallCount = spy.mock.calls.length;
     spy.mockClear();
 
@@ -23,6 +29,27 @@ describe('NextMoveBand · rankMoves call count', () => {
 
     spy.mockRestore();
     expect(renderCallCount).toBe(singlePassCallCount);
+  });
+});
+
+describe('NextMoveBand · enforcement is injected, never a fallback', () => {
+  it('routes its button through the provided enforcer and mutates nothing itself', () => {
+    // The old optional prop fell back to a bare `actions.enforceAny` — an
+    // enforce with no consequence panel, a silent third path no viewer was
+    // meant to get. The prop is required now; this pins the wiring: the
+    // button hands the TOP-RANKED rule id to the injected enforcer, and the
+    // band itself leaves the engine untouched.
+    const topRule = rankMoves(CC)[0];
+    const enforcedBefore = (CC.ruleList() as { id: string }[]).filter(r => CC.ruleEnforced(r)).length;
+
+    const onEnforce = vi.fn();
+    render(<NextMoveBand onEnforce={onEnforce} />);
+    fireEvent.click(screen.getByRole('button', { name: /enforce this rule/i }));
+
+    expect(onEnforce).toHaveBeenCalledTimes(1);
+    expect(onEnforce).toHaveBeenCalledWith(topRule.ruleId);
+    const enforcedAfter = (CC.ruleList() as { id: string }[]).filter(r => CC.ruleEnforced(r)).length;
+    expect(enforcedAfter).toBe(enforcedBefore);
   });
 });
 
@@ -73,7 +100,7 @@ describe('NextMoveBand · unprojectable rule copy', () => {
     expect(ranked.length).toBeGreaterThan(0);
     expect(ranked[0].projected).toBe(false);
 
-    render(<NextMoveBand />);
+    render(<NextMoveBand onEnforce={noEnforce} />);
     const band = screen.getByTestId('govern-next-move');
     expect(band.textContent).not.toMatch(/bound remediation/i);
     expect(band.textContent).toMatch(/can't be previewed/i);
@@ -92,7 +119,7 @@ describe('NextMoveBand · zero-clear state', () => {
 
   it('never tells the viewer a rule "clears 0 of the 0 open violations"', () => {
     walkToZeroClearState();
-    render(<NextMoveBand />);
+    render(<NextMoveBand onEnforce={noEnforce} />);
     const band = screen.getByTestId('govern-next-move');
     expect(band.textContent).not.toMatch(/clears\s*0\s*of the\s*0\s*open violation/i);
     expect(band.textContent).not.toMatch(/0 of the 0/);
@@ -100,7 +127,7 @@ describe('NextMoveBand · zero-clear state', () => {
 
   it('does not command "Start here" over an action with no effect', () => {
     walkToZeroClearState();
-    render(<NextMoveBand />);
+    render(<NextMoveBand onEnforce={noEnforce} />);
     const band = screen.getByTestId('govern-next-move');
     expect(band.textContent).not.toMatch(/start here/i);
   });
@@ -108,7 +135,7 @@ describe('NextMoveBand · zero-clear state', () => {
   it('gives the zero-clear state its own honest copy: no violations left, still names the rule', () => {
     const ranked = walkToZeroClearState();
     const expectedRule = ranked[0].ruleName;
-    render(<NextMoveBand />);
+    render(<NextMoveBand onEnforce={noEnforce} />);
     const band = screen.getByTestId('govern-next-move');
     expect(band.textContent).toMatch(/no open violations left/i);
     expect(screen.getByTestId('govern-next-move-rule')).toHaveTextContent(expectedRule);
@@ -119,7 +146,7 @@ describe('NextMoveBand · zero-clear state', () => {
 
   it('carries a live-region role so a screen reader hears the recommendation change', () => {
     walkToZeroClearState();
-    render(<NextMoveBand />);
+    render(<NextMoveBand onEnforce={noEnforce} />);
     const band = screen.getByTestId('govern-next-move');
     expect(band).toHaveAttribute('aria-live', 'polite');
   });

@@ -1,5 +1,5 @@
 import { ShieldCheck, CheckCircle2 } from 'lucide-react';
-import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
+import { useCloudControl } from '../../engine/react/useCloudControl';
 import { rankMoves } from './nextMove';
 
 /**
@@ -29,13 +29,15 @@ interface NextMoveBandProps {
    * panel — a viewer who presses the recommendation must not get a lesser
    * experience than one who opens the overflow menu.
    *
-   * Optional, defaulting to a bare `enforceAny`, only so the band can still
-   * be rendered standalone in unit tests. In the app it is always supplied.
+   * REQUIRED. This prop used to be optional with a bare `enforceAny`
+   * fallback — an enforce that produced no consequence panel, a silent
+   * third path nobody designed. The band recommends and routes; enforcing
+   * is always the caller's measured act. Unit tests pass a stub.
    */
-  onEnforce?: (ruleId: string) => void;
+  onEnforce: (ruleId: string) => void;
 }
 
-export function NextMoveBand({ onEnforce }: NextMoveBandProps = {}) {
+export function NextMoveBand({ onEnforce }: NextMoveBandProps) {
   // One subscribing selector, so the recommendation and the figures it cites
   // are read at the same moment and move together. `rankMoves` walks the
   // whole estate (snapshot/restore per candidate rule via `previewFix`), so
@@ -52,10 +54,6 @@ export function NextMoveBand({ onEnforce }: NextMoveBandProps = {}) {
       totalRules: cc.ruleList().length,
     };
   });
-  const actions = useCloudControlActions();
-  const enforce = (ruleId: string) =>
-    onEnforce ? onEnforce(ruleId) : actions.enforceAny(ruleId);
-
   const { move, remaining, openViolations, posture, totalRules } = view;
 
   if (!move) {
@@ -138,7 +136,7 @@ export function NextMoveBand({ onEnforce }: NextMoveBandProps = {}) {
 
         <button
           type="button"
-          onClick={() => enforce(move.ruleId)}
+          onClick={() => onEnforce(move.ruleId)}
           className="inline-flex h-8 shrink-0 items-center self-start rounded-full bg-fw-base px-3.5 text-figma-xs font-medium text-fw-body ring-1 ring-inset ring-fw-secondary transition-colors hover:bg-fw-neutral sm:self-auto"
         >
           Enforce this rule
@@ -202,7 +200,7 @@ export function NextMoveBand({ onEnforce }: NextMoveBandProps = {}) {
 
       <button
         type="button"
-        onClick={() => enforce(move.ruleId)}
+        onClick={() => onEnforce(move.ruleId)}
         className="inline-flex h-8 shrink-0 items-center self-start rounded-full bg-fw-base px-3.5 text-figma-xs font-medium text-fw-link ring-1 ring-inset ring-fw-active transition-colors hover:bg-fw-ctaGhost sm:self-auto"
       >
         Enforce this rule
