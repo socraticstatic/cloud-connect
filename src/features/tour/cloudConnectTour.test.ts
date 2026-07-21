@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { cloudConnectTour } from './cloudConnectTour';
 import { readCopy } from '../../components/tour/ProductTour';
 import { DEMO_BEATS } from '../demo/demoScript';
@@ -139,5 +139,118 @@ describe('cloudConnectTour', () => {
     expect(resolved.count).toBe((CC.branches as unknown[]).length);
     // kind:'site' — a site group must never absorb a VPC.
     expect(resolved.vpcIds).toEqual([]);
+  });
+});
+
+/* --------------------------- review-fix regression tests --------------------------- */
+
+describe('cloudConnectTour — review fixes', () => {
+  const beat = (id: string) => cloudConnectTour.find(s => s.id === id)!;
+
+  it('derives "spanning N clouds" from resolveGroup(west-workloads), not a hardcoded figure', () => {
+    const original = CC.resolveGroup.bind(CC);
+    const real = original('west-workloads') as { vpcIds: string[] };
+
+    // A fake resolution confined to AWS vpcs only. If the copy still says
+    // "spanning three clouds" against this fake, it isn't reading
+    // resolveGroup at all — it's a literal.
+    const regions = CC.regions as Record<string, { id: string }[]>;
+    const vpcsByRegion = CC.vpcs as Record<string, { id: string }[]>;
+    const awsVpcIds = new Set(
+      (regions.aws || []).flatMap(r => (vpcsByRegion[r.id] || []).map(v => v.id)),
+    );
+    const awsOnly = real.vpcIds.filter(id => awsVpcIds.has(id));
+    expect(awsOnly.length, 'fixture needs at least one AWS vpc in west-workloads').toBeGreaterThan(0);
+
+    const spy = vi.spyOn(CC, 'resolveGroup').mockImplementation((id: string) =>
+      id === 'west-workloads'
+        ? { vpcIds: awsOnly, branchIds: [], cidrs: [], count: awsOnly.length }
+        : original(id),
+    );
+    try {
+      const text = readCopy(beat('group-policy').description);
+      expect(text).toMatch(/spanning 1 cloud\b/);
+      expect(text).not.toContain('spanning three clouds');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('splits the live-resolution claim from "All branch sites" — attaches it to the predicate group instead', () => {
+    const text = readCopy(beat('govern-groups').description);
+    // The claim belongs to West workloads (a predicate group), not to the
+    // hand-picked sites group.
+    expect(text).toMatch(/West workloads.*predicate/i);
+    // "All branch sites" is described as a picked set, not as something
+    // that re-resolves on its own.
+    expect(text).toMatch(/All branch sites.*you named it/i);
+  });
+
+  it('says "in Discover", not a positional "N beats ago"', () => {
+    const text = readCopy(beat('govern-groups').description);
+    expect(text).toContain('in Discover');
+    expect(text).not.toMatch(/beats? ago/i);
+  });
+
+  it('ensurePayoffRule never calls addRule when west-workloads is missing — guards before authoring rather than relying on the discarded null', () => {
+    const savedWest = (CC._ as { groups: Record<string, unknown> }).groups['west-workloads'];
+    expect(savedWest, 'west-workloads must be seeded for this test to mean anything').toBeTruthy();
+
+    // Clear out any payoff rule left by earlier tests so ensurePayoffRule
+    // takes the "author a new rule" branch, not "re-enforce the existing
+    // one" — the branch where the discarded addRule() return lives.
+    const existingPayoff = (CC.ruleList() as { id: string; name: string }[]).find(
+      r => /branch sites/i.test(r.name) && /west workloads/i.test(r.name),
+    );
+    if (existingPayoff) CC.removeRule(existingPayoff.id);
+
+    const addRuleSpy = vi.spyOn(CC, 'addRule');
+    try {
+      delete (CC._ as { groups: Record<string, unknown> }).groups['west-workloads'];
+      expect(() => beat('group-policy').action!.onClick()).not.toThrow();
+      expect(addRuleSpy).not.toHaveBeenCalled();
+    } finally {
+      (CC._ as { groups: Record<string, unknown> }).groups['west-workloads'] = savedWest;
+      addRuleSpy.mockRestore();
+    }
+
+    // Restored: the same click now succeeds without throwing.
+    expect(() => beat('group-policy').action!.onClick()).not.toThrow();
+  });
+
+  it('self-heals: reading govern-groups or group-policy never reports the sites group as empty, even if it was never named', () => {
+    const savedSites = (CC._ as { groups: Record<string, unknown> }).groups['all-branch-sites'];
+    try {
+      delete (CC._ as { groups: Record<string, unknown> }).groups['all-branch-sites'];
+
+      const govText = readCopy(beat('govern-groups').description);
+      expect(govText).not.toMatch(/All branch sites.*holds 0\b/);
+
+      // group-policy's thunk self-heals independently of govern-groups above.
+      delete (CC._ as { groups: Record<string, unknown> }).groups['all-branch-sites'];
+      const policyText = readCopy(beat('group-policy').description);
+      const figures = policyText.match(/\bmatches (\d+) modelled flows/);
+      expect(figures, 'no dry-run figure found in the payoff beat').toBeTruthy();
+      expect(Number(figures![1])).toBeGreaterThan(0);
+    } finally {
+      if (savedSites) {
+        (CC._ as { groups: Record<string, unknown> }).groups['all-branch-sites'] = savedSites;
+      }
+    }
+  });
+
+  it('does not instruct a gesture the action never performs ("tick the ones that belong together")', () => {
+    const text = readCopy(beat('discover-sites').description);
+    expect(text).not.toMatch(/tick the ones/i);
+  });
+
+  it('does not claim the viewer wrote the rule sentence by clicking a button', () => {
+    const text = readCopy(beat('group-policy').description);
+    expect(text).not.toMatch(/sentence you wrote/i);
+  });
+
+  it('beat 4 (govern) foreshadows that the rule grammar widens from tag to name, so beat 5 does not contradict it', () => {
+    const govText = readCopy(beat('govern').description);
+    expect(govText).toMatch(/FROM a tag.*name/i);
   });
 });

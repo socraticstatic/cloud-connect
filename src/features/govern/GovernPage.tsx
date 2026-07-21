@@ -27,8 +27,14 @@ export function GovernPage() {
   const activeTab = tabFromParam(params.get('tab'));
   const setActiveTab = (id: GovernTab) =>
     // replace, not push: flipping a tab is not a navigation someone wants to
-    // walk back through one press of Back at a time.
-    setParams(id === 'policies' ? {} : { tab: id }, { replace: true });
+    // walk back through one press of Back at a time. Mutate the EXISTING
+    // params rather than construct a fresh object — `{ tab: id }` clobbered
+    // any other query param a caller had put on the URL.
+    setParams(prev => {
+      if (id === 'policies') prev.delete('tab');
+      else prev.set('tab', id);
+      return prev;
+    }, { replace: true });
   const violations = useCloudControl(cc => cc.violations()) as unknown[];
   // Subscribing selector — the badge is a live CC derivation, so creating a
   // group moves the count without a reload.

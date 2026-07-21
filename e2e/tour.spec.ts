@@ -78,6 +78,38 @@ async function runTour(page: Page): Promise<Beat[]> {
   return beats;
 }
 
+/** Walks the tour end to end pressing only Next — never clicking a beat's
+ *  action. This is the path the existing `runTour` helper can't see: it
+ *  clicks every action, so it can't catch a beat that narrates something
+ *  that never happened because no action ever ran. */
+async function runTourNextOnly(page: Page): Promise<Beat[]> {
+  await page.getByRole('button', { name: TOUR_LAUNCH }).click();
+
+  const counter = page.getByTestId('tour-progress');
+  await expect(counter).toBeVisible();
+  const total = Number(/of (\d+)/.exec((await counter.textContent()) ?? '')![1]);
+  expect(total).toBeGreaterThan(0);
+
+  const beats: Beat[] = [];
+  for (let i = 1; i <= total; i++) {
+    await expect(counter).toHaveText(`Step ${i} of ${total}`);
+    await expect(page.getByTestId('tour-spotlight')).toBeVisible();
+
+    beats.push({
+      title: ((await page.getByTestId('tour-title').textContent()) ?? '').trim(),
+      text: (await page.getByTestId('tour-tooltip').innerText()) ?? '',
+    });
+
+    // Deliberately never click tour-action — this is the skip path.
+    await page
+      .getByRole('button', { name: i === total ? /^finish$/i : /^next$/i })
+      .click();
+  }
+
+  await expect(page.getByTestId('tour-progress')).toHaveCount(0);
+  return beats;
+}
+
 const groupBeatsIn = (beats: Beat[]) => beats.filter(b => /\bgroup/i.test(b.text));
 
 interface Grp { id: string }
@@ -175,4 +207,36 @@ test('a second run in the same session completes, and duplicates nothing', async
   expect(
     afterSecond.rules.filter(n => /branch sites/i.test(n) && /west workloads/i.test(n)),
   ).toHaveLength(1);
+});
+
+/* THE SKIP-PATH CASE. `runTour` clicks every action, so it can never see a
+   viewer who presses Next through discover-sites without naming the group —
+   which used to leave govern-groups and group-policy narrating "holds 0"
+   and "matches 0 modelled flows" for a group that was never made. */
+test('pressing only Next never narrates a group that was never named', async ({ page }) => {
+  await firstVisit(page);
+
+  const groupsBefore = await groupIds(page);
+  expect(groupsBefore).not.toContain('all-branch-sites');
+
+  const beats = await runTourNextOnly(page);
+
+  const groupBeats = groupBeatsIn(beats);
+  expect(
+    groupBeats.length,
+    `groups are narrated by too few beats; titles were: ${beats.map(b => b.title).join(' | ')}`,
+  ).toBeGreaterThanOrEqual(3);
+
+  // The beat that reads the sites group back must not report it empty.
+  const readBackBeat = groupBeats.find(b => /holds/i.test(b.text));
+  expect(readBackBeat, 'no beat reads a group\'s membership back').toBeTruthy();
+  expect(readBackBeat!.text).not.toMatch(/holds 0\b/);
+
+  // The dry-run beat must not report zero flows/zero Gbps for a group
+  // nobody named.
+  const payoffBeat = groupBeats.find(b => /dry-run/i.test(b.text));
+  expect(payoffBeat, 'no beat dry-runs the group policy').toBeTruthy();
+  const figures = payoffBeat!.text.match(/\b\d+(?:\.\d+)?\b/g) ?? [];
+  expect(figures.some(f => Number(f) > 0)).toBe(true);
+  expect(payoffBeat!.text).not.toMatch(/matches 0 modelled flows/);
 });

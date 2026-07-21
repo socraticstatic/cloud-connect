@@ -36,6 +36,25 @@ const groups = () => CC.groupList() as Group[];
 const rules = () => CC.ruleList() as Rule[];
 const branchIds = () => (CC.branches as { id: string }[]).map(b => b.id);
 
+/** Maps each id in `vpcIds` to the cloud that owns it — via `CC.regions`
+ *  (keyed by cloud) and `CC.vpcs` (keyed by region) — and counts the
+ *  distinct clouds. "west-workloads" happens to span three clouds today,
+ *  but that is a fact about the seeded estate, not a number the copy gets
+ *  to assume; this reads it fresh every time the beat is shown. */
+function cloudCountFor(vpcIds: string[]): number {
+  const regions = CC.regions as Record<string, { id: string }[]>;
+  const vpcsByRegion = CC.vpcs as Record<string, { id: string }[]>;
+  const cloudOfVpc: Record<string, string> = {};
+  Object.keys(regions).forEach(cloudId => {
+    (regions[cloudId] || []).forEach(r => {
+      (vpcsByRegion[r.id] || []).forEach(v => {
+        cloudOfVpc[v.id] = cloudId;
+      });
+    });
+  });
+  return new Set(vpcIds.map(id => cloudOfVpc[id]).filter(Boolean)).size;
+}
+
 function ensureSitesGroup(): void {
   if (groups().some(g => g.id === SITES_GROUP_ID)) return;
   CC.addGroup({
@@ -66,6 +85,11 @@ function ensurePayoffRule(): void {
     CC.enforceAny(existing.id);
     return;
   }
+  // addRule returns null (and authors nothing) when dst.group does not name
+  // a live group — validDst fails closed. Guard here so a west-workloads
+  // that was renamed or removed can't make this click a no-op while the
+  // beat above still promises the rule will join the table.
+  if (!groups().some(g => g.id === WEST_WORKLOADS)) return;
   CC.addRule({ ...payoffSpec(), enforceNow: true });
 }
 
@@ -112,7 +136,7 @@ export const cloudConnectTour: (TourStep & { route: string })[] = [
     id: 'discover-sites',
     title: 'Name what you found',
     description: () =>
-      `The scan found more than clouds. These ${(CC.branches as unknown[]).length} premises are your own buildings — a city and a CIDR each, not a resource any hyperscaler holds. Tick the ones that belong together and name the set, and policy stops being a list of addresses. Nothing in the estate moves; you are naming what is already there.`,
+      `The scan found more than clouds. These ${(CC.branches as unknown[]).length} premises are your own buildings — a city and a CIDR each, not a resource any hyperscaler holds. Group them under one name, and policy stops being a list of addresses. Nothing in the estate moves; you are naming what is already there.`,
     route: '/discover',
     targetSelector: '[data-tour="discover-sites"]',
     placement: 'top',
@@ -140,7 +164,7 @@ export const cloudConnectTour: (TourStep & { route: string })[] = [
     id: 'govern',
     title: 'Govern with real rules',
     description:
-      'Policy the way operators write it: IF traffic FROM tag TO destination THEN action, with a dry-run preview against live flows before anything enforces. Enforcing this rule inserts an inline inspection point — the routes in Discover physically rewire.',
+      'Policy the way operators write it: IF traffic FROM a tag — or, as you’ll see, a name — TO destination THEN action, with a dry-run preview against live flows before anything enforces. Enforcing this rule inserts an inline inspection point — the routes in Discover physically rewire.',
     route: '/govern',
     targetSelector: '[data-tour="govern-rules"]',
     placement: 'top',
@@ -154,6 +178,12 @@ export const cloudConnectTour: (TourStep & { route: string })[] = [
     id: 'govern-groups',
     title: 'A group is what a policy names',
     description: () => {
+      // Self-heal: a viewer who pressed Next through discover-sites without
+      // clicking its action never named the group this beat reads back. The
+      // action there is idempotent and cheap — calling it here means this
+      // beat, and group-policy after it, describe a group that actually
+      // exists instead of narrating one that was skipped.
+      ensureSitesGroup();
       const list = groups();
       const objects = new Set(
         list.flatMap(g => {
@@ -162,7 +192,13 @@ export const cloudConnectTour: (TourStep & { route: string })[] = [
         }),
       ).size;
       const mine = CC.resolveGroup(SITES_GROUP_ID) as { count: number };
-      return `${list.length} groups covering ${objects} estate objects, each one resolved right now rather than stored — a workload tagged tomorrow is in its group tomorrow. “${SITES_GROUP_LABEL}” holds ${mine.count}, because you named it two beats ago. The id underneath each label is what every rule stores; the label is only what you read.`;
+      const west = CC.resolveGroup(WEST_WORKLOADS) as { count: number };
+      // The live-resolution claim is illustrated by "West workloads" — a
+      // PREDICATE group, so it genuinely re-evaluates as the estate
+      // changes. "All branch sites" is the opposite kind of group: a
+      // hand-picked, literal membership. Pointing the same claim at it
+      // would be true of the product and false of the example.
+      return `${list.length} groups covering ${objects} estate objects. Every one is resolved right now, not stored — “West workloads” holds ${west.count} by matching a predicate, so a workload tagged tomorrow is in it tomorrow. “${SITES_GROUP_LABEL}” holds ${mine.count}: you named it in Discover, so it holds exactly the sites you picked, no more and no fewer. The id underneath each label is what every rule stores; the label is only what you read.`;
     },
     route: '/govern?tab=groups',
     targetSelector: '[data-tour="govern-groups"]',
@@ -173,8 +209,14 @@ export const cloudConnectTour: (TourStep & { route: string })[] = [
     id: 'group-policy',
     title: 'Write the group into policy',
     description: () => {
+      // Self-heal, same reasoning as govern-groups above: the dry-run below
+      // has to run against a group that actually exists, whether or not the
+      // viewer clicked discover-sites' action.
+      ensureSitesGroup();
       const dry = CC.dryRun(payoffSpec()) as { matched: unknown[]; gbps: number };
-      return `The sentence the whole thing exists for: allow ${SITES_GROUP_LABEL.toLowerCase()} to talk to west workloads — two names, no addresses, spanning three clouds. Dry-run first: it matches ${dry.matched.length} modelled flows carrying ${dry.gbps} Gbps, every one of them named. Enforce it and the rule joins the table above, still reading as the sentence you wrote.`;
+      const resolved = CC.resolveGroup(WEST_WORKLOADS) as { vpcIds: string[] };
+      const cloudCount = cloudCountFor(resolved.vpcIds);
+      return `The sentence the whole thing exists for: allow ${SITES_GROUP_LABEL.toLowerCase()} to talk to west workloads — two names, no addresses, spanning ${cloudCount} cloud${cloudCount === 1 ? '' : 's'}. Dry-run first: it matches ${dry.matched.length} modelled flows carrying ${dry.gbps} Gbps, every one of them named. Enforce it and the rule joins the table above, still reading as that sentence — not a table of addresses.`;
     },
     route: '/govern?tab=policies',
     targetSelector: '[data-tour="govern-rules"]',
