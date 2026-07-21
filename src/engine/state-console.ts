@@ -77,11 +77,18 @@ function checkAlerts(){
 }
 CC.subscribe((ev)=>{if(ev&&ev.type==='hits')return;checkAlerts();});
 
-/* ---------- token policies: editable, enforceable ---------- */
+/* ---------- token policies: editable, enforceable ----------
+   A policy may carry an optional `group` naming a group id — the same
+   grouping vocabulary Govern policy uses reaching the token layer. The
+   policy stores ONLY the id; resolution happens at render via
+   CC.resolveGroup, derived and never stored, same as every other surface.
+   The scope string is descriptive, like the tag-scoped seeds — no new
+   enforcement semantics ride on `group`. */
 const tokenPolicies=_.tokenPolicies={
   'rd-helion':{scope:'self-hosted',budget:2400000,guardrail:false,enforced:false},
   'classified-helion':{scope:'no-external',budget:900000,guardrail:true,enforced:false},
   'shared-services':{scope:'external-allowed',budget:1600000,guardrail:false,enforced:false},
+  'west-workloads':{group:'west-workloads',scope:'private-only',budget:1200000,guardrail:true,enforced:false},
 };
 CC.tokenPolicy=function(tag){return tokenPolicies[tag]||null;};
 CC.tokenPolicyList=function(){return Object.entries(tokenPolicies).map(([tag,p])=>({tag,...p}));};
