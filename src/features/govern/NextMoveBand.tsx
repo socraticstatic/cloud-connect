@@ -22,7 +22,20 @@ import { rankMoves } from './nextMove';
  * so enforcing anything — here, from a row menu, or from another surface —
  * re-ranks and re-renders. Nothing on this band is cached or hardcoded.
  */
-export function NextMoveBand() {
+interface NextMoveBandProps {
+  /**
+   * How this band enforces. RulesPanel passes the measured enforcer so the
+   * band's action and the row menu's action produce the SAME consequence
+   * panel — a viewer who presses the recommendation must not get a lesser
+   * experience than one who opens the overflow menu.
+   *
+   * Optional, defaulting to a bare `enforceAny`, only so the band can still
+   * be rendered standalone in unit tests. In the app it is always supplied.
+   */
+  onEnforce?: (ruleId: string) => void;
+}
+
+export function NextMoveBand({ onEnforce }: NextMoveBandProps = {}) {
   // One subscribing selector, so the recommendation and the figures it cites
   // are read at the same moment and move together. `rankMoves` walks the
   // whole estate (snapshot/restore per candidate rule via `previewFix`), so
@@ -40,6 +53,8 @@ export function NextMoveBand() {
     };
   });
   const actions = useCloudControlActions();
+  const enforce = (ruleId: string) =>
+    onEnforce ? onEnforce(ruleId) : actions.enforceAny(ruleId);
 
   const { move, remaining, openViolations, posture, totalRules } = view;
 
@@ -123,7 +138,7 @@ export function NextMoveBand() {
 
         <button
           type="button"
-          onClick={() => actions.enforceAny(move.ruleId)}
+          onClick={() => enforce(move.ruleId)}
           className="inline-flex h-8 shrink-0 items-center self-start rounded-full bg-fw-base px-3.5 text-figma-xs font-medium text-fw-body ring-1 ring-inset ring-fw-secondary transition-colors hover:bg-fw-neutral sm:self-auto"
         >
           Enforce this rule
@@ -187,7 +202,7 @@ export function NextMoveBand() {
 
       <button
         type="button"
-        onClick={() => actions.enforceAny(move.ruleId)}
+        onClick={() => enforce(move.ruleId)}
         className="inline-flex h-8 shrink-0 items-center self-start rounded-full bg-fw-base px-3.5 text-figma-xs font-medium text-fw-link ring-1 ring-inset ring-fw-active transition-colors hover:bg-fw-ctaGhost sm:self-auto"
       >
         Enforce this rule

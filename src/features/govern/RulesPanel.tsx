@@ -3,6 +3,8 @@ import { Tag, Boxes, ShieldAlert, ShieldCheck, Eye, Wrench } from 'lucide-react'
 import { OverflowMenu, type OverflowMenuItem } from '../../components/common/OverflowMenu';
 import { RuleBuilder } from './RuleBuilder';
 import { NextMoveBand } from './NextMoveBand';
+import { EnforcedDeltaPanel } from './EnforcedDeltaPanel';
+import { enforceAndMeasure, type EnforcementDelta } from './enforcementDelta';
 import { AttIcon } from '../../components/icons/AttIcon';
 import { CC } from '../../engine';
 import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
@@ -96,8 +98,22 @@ export function RulesPanel() {
   const [previews, setPreviews] = useState<Record<string, FixPreview | null>>({});
   const [builderOpen, setBuilderOpen] = useState(false);
 
+  /* The last act and what it moved. ONE piece of state, and both enforcement
+     paths write it — the row overflow menu below and the recommendation
+     band's own button, which is handed this same enforcer. Neither path is
+     allowed to be the lesser experience. */
+  const [lastDelta, setLastDelta] = useState<EnforcementDelta | null>(null);
+
+  /* Reads the three Govern figures, enforces, reads them again. `null` back
+     means nothing was enforced (already enforced, or unknown id) — in which
+     case there is no consequence to report and the previous one stands. */
+  const enforceMeasured = (ruleId: string) => {
+    const delta = enforceAndMeasure(actions, ruleId);
+    if (delta) setLastDelta(delta);
+  };
+
   const handleEnforce = (rule: Rule) => {
-    actions.enforceAny(rule.id);
+    enforceMeasured(rule.id);
   };
 
   const handlePreview = (rule: Rule) => {
@@ -169,7 +185,13 @@ export function RulesPanel() {
         {/* Eight rules of equal visual weight answer "what is here" but not
             "where do I start". The band answers that once, in the currency of
             the violation list below, before anyone commits to anything. */}
-        <NextMoveBand />
+        {/* Consequence first, then the re-pointed recommendation — that is
+            the order the two things happen in. Keyed on the rule so enforcing
+            a second rule remounts the panel and the reveal plays again rather
+            than the figures silently swapping under a static frame. */}
+        {lastDelta && <EnforcedDeltaPanel key={lastDelta.ruleId} delta={lastDelta} />}
+
+        <NextMoveBand onEnforce={enforceMeasured} />
 
         <table className="w-full text-figma-sm">
           <thead>
