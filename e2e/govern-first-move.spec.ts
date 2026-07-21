@@ -109,6 +109,56 @@ test('Govern recommends one rule to enforce, states its effect, and re-points on
   await expect(band).toContainText(`${second.remaining} unenforced rule`);
 });
 
+test('Govern gives the zero-clear state its own copy instead of "START HERE ... clears 0 of the 0"', async ({
+  page,
+}) => {
+  await seedAuth(page);
+  await page.goto('/#/govern', { waitUntil: 'domcontentloaded' });
+
+  const band = page.locator(BAND);
+  await expect(band).toBeVisible();
+
+  // Drive the estate forward exactly like a real session: keep enforcing
+  // whatever the ranking currently recommends until the best remaining move
+  // clears zero violations. On the seeded estate this stops with 2 of 8
+  // rules still unenforced (pol-dns, pol-perimeter) — the field report's
+  // "step 7 of 8".
+  const stopped = await page.evaluate(() => {
+    const CC = (window as unknown as { CC: any }).CC;
+    const rank = () => {
+      const openNow = CC.violations().length;
+      const scored = CC.ruleList()
+        .filter((r: any) => !CC.ruleEnforced(r))
+        .map((r: any) => {
+          const p = r.fix ? CC.previewFix(r.fix) : null;
+          if (p) return { id: r.id, cleared: openNow - p.violations };
+          const own = CC.violations().filter((v: any) => v.policy === r.id).length;
+          return { id: r.id, cleared: own };
+        });
+      scored.sort((a: any, b: any) => b.cleared - a.cleared);
+      return scored;
+    };
+    let ranked = rank();
+    let guard = 0;
+    while (ranked.length > 0 && ranked[0].cleared > 0 && guard < 20) {
+      CC.enforceAny(ranked[0].id);
+      ranked = rank();
+      guard++;
+    }
+    return { remaining: ranked.length, topCleared: ranked[0]?.cleared ?? null };
+  });
+
+  // Sanity: we actually reached the zero-clear state under test.
+  expect(stopped.remaining).toBeGreaterThan(0);
+  expect(stopped.topCleared).toBe(0);
+
+  await expect(band).not.toContainText(/start here/i);
+  await expect(band).not.toContainText(/clears\s*0\s*of the\s*0\s*open violation/i);
+  await expect(band).toContainText(/no open violations left/i);
+  await expect(band).toContainText(`${stopped.remaining}`);
+  await expect(band).toHaveAttribute('aria-live', 'polite');
+});
+
 test('Govern shows a designed finished state once every rule is enforced', async ({ page }) => {
   await seedAuth(page);
   await page.goto('/#/govern', { waitUntil: 'domcontentloaded' });

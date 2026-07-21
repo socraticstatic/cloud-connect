@@ -99,7 +99,13 @@ function scoreMove(cc: CloudControl, rule: RuleShape, openNow: number): Move {
   }
 
   // No bound remediation: count this rule's own open violations, which is
-  // precisely the set enforcement drains.
+  // precisely the set enforcement drains — but `violations()` (state.ts)
+  // only stamps a `policy` id on entries from `_.customPolicies` and the
+  // three example seed rules. A plain rule authored through "New rule" gets
+  // no matching entry there, so `own` is always 0 for it here, even if the
+  // rule genuinely matches live traffic. Safe — it never overclaims impact
+  // — but this fallback is NOT a universal "this rule's real violation
+  // count"; it only reads true for the two families `violations()` stamps.
   const own = (cc.violations() as ViolationShape[]).filter(v => v.policy === rule.id).length;
   return { ...base, cleared: own, postureDelta: null, projected: false };
 }
@@ -108,7 +114,11 @@ function scoreMove(cc: CloudControl, rule: RuleShape, openNow: number): Move {
 export function rankMoves(cc: CloudControl): Move[] {
   const openNow = cc.violations().length;
   return (cc.ruleList() as RuleShape[])
-    .filter(r => !cc.ruleEnforced(r as never))
+    // `CloudControl.ruleEnforced` resolves through the interface's catch-all
+    // `[key: string]: any` (types.ts) rather than a typed signature, so it
+    // accepts any argument shape already — no cast needed, and `as never`
+    // read as a deliberate type-check suppression rather than what this is.
+    .filter(r => !cc.ruleEnforced(r))
     .map(r => scoreMove(cc, r, openNow))
     .sort(
       (a, b) =>
