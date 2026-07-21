@@ -7,6 +7,7 @@ import { cloudConnectTour } from './cloudConnectTour';
 import { UnifiedDiscovery } from '../discover/UnifiedDiscovery';
 import { FabricHero } from '../connect/FabricHero';
 import { RulesPanel } from '../govern/RulesPanel';
+import { GroupsPanel } from '../govern/GroupsPanel';
 import { ObservabilityShell } from '../observe/ObservabilityShell';
 import { networkBinding } from '../observe/networkBinding';
 import { CostPage } from '../cost/CostPage';
@@ -22,8 +23,13 @@ import { TokenPolicies } from '../ai-fabric/TokenPolicies';
  */
 const screenFor: Record<string, () => ReactElement> = {
   discover: () => <UnifiedDiscovery />,
+  'discover-sites': () => <UnifiedDiscovery />,
   connect: () => <FabricHero model={CC.fabricModel()} />,
   govern: () => <RulesPanel />,
+  'govern-groups': () => <GroupsPanel />,
+  // The payoff beat points back at the rules table — the rule it authors has
+  // to land somewhere a viewer can read it.
+  'group-policy': () => <RulesPanel />,
   observe: () => <ObservabilityShell binding={networkBinding(CC)} />,
   cost: () => <CostPage />,
   'ai-fabric': () => <TokenPolicies />,

@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { Tag, Boxes, ShieldAlert, ShieldCheck, Eye, Wrench } from 'lucide-react';
 import { OverflowMenu, type OverflowMenuItem } from '../../components/common/OverflowMenu';
 import { RuleBuilder } from './RuleBuilder';
+import { NextMoveBand } from './NextMoveBand';
+import { EnforcedDeltaPanel } from './EnforcedDeltaPanel';
+import { enforceAndMeasure, type EnforcementDelta } from './enforcementDelta';
 import { AttIcon } from '../../components/icons/AttIcon';
 import { CC } from '../../engine';
 import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
@@ -95,8 +98,22 @@ export function RulesPanel() {
   const [previews, setPreviews] = useState<Record<string, FixPreview | null>>({});
   const [builderOpen, setBuilderOpen] = useState(false);
 
+  /* The last act and what it moved. ONE piece of state, and both enforcement
+     paths write it — the row overflow menu below and the recommendation
+     band's own button, which is handed this same enforcer. Neither path is
+     allowed to be the lesser experience. */
+  const [lastDelta, setLastDelta] = useState<EnforcementDelta | null>(null);
+
+  /* Reads the three Govern figures, enforces, reads them again. `null` back
+     means nothing was enforced (already enforced, or unknown id) — in which
+     case there is no consequence to report and the previous one stands. */
+  const enforceMeasured = (ruleId: string) => {
+    const delta = enforceAndMeasure(actions, ruleId);
+    if (delta) setLastDelta(delta);
+  };
+
   const handleEnforce = (rule: Rule) => {
-    actions.enforceAny(rule.id);
+    enforceMeasured(rule.id);
   };
 
   const handlePreview = (rule: Rule) => {
@@ -109,6 +126,13 @@ export function RulesPanel() {
     if (!rule.fix) return;
     actions.applyFix(rule.fix);
     setPreviews(prev => ({ ...prev, [rule.id]: null }));
+    /* Apply moves violations and posture WITHOUT passing through
+       enforceAndMeasure, so a panel still reporting the last enforce's
+       before/after now disagrees with the header and the violation list
+       around it. A stale claim is worse than no claim — clear it. (Apply is
+       deliberately NOT routed through the measured shape: it is remediation,
+       not enforcement, and the panel's header says "Enforced".) */
+    setLastDelta(null);
   };
 
   // Enforce leads — it is the primary act on this screen. Preview and Apply
@@ -164,6 +188,20 @@ export function RulesPanel() {
             New rule
           </button>
         </div>
+
+        {/* Eight rules of equal visual weight answer "what is here" but not
+            "where do I start". The band answers that once, in the currency of
+            the violation list below, before anyone commits to anything. */}
+        {/* Consequence first, then the re-pointed recommendation — that is
+            the order the two things happen in. Rendered UNCONDITIONALLY and
+            unkeyed: the panel is a live region, and a live region must exist
+            (empty) before its first announcement — one inserted or remounted
+            already populated is commonly not announced at all. The panel
+            keys its own inner content per rule, so the reveal still replays
+            on a second enforce without the region node ever remounting. */}
+        <EnforcedDeltaPanel delta={lastDelta} />
+
+        <NextMoveBand onEnforce={enforceMeasured} />
 
         <table className="w-full text-figma-sm">
           <thead>

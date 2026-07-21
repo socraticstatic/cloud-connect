@@ -168,15 +168,8 @@ button.w-full.p-3.bg-fw-base.border.border-fw-secondary {
   }
 }
 
-/* Reduced motion preferences */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
+/* Reduced-motion handling lives in src/index.css — the single authoritative
+   block. The defeated universal-selector copy that sat here is gone. */
 
 /* Custom styles for wizard flow elements */
 .wizard-card {

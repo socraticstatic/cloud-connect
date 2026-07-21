@@ -43,6 +43,7 @@ export function TourLauncher() {
         onComplete={closeTour}
         onStepChange={handleStepChange}
         storageKey="tour-cloud-connect-completed"
+        resetOnOpen
       />
     </>
   );

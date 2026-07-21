@@ -321,16 +321,5 @@
 
 /* Dark mode removed - light only */
 
-/* Reduced motion preferences */
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    --transition-duration-75: 0ms;
-    --transition-duration-100: 0ms;
-    --transition-duration-150: 0ms;
-    --transition-duration-200: 0ms;
-    --transition-duration-300: 0ms;
-    --transition-duration-500: 0ms;
-    --transition-duration-700: 0ms;
-    --transition-duration-1000: 0ms;
-  }
-}
+/* Reduced-motion handling lives in src/index.css — the single authoritative
+   block. The variable-zeroing that used to sit here was folded into it. */
