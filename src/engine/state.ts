@@ -63,16 +63,21 @@ const clouds=[
   {id:'cw',name:'CoreWeave',color:'#9a7cff',mk:'CW',workloads:6,attached:false,ai:true},
   {id:'neb',name:'Nebius',color:'#42d6c8',mk:'NB',workloads:8,attached:false,ai:true},
 ];
+/* routes/gateways are fixed seeds per region — deterministic, roughly
+   scaled with each region's subnets (route-table entries outnumber
+   subnets; gateways run igw + per-AZ NAT + endpoints). counts() sums
+   them; the gateway seeds sum to 38, the figure every surface has
+   always shown, so removing the old hardcode moved nothing on screen. */
 const regions={
-  aws:[{id:'use1',name:'us-east-1',sub:'N. Virginia',subnets:14,lat:12,attached:true,geo:[38.9,-77.4]},
-       {id:'usw2',name:'us-west-2',sub:'Oregon',subnets:8,lat:62,attached:false,geo:[45.6,-121.2]},
-       {id:'euw1',name:'eu-west-1',sub:'Ireland',subnets:4,lat:88,attached:false,geo:[53.3,-6.3]}],
-  azure:[{id:'wus2',name:'West US 2',sub:'Washington',subnets:9,lat:18,attached:false,geo:[47.2,-119.9]},
-         {id:'uks',name:'UK South',sub:'London · single path',subnets:7,lat:42,attached:false,spof:true,geo:[51.5,-0.1]}],
-  gcp:[{id:'usc1',name:'us-central1',sub:'Iowa',subnets:6,lat:34,attached:false,geo:[41.9,-93.6]}],
-  oci:[{id:'iad',name:'us-ashburn-1',sub:'Ashburn',subnets:3,lat:20,attached:false,geo:[39.0,-77.5]}],
-  cw:[{id:'cwe',name:'US-EAST-04A',sub:'GPU region',subnets:2,lat:28,attached:false,ai:true,geo:[40.2,-74.7]}],
-  neb:[{id:'nbe',name:'eu-north1',sub:'Finland',subnets:2,lat:44,attached:false,ai:true,geo:[60.6,24.8]}],
+  aws:[{id:'use1',name:'us-east-1',sub:'N. Virginia',subnets:14,routes:31,gateways:9,lat:12,attached:true,geo:[38.9,-77.4]},
+       {id:'usw2',name:'us-west-2',sub:'Oregon',subnets:8,routes:18,gateways:6,lat:62,attached:false,geo:[45.6,-121.2]},
+       {id:'euw1',name:'eu-west-1',sub:'Ireland',subnets:4,routes:9,gateways:3,lat:88,attached:false,geo:[53.3,-6.3]}],
+  azure:[{id:'wus2',name:'West US 2',sub:'Washington',subnets:9,routes:21,gateways:6,lat:18,attached:false,geo:[47.2,-119.9]},
+         {id:'uks',name:'UK South',sub:'London · single path',subnets:7,routes:15,gateways:4,lat:42,attached:false,spof:true,geo:[51.5,-0.1]}],
+  gcp:[{id:'usc1',name:'us-central1',sub:'Iowa',subnets:6,routes:13,gateways:4,lat:34,attached:false,geo:[41.9,-93.6]}],
+  oci:[{id:'iad',name:'us-ashburn-1',sub:'Ashburn',subnets:3,routes:7,gateways:2,lat:20,attached:false,geo:[39.0,-77.5]}],
+  cw:[{id:'cwe',name:'US-EAST-04A',sub:'GPU region',subnets:2,routes:5,gateways:2,lat:28,attached:false,ai:true,geo:[40.2,-74.7]}],
+  neb:[{id:'nbe',name:'eu-north1',sub:'Finland',subnets:2,routes:5,gateways:2,lat:44,attached:false,ai:true,geo:[60.6,24.8]}],
 };
 /* Region cloudTags reuse the same west/central/east(+emea) vocabulary the
    branches carry above, so one predicate vocabulary groups premises and
@@ -362,7 +367,8 @@ function counts(){
     regions:Object.values(regions).reduce((s,r)=>s+r.length,0),
     vpcs:av.length,
     subnets:Object.values(regions).flat().reduce((s,r)=>s+r.subnets,0),
-    gateways:38,
+    routes:Object.values(regions).flat().reduce((s,r)=>s+r.routes,0),
+    gateways:Object.values(regions).flat().reduce((s,r)=>s+r.gateways,0),
     workloads:clouds.reduce((s,c)=>s+c.workloads,0),
     attached:av.filter(v=>v.attached).length,
   };

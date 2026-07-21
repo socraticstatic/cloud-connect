@@ -22,6 +22,9 @@ export interface Region {
   name: string;
   sub: string;
   subnets: number;
+  /** Fixed per-region seeds; counts() sums them into the estate figures. */
+  routes: number;
+  gateways: number;
   lat: number;
   attached: boolean;
   spof?: boolean;
@@ -122,6 +125,7 @@ export function estateStats(cc: CloudControl): EstateStat[] {
     { key: 'regions', label: 'Regions', value: c.regions },
     { key: 'vpcs', label: 'VPC · VNet', value: c.vpcs },
     { key: 'subnets', label: 'Subnets', value: c.subnets },
+    { key: 'routes', label: 'Routes', value: c.routes },
     { key: 'gateways', label: 'Gateways', value: c.gateways },
     { key: 'workloads', label: 'Workloads', value: c.workloads },
     { key: 'attached', label: 'Attached', value: c.attached },

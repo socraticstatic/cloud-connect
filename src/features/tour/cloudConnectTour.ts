@@ -250,7 +250,13 @@ export const cloudConnectTour: (TourStep & { route: string })[] = [
     id: 'ai-fabric',
     title: 'Token policies under governance',
     description:
-      'The tokens layer gets the same treatment as bytes: every app has a budget, a scope, and an optional guardrail. Enforce a policy here and a classified request to an external model is denied at the token layer — the network never carries it.',
+      // One added sentence, and it must stay true on BOTH tour paths: "you
+      // saw in Govern" refers to the govern-groups beat reading the seeded
+      // group back — which renders whether or not the viewer clicked any
+      // action — never to a policy the Next-only path did not author. The
+      // tour spec's groups-thread position guard exempts this final beat
+      // deliberately (see tour.spec.ts).
+      'The tokens layer gets the same treatment as bytes: every app has a budget, a scope, and an optional guardrail. The same west-workloads group you saw in Govern scopes a token policy here too — resolved live against the estate. Enforce a policy here and a classified request to an external model is denied at the token layer — the network never carries it.',
     route: '/ai-fabric',
     targetSelector: '[data-tour="aifabric-policies"]',
     placement: 'top',

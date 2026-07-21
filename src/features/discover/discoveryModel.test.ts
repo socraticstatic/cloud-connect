@@ -24,19 +24,22 @@ describe('discoveryModel', () => {
     expect(cloudRegionCount(CC, 'oci')).toBe(1);
   });
 
-  it('estate tiles cover the seven top-level facets and match counts()', () => {
+  it('estate tiles cover the eight top-level facets and match counts()', () => {
     const stats = estateStats(CC);
     expect(stats.map(s => s.key)).toEqual([
       'clouds',
       'regions',
       'vpcs',
       'subnets',
+      'routes',
       'gateways',
       'workloads',
       'attached',
     ]);
     const c = CC.counts();
     expect(stats.find(s => s.key === 'clouds')!.value).toBe(c.clouds);
+    expect(stats.find(s => s.key === 'routes')!.value).toBe(c.routes);
+    expect(stats.find(s => s.key === 'gateways')!.value).toBe(c.gateways);
     expect(stats.find(s => s.key === 'workloads')!.value).toBe(c.workloads);
   });
 
