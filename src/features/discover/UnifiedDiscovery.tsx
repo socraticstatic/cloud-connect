@@ -419,7 +419,8 @@ export function UnifiedDiscovery() {
       />
 
       {/* Estate header — full-width now the fabric rail is gone */}
-      <div data-tour="discover-estate" className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+      {/* 8 tiles: 3+3+2 on mobile, 4+4 at sm, one row of 8 at lg. */}
+      <div data-tour="discover-estate" className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-8">
         {stats.map(s => (
           <div key={s.key} className="rounded-xl border border-fw-secondary bg-fw-base px-3 py-2.5">
             <div className="text-figma-lg font-semibold text-fw-heading tabular-nums">{s.value}</div>
