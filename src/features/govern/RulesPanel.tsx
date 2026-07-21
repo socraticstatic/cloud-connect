@@ -126,6 +126,13 @@ export function RulesPanel() {
     if (!rule.fix) return;
     actions.applyFix(rule.fix);
     setPreviews(prev => ({ ...prev, [rule.id]: null }));
+    /* Apply moves violations and posture WITHOUT passing through
+       enforceAndMeasure, so a panel still reporting the last enforce's
+       before/after now disagrees with the header and the violation list
+       around it. A stale claim is worse than no claim — clear it. (Apply is
+       deliberately NOT routed through the measured shape: it is remediation,
+       not enforcement, and the panel's header says "Enforced".) */
+    setLastDelta(null);
   };
 
   // Enforce leads — it is the primary act on this screen. Preview and Apply
