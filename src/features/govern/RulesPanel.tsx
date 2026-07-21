@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Tag, Boxes, ShieldAlert, ShieldCheck, Eye, Wrench } from 'lucide-react';
 import { OverflowMenu, type OverflowMenuItem } from '../../components/common/OverflowMenu';
 import { RuleBuilder } from './RuleBuilder';
+import { NextMoveBand } from './NextMoveBand';
 import { AttIcon } from '../../components/icons/AttIcon';
 import { CC } from '../../engine';
 import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
@@ -164,6 +165,11 @@ export function RulesPanel() {
             New rule
           </button>
         </div>
+
+        {/* Eight rules of equal visual weight answer "what is here" but not
+            "where do I start". The band answers that once, in the currency of
+            the violation list below, before anyone commits to anything. */}
+        <NextMoveBand />
 
         <table className="w-full text-figma-sm">
           <thead>
