@@ -72,8 +72,25 @@ describe('heldSentence', () => {
   it('states the value a held figure holds AT, not a zero delta', () => {
     const d = delta({ violations: 0, posture: 72, enforced: 6 }, { violations: 0, posture: 72, enforced: 7 });
     const { held } = splitDelta(d);
-    expect(heldSentence(d, held)).toBe('Open violations holds at 0 · Security posture holds at 72');
+    expect(heldSentence(d, held)).toBe('Open violations hold at 0 · Security posture holds at 72');
     expect(heldSentence(d, held)).not.toMatch(/[+-]?0\s*$/);
+  });
+
+  it('conjugates a plural subject: violations HOLD, never "violations holds"', () => {
+    const d = delta({ violations: 3 }, { violations: 3, enforced: 3 });
+    expect(heldSentence(d, ['violations'])).toBe('Open violations hold at 3');
+  });
+
+  it('conjugates a singular subject: posture HOLDS', () => {
+    const d = delta({ posture: 72 }, { posture: 72, enforced: 3 });
+    expect(heldSentence(d, ['posture'])).toBe('Security posture holds at 72');
+  });
+
+  it('conjugates the rules figure as plural too, should it ever hold', () => {
+    // splitDelta never puts `rules` in held today (enforcement always moves
+    // it), but heldSentence is generic over keys and must stay grammatical.
+    const d = delta({}, {});
+    expect(heldSentence(d, ['rules'])).toBe('Rules enforced hold at 2');
   });
 
   it('is empty when nothing held', () => {

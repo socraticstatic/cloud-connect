@@ -148,6 +148,15 @@ export function splitDelta(d: EnforcementDelta): { moved: DeltaRow[]; held: Delt
   return { moved, held };
 }
 
+/** Verb conjugated per subject — "Open violations" and "Rules enforced" are
+ *  plural, "Security posture" is singular. A hardcoded "holds" produced
+ *  "Open violations holds at 3". */
+const HOLD_VERB: Record<DeltaRow['key'], string> = {
+  violations: 'hold',
+  posture: 'holds',
+  rules: 'hold',
+};
+
 /** "Open violations hold at 0 · Security posture holds at 72." */
 export function heldSentence(d: EnforcementDelta, held: DeltaRow['key'][]): string {
   const at: Record<DeltaRow['key'], number> = {
@@ -155,5 +164,5 @@ export function heldSentence(d: EnforcementDelta, held: DeltaRow['key'][]): stri
     posture: d.after.posture,
     rules: d.after.enforced,
   };
-  return held.map(k => `${LABELS[k]} holds at ${at[k]}`).join(' · ');
+  return held.map(k => `${LABELS[k]} ${HOLD_VERB[k]} at ${at[k]}`).join(' · ');
 }
