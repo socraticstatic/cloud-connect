@@ -146,10 +146,24 @@ test('the tour teaches groups, and every beat finds its target', async ({ page }
     `groups are narrated by too few beats; titles were: ${beats.map(b => b.title).join(' | ')}`,
   ).toBeGreaterThanOrEqual(3);
 
-  /* …and they are spread through the arc rather than bolted onto the end. */
+  /* …and they are spread through the arc rather than bolted onto the end.
+
+     ONE deliberate exception: the FINAL beat (ai-fabric) names the group on
+     purpose — the stakeholder ask is that the grouping vocabulary reaches
+     the token layer, and the closing beat says so out loud. So the final
+     beat is exempt from the position guard, and ONLY the final beat: a
+     group beat landing at beats.length - 2 is still the bolted-on-epilogue
+     failure this assertion exists to catch. */
   const idx = groupBeats.map(b => beats.indexOf(b));
-  expect(Math.min(...idx), 'the groups thread starts too late').toBeLessThan(3);
-  expect(Math.max(...idx), 'the groups thread runs past the close').toBeLessThan(beats.length - 2);
+  const threadIdx = idx.filter(i => i !== beats.length - 1);
+  expect(Math.min(...threadIdx), 'the groups thread starts too late').toBeLessThan(3);
+  expect(Math.max(...threadIdx), 'the groups thread runs past the close').toBeLessThan(beats.length - 2);
+
+  // The exception is load-bearing, not vestigial: the closing beat MUST be
+  // a group beat — grouping reaching the AI Fabric is part of the close,
+  // visible to this guard rather than phrased around it.
+  expect(idx, 'the closing beat no longer names the group').toContain(beats.length - 1);
+  expect(beats[beats.length - 1].text).toContain('west-workloads');
 
   // The payoff beat states its dry-run in figures, and they are not zero.
   const payoffBeat = groupBeats.find(b => /dry-run/i.test(b.text))!;
@@ -239,4 +253,14 @@ test('pressing only Next never narrates a group that was never named', async ({ 
   const figures = payoffBeat!.text.match(/\b\d+(?:\.\d+)?\b/g) ?? [];
   expect(figures.some(f => Number(f) > 0)).toBe(true);
   expect(payoffBeat!.text).not.toMatch(/matches 0 modelled flows/);
+
+  /* The closing beat names west-workloads at the token layer on this path
+     too — and it must stay TRUE here: pressing only Next never authored a
+     Govern policy referencing west-workloads (ensurePayoffRule never ran),
+     so the beat may speak of the group itself, which is seeded and was read
+     back by govern-groups, but never of a policy the viewer supposedly
+     wrote. */
+  const closing = beats[beats.length - 1];
+  expect(closing.text, 'the closing beat no longer names the group').toContain('west-workloads');
+  expect(closing.text).not.toMatch(/polic\w* (?:that )?you (?:wrote|authored|named|enforced)/i);
 });
