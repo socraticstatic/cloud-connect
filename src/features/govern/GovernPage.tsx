@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PageSection } from '../../components/common/layouts';
 import { TabGroup } from '../../components/navigation/TabGroup';
 import { AttIcon } from '../../components/icons/AttIcon';
@@ -11,8 +11,24 @@ import { ServiceInsertion } from './ServiceInsertion';
 
 type GovernTab = 'policies' | 'groups' | 'posture';
 
+const TABS: GovernTab[] = ['policies', 'groups', 'posture'];
+
+/* The tab lives in the URL, not in component state. Groups is a destination —
+   the guided tour routes straight to it, and Discover's "See it in Govern →
+   Groups" confirmation should land on the groups table rather than on
+   Policies with a tab still to find. An unknown or absent ?tab= falls back
+   to policies, so /govern keeps meaning exactly what it used to. */
+function tabFromParam(value: string | null): GovernTab {
+  return TABS.includes(value as GovernTab) ? (value as GovernTab) : 'policies';
+}
+
 export function GovernPage() {
-  const [activeTab, setActiveTab] = useState<GovernTab>('policies');
+  const [params, setParams] = useSearchParams();
+  const activeTab = tabFromParam(params.get('tab'));
+  const setActiveTab = (id: GovernTab) =>
+    // replace, not push: flipping a tab is not a navigation someone wants to
+    // walk back through one press of Back at a time.
+    setParams(id === 'policies' ? {} : { tab: id }, { replace: true });
   const violations = useCloudControl(cc => cc.violations()) as unknown[];
   // Subscribing selector — the badge is a live CC derivation, so creating a
   // group moves the count without a reload.

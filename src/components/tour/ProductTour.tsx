@@ -2,10 +2,20 @@ import { useState, useEffect, useRef } from 'react';
 import { X, ChevronLeft, ChevronRight, Check, Sparkles, MousePointer } from 'lucide-react';
 import { Button } from '../common/Button';
 
+/** A beat's copy. A plain string for static prose; a thunk when the copy
+ *  states a FIGURE — every number the tour speaks has to be a live engine
+ *  derivation read at the moment its beat is shown, not one frozen at module
+ *  load, because the beats before it deliberately move the estate. */
+export type TourCopy = string | (() => string);
+
+export function readCopy(copy: TourCopy): string {
+  return typeof copy === 'function' ? copy() : copy;
+}
+
 export interface TourStep {
   id: string;
   title: string;
-  description: string;
+  description: TourCopy;
   targetSelector?: string;
   placement?: 'top' | 'bottom' | 'left' | 'right' | 'center';
   highlightPadding?: number;
@@ -42,6 +52,14 @@ export function ProductTour({ steps, isOpen, onClose, onComplete, storageKey = '
   const isLastStep = currentStep === steps.length - 1;
   const progress = ((currentStep + 1) / steps.length) * 100;
 
+  /* Closing the tour does not unmount this component — `isOpen` only gates
+     the render — so `currentStep` used to survive a close and the NEXT
+     launch resumed on the final beat. Rehearsing a demo means opening the
+     tour again and again; every launch has to begin at the beginning. */
+  useEffect(() => {
+    if (isOpen) setCurrentStep(0);
+  }, [isOpen]);
+
   useEffect(() => {
     if (isOpen && step) {
       onStepChange?.(step, currentStep);
@@ -57,7 +75,17 @@ export function ProductTour({ steps, isOpen, onClose, onComplete, storageKey = '
 
     const updatePosition = () => {
       const element = document.querySelector(step.targetSelector!);
-      if (element) {
+      /* A step whose target is NOT on the page must drop the spotlight, not
+         inherit the previous step's. Leaving the stale rect in place made a
+         broken beat look like a working one — it lit up whatever the beat
+         before it had highlighted, on a page where that element no longer
+         exists. Falling back to the flat overlay says "nothing to point at",
+         which is the truth. */
+      if (!element) {
+        setTargetRect(null);
+        return;
+      }
+      {
         // Scroll element into view if needed
         if (step.scrollIntoView !== false) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -115,13 +143,15 @@ export function ProductTour({ steps, isOpen, onClose, onComplete, storageKey = '
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition, true);
 
-    if (step.targetSelector) {
-      const element = document.querySelector(step.targetSelector);
-      if (element) {
-        resizeObserver.observe(element);
-        mutationObserver.observe(document.body, { childList: true, subtree: true });
-      }
-    }
+    /* Watch the document ALWAYS, not only when the target happens to be
+       present at this instant. A multi-page tour navigates on step change,
+       so the new page's DOM usually lands a tick AFTER this effect runs —
+       gating the observer on the element being there already meant a step
+       that arrived early never recovered, and (before the guard above) sat
+       there showing the last step's spotlight instead. */
+    mutationObserver.observe(document.body, { childList: true, subtree: true });
+    const element = document.querySelector(step.targetSelector);
+    if (element) resizeObserver.observe(element);
 
     return () => {
       window.removeEventListener('resize', updatePosition);
@@ -168,6 +198,7 @@ export function ProductTour({ steps, isOpen, onClose, onComplete, storageKey = '
         <>
           {/* Dark overlay with cutout */}
           <div
+            data-testid="tour-spotlight"
             className="absolute rounded-lg animate-in fade-in zoom-in-95 duration-300"
             style={{
               top: targetRect.top - (step.highlightPadding || 8),
@@ -252,6 +283,7 @@ export function ProductTour({ steps, isOpen, onClose, onComplete, storageKey = '
 
       <div
         ref={tooltipRef}
+        data-testid="tour-tooltip"
         className="absolute bg-fw-base rounded-2xl shadow-2xl border border-fw-secondary overflow-hidden animate-in fade-in zoom-in-95 duration-300"
         style={{
           top: tooltipPosition.top,
@@ -267,7 +299,9 @@ export function ProductTour({ steps, isOpen, onClose, onComplete, storageKey = '
               <div className="p-1.5 bg-white bg-opacity-20 rounded-lg backdrop-blur-sm">
                 <Sparkles className="h-5 w-5" />
               </div>
-              <h3 className="text-figma-lg font-bold tracking-[-0.03em]">{step.title}</h3>
+              <h3 data-testid="tour-title" className="text-figma-lg font-bold tracking-[-0.03em]">
+                {step.title}
+              </h3>
             </div>
             <button
               onClick={handleSkip}
@@ -279,7 +313,7 @@ export function ProductTour({ steps, isOpen, onClose, onComplete, storageKey = '
           </div>
 
           <div className="flex items-center gap-2 text-figma-sm text-white/80">
-            <span className="font-medium">Step {currentStep + 1} of {steps.length}</span>
+            <span data-testid="tour-progress" className="font-medium">Step {currentStep + 1} of {steps.length}</span>
             <div className="flex-1 h-1.5 bg-fw-cobalt-900/30 rounded-full overflow-hidden">
               <div
                 className="h-full bg-white rounded-full transition-all duration-300"
@@ -291,11 +325,12 @@ export function ProductTour({ steps, isOpen, onClose, onComplete, storageKey = '
 
         <div className="p-6">
           <p className="text-figma-base font-medium text-fw-body leading-relaxed mb-6">
-            {step.description}
+            {readCopy(step.description)}
           </p>
 
           {step.action && (
             <button
+              data-testid="tour-action"
               onClick={step.action.onClick}
               className="w-full mb-4 px-4 py-2.5 bg-fw-accent hover:bg-fw-accent border-2 border-fw-active text-fw-link font-medium rounded-full transition-all duration-200"
             >

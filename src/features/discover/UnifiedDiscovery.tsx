@@ -148,7 +148,11 @@ function SitesPanel({
   onToggle: (key: string) => void;
 }) {
   return (
-    <div data-testid="discover-sites" className="rounded-2xl border border-fw-secondary bg-fw-base">
+    <div
+      data-testid="discover-sites"
+      data-tour="discover-sites"
+      className="rounded-2xl border border-fw-secondary bg-fw-base"
+    >
       <div className="flex items-center gap-2 border-b border-fw-secondary px-4 py-3">
         <MapPin size={16} className="shrink-0 text-fw-bodyLight" aria-hidden="true" />
         <span className="font-semibold text-fw-heading">Your sites</span>
@@ -450,7 +454,10 @@ export function UnifiedDiscovery() {
             “{named.label}” is now a group. Nothing in the estate changed — you named what you
             found.
           </span>
-          <Link to="/govern" className="font-medium text-fw-link underline underline-offset-2">
+          <Link
+            to="/govern?tab=groups"
+            className="font-medium text-fw-link underline underline-offset-2"
+          >
             See it in Govern → Groups
           </Link>
         </div>
