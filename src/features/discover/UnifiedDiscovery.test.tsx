@@ -3,6 +3,7 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { UnifiedDiscovery } from './UnifiedDiscovery';
 import { CC } from '../../engine';
+import { estateDomains } from './discoveryModel';
 import { ID_RENAME_WARNING } from '../govern/groupLanguage';
 // No engine provider wrapper — the engine is a singleton read via useCloudControl.
 // A MemoryRouter is required because the embedded FlowBar reads the active route.
@@ -17,6 +18,45 @@ describe('UnifiedDiscovery drill-down tree', () => {
     // cloud rows (buttons carry aria-label = cloud name)
     expect(screen.getByRole('button', { name: 'AWS' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'CoreWeave' })).toBeInTheDocument();
+  });
+
+  /* The three section headings and blurbs ARE the deliverable — "a viewer can
+     say what each section is for". Deleting the `<div><h2>{d.label}</h2>
+     <p>{d.blurb}</p></div>` block left every discover and tour test green,
+     because the `estate-*` testids are satisfied by empty sections. */
+  it('renders a heading and a blurb for each of the three domains', () => {
+    renderUD();
+    const domains = estateDomains(CC);
+    expect(domains.length).toBe(3);
+    for (const d of domains) {
+      const section = screen.getByTestId(`estate-${d.key}`);
+      expect(
+        within(section).getByRole('heading', { level: 2, name: d.label }),
+      ).toBeInTheDocument();
+      expect(within(section).getByText(d.blurb)).toBeInTheDocument();
+    }
+  });
+
+  it('shows on-ramps as the engine does — active over available, and the active figure moves with the estate', () => {
+    renderUD();
+    const network = screen.getByTestId('estate-network');
+    const tile = within(network).getByText('Active on-ramps').closest('div')!.parentElement!;
+    expect(tile).toHaveTextContent(`${CC.activeOnramps()} / ${CC.onramps.length}`);
+    // The figure is the ACTIVE count, not the circuit inventory — the review's
+    // complaint was a tile that read 4 while only 1 carried traffic.
+    expect(CC.activeOnramps()).toBeLessThan(CC.onramps.length);
+  });
+
+  /* The tour's Discover beat speaks about clouds, regions and VPCs. Anchoring
+     it to the wrapper around all three sections made the spotlight 87% of a
+     mobile viewport. */
+  it('the guided-tour estate anchor is the Cloud section alone, not all three', () => {
+    const { container } = renderUD();
+    const anchor = container.querySelector('[data-tour="discover-estate"]');
+    expect(anchor).not.toBeNull();
+    expect(anchor).toHaveAttribute('data-testid', 'estate-cloud');
+    expect(anchor!.querySelector('[data-testid="estate-network"]')).toBeNull();
+    expect(anchor!.querySelector('[data-testid="estate-ai"]')).toBeNull();
   });
 
   it('AWS starts expanded and reveals its regions', () => {

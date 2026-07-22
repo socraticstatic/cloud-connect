@@ -25,7 +25,7 @@ describe('discoveryModel', () => {
     expect(cloudRegionCount(CC, 'oci')).toBe(1);
   });
 
-  it('estate tiles cover all three domains, flattened, and match counts()', () => {
+  it('estate tiles cover all three domains, flattened, in order', () => {
     const stats = estateStats(CC);
     expect(stats.map(s => s.key)).toEqual([
       'sites',
@@ -41,12 +41,8 @@ describe('discoveryModel', () => {
       'aiRegions',
       'models',
       'agents',
+      'aiExposed',
     ]);
-    const c = CC.counts();
-    expect(stats.find(s => s.key === 'clouds')!.value).toBe(c.clouds);
-    expect(stats.find(s => s.key === 'routes')!.value).toBe(c.routes);
-    expect(stats.find(s => s.key === 'gateways')!.value).toBe(c.gateways);
-    expect(stats.find(s => s.key === 'workloads')!.value).toBe(c.workloads);
   });
 
   it('allKeys enumerates every cloud, region and VPC node once', () => {
@@ -138,43 +134,211 @@ describe('discovery selection', () => {
 
 /* Task B — Discover reads in three parts: the network already in place, the
    cloud estate on the other side of it, and the AI workloads riding both. */
+
+/* ---------------------------------------------------------------------------
+   Engine sources for every displayed tile.
+
+   One entry per tile, so the guard is table-driven rather than thirteen
+   hand-written cases someone forgets to extend: the suite asserts the tile
+   key set EQUALS this table's key set, so a tile added to `estateDomains`
+   without a source mapped here fails immediately instead of shipping
+   unguarded. The review found four tiles (onramps, subnets, attached,
+   agents) could all be set to 999 at once with the whole gate still green.
+
+   Each source is a THUNK, re-evaluated per assertion, so the same table
+   also works after an engine mutation — which is what catches a literal
+   that happens to equal the seed value.
+   --------------------------------------------------------------------------- */
+type Engine = typeof CC;
+const TILE_SOURCE: Record<string, (cc: Engine) => number> = {
+  sites: cc => cc.branches.length,
+  onramps: cc => cc.activeOnramps(),
+  routes: cc => cc.counts().routes,
+  gateways: cc => cc.counts().gateways,
+  clouds: cc => cc.counts().clouds,
+  regions: cc => cc.counts().regions,
+  vpcs: cc => cc.counts().vpcs,
+  subnets: cc => cc.counts().subnets,
+  workloads: cc => cc.counts().workloads,
+  attached: cc => cc.counts().attached,
+  aiRegions: cc =>
+    Object.values(cc.regions as Record<string, { ai?: boolean }[]>)
+      .flat()
+      .filter(r => r.ai).length,
+  models: cc => cc.modelCatalog().length,
+  agents: cc => cc.agentList().length,
+  aiExposed: cc => cc.aiExposed(),
+};
+/** Tiles rendered as the engine's `n / m` idiom; value maps above, denominator here. */
+const TILE_DENOMINATOR: Record<string, (cc: Engine) => number> = {
+  onramps: cc => cc.onramps.length,
+};
+
+function expectEveryTileAgreesWithEngine(cc: Engine, when: string) {
+  const stats = estateStats(cc as never);
+  expect(
+    stats.map(s => s.key).slice().sort(),
+    `${when}: tile keys and the engine-source table have diverged — every displayed figure needs a mapped source`,
+  ).toEqual(Object.keys(TILE_SOURCE).slice().sort());
+
+  // `expect.soft` so ONE run names EVERY disagreeing tile, not just the first
+  // — the review broke four figures at once and deserves four names back.
+  for (const s of stats) {
+    const source = TILE_SOURCE[s.key];
+    expect(source, `${when}: no engine source mapped for tile "${s.key}"`).toBeTypeOf('function');
+    expect.soft(s.value, `${when}: tile "${s.key}" disagrees with the engine`).toBe(source(cc));
+
+    const denominator = TILE_DENOMINATOR[s.key];
+    if (denominator) {
+      expect.soft(s.of, `${when}: tile "${s.key}" denominator disagrees with the engine`).toBe(
+        denominator(cc),
+      );
+    } else {
+      expect.soft(s.of, `${when}: tile "${s.key}" carries an unexpected denominator`).toBeUndefined();
+    }
+  }
+}
+
 describe('estateDomains', () => {
   it('returns the three discovery domains in order', () => {
     expect(estateDomains(CC as never).map(d => d.key)).toEqual(['network', 'cloud', 'ai']);
   });
 
-  it('network carries sites, on-ramps, routes and gateways from the engine', () => {
-    const net = estateDomains(CC as never)[0];
+  it('every domain carries the tiles the brief assigned it', () => {
+    const [net, cloud, ai] = estateDomains(CC as never);
     expect(net.stats.map(s => s.key)).toEqual(['sites', 'onramps', 'routes', 'gateways']);
-    const c = (CC as never as { counts(): { routes: number; gateways: number } }).counts();
-    expect(net.stats.find(s => s.key === 'routes')!.value).toBe(c.routes);
-    expect(net.stats.find(s => s.key === 'gateways')!.value).toBe(c.gateways);
-    expect(net.stats.find(s => s.key === 'sites')!.value).toBe(
-      (CC as never as { branches: unknown[] }).branches.length,
-    );
-  });
-
-  it('cloud carries the hyperscaler estate', () => {
-    const cloud = estateDomains(CC as never)[1];
     expect(cloud.stats.map(s => s.key)).toEqual([
       'clouds', 'regions', 'vpcs', 'subnets', 'workloads', 'attached',
     ]);
+    expect(ai.stats.map(s => s.key)).toEqual(['aiRegions', 'models', 'agents', 'aiExposed']);
   });
 
-  it('ai counts only the AI regions, plus models and agents', () => {
+  it('EVERY displayed figure agrees with its engine source', () => {
+    expectEveryTileAgreesWithEngine(CC, 'at seed');
+  });
+
+  /* Agreement AT SEED is not agreement: `value: 124` in place of `c.routes`
+     passes every assertion above, because the seed happens to be 124 — and
+     no on-ramp activation moves routes. So each tile's own engine source is
+     perturbed and the whole table re-checked against an estate no seed
+     literal could match. The engine is a shared singleton, so every change
+     is undone in `finally`. */
+  it('every figure follows a perturbation of its own engine source — no seed-valued literals', () => {
+    const region = CC.regions.aws[0];
+    const cloud = CC.clouds[0];
+    const seedRegionAi = region.ai;
+    const realModelCatalog = CC.modelCatalog;
+    const realAgentList = CC.agentList;
+
+    try {
+      region.routes += 7;                 // routes
+      region.gateways += 3;               // gateways
+      region.subnets += 5;                // subnets
+      region.ai = !seedRegionAi;          // aiRegions
+      cloud.workloads += 11;              // workloads
+      CC.branches.push({ id: 'zz-site', name: 'Probe site', city: 'Probe', cidrs: ['10.98.0.0/20'] });
+      CC.onramps.push({                   // the on-ramps denominator, not its value
+        id: 'zz-ramp', name: 'Probe ramp', type: 'probe', sub: '', ic: 'nb',
+        active: false, site: { name: 'probe', lat: 0, lon: 0 }, targets: [],
+      });
+      CC.regions.aws.push({               // regions (and more routes/gateways/subnets)
+        id: 'zz-region', name: 'probe', sub: '', subnets: 4, routes: 9, gateways: 2,
+        lat: 10, attached: false,
+      });
+      CC.vpcs.use1.push({                 // vpcs
+        id: 'zz-vpc', name: 'zz', cidr: '10.99.0.0/16', azs: 1, subnets: 1,
+        attached: false, role: 'probe',
+      });
+      CC.clouds.push({                    // clouds
+        id: 'zz-cloud', name: 'Probe Cloud', color: '#475569', mk: 'zz',
+        workloads: 3, attached: false,
+      });
+      CC.modelCatalog = () => [...realModelCatalog(), { id: 'zz-model' }];   // models
+      CC.agentList = () => [...realAgentList(), { id: 'zz-agent' }];         // agents
+
+      expectEveryTileAgreesWithEngine(CC, 'with every engine source perturbed');
+    } finally {
+      CC.agentList = realAgentList;
+      CC.modelCatalog = realModelCatalog;
+      CC.clouds.pop();
+      CC.vpcs.use1.pop();
+      CC.regions.aws.pop();
+      CC.onramps.pop();
+      CC.branches.pop();
+      cloud.workloads -= 11;
+      region.ai = seedRegionAi;
+      region.subnets -= 5;
+      region.gateways -= 3;
+      region.routes -= 7;
+    }
+
+    // the restore actually restored — later tests read a clean seed
+    expectEveryTileAgreesWithEngine(CC, 'after restore');
+    expect(CC.counts().routes).toBe(124);
+  });
+
+  /* The section labels and blurbs ARE the deliverable — the brief's success
+     criterion is that a viewer can say what each section is for. Without
+     this, `label:'Network'` could be renamed to 'Cloud' and every blurb
+     emptied with the whole suite still green. */
+  const THESIS_WORDS = ['control', 'security', 'observability', 'cost control'];
+  it('each domain is distinctly labelled and blurbed, and each blurb names a thesis word', () => {
+    const domains = estateDomains(CC as never);
+    expect(domains.map(d => d.label)).toEqual(['Network', 'Cloud', 'AI workflows']);
+    expect(new Set(domains.map(d => d.label)).size).toBe(3);
+    expect(new Set(domains.map(d => d.blurb)).size).toBe(3);
+    for (const d of domains) {
+      expect(d.blurb.trim().length, `"${d.key}" blurb is empty`).toBeGreaterThan(30);
+      expect(
+        THESIS_WORDS.some(w => d.blurb.toLowerCase().includes(w)),
+        `"${d.key}" blurb names none of ${THESIS_WORDS.join(' / ')}: ${d.blurb}`,
+      ).toBe(true);
+    }
+  });
+
+  /* The AI blurb claims security; the AI tiles have to be able to back it.
+     Before this pass the section was three inventory counts under a
+     cost-control promise no figure beside it measured. */
+  it('the AI domain carries the engine posture figure its blurb names', () => {
     const ai = estateDomains(CC as never)[2];
-    expect(ai.stats.map(s => s.key)).toEqual(['aiRegions', 'models', 'agents']);
-    const aiRegions = Object.values(
-      (CC as never as { regions: Record<string, { ai?: boolean }[]> }).regions,
-    ).flat().filter(r => r.ai).length;
-    expect(ai.stats.find(s => s.key === 'aiRegions')!.value).toBe(aiRegions);
-    expect(ai.stats.find(s => s.key === 'models')!.value).toBe(
-      (CC as never as { modelCatalog(): unknown[] }).modelCatalog().length,
-    );
+    const exposed = ai.stats.find(s => s.key === 'aiExposed')!;
+    expect(exposed.value).toBe(CC.aiExposed());
+    expect(ai.blurb.toLowerCase()).toContain('security');
   });
 
-  it('estateStats stays the flattening of every domain', () => {
-    const flat = estateDomains(CC as never).flatMap(d => d.stats);
-    expect(estateStats(CC as never)).toEqual(flat);
+  /* --- MUTATING: activates on-ramps in the shared engine singleton.
+         Ordered last in the file, because these mutations persist. --- */
+  it('the on-ramps tile moves when the page\'s own CTA activates a circuit', () => {
+    const before = estateDomains(CC as never)[0].stats.find(s => s.key === 'onramps')!;
+    expect(before.value).toBe(CC.activeOnramps());
+    expect(before.of).toBe(CC.onramps.length);
+
+    expect(CC.activateOnramp('dx1')).toBe(true);
+
+    const after = estateDomains(CC as never)[0].stats.find(s => s.key === 'onramps')!;
+    expect(after.value, 'activating an on-ramp must move the on-ramps tile').toBe(before.value + 1);
+    expect(after.value).toBe(CC.activeOnramps());
+    expect(after.of, 'the denominator is the circuit inventory and does not move').toBe(before.of);
+  });
+
+  /* Agreement at the SEED value is not agreement: `value: 124` passes while
+     the seed happens to be 124. Re-running the whole table after two engine
+     mutations that move attached / on-ramps / exposed endpoints is what
+     catches a seed-valued literal. */
+  it('every figure still agrees after the engine mutates — no seed-valued literals', () => {
+    const seed = Object.fromEntries(
+      estateStats(CC as never).map(s => [s.key, s.value]),
+    ) as Record<string, number>;
+
+    expect(CC.activateOnramp('nb2')).toBe(true);
+    expectEveryTileAgreesWithEngine(CC, 'after activateOnramp(nb2)');
+
+    const now = Object.fromEntries(
+      estateStats(CC as never).map(s => [s.key, s.value]),
+    ) as Record<string, number>;
+    // Prove the mutation actually moved figures, so the re-check is not vacuous.
+    expect(now.attached, 'attached should have grown').toBeGreaterThan(seed.attached);
+    expect(now.onramps, 'active on-ramps should have grown').toBeGreaterThan(seed.onramps);
+    expect(now.aiExposed, 'exposed AI endpoints should have fallen').toBeLessThan(seed.aiExposed);
   });
 });

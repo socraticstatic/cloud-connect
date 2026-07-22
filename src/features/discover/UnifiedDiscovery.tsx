@@ -423,9 +423,21 @@ export function UnifiedDiscovery() {
           both. Each section is its own row of tiles rather than one flat
           row of eight, so a viewer reads what domain a figure belongs to
           without being told. */}
-      <div data-tour="discover-estate" className="space-y-4">
+      <div className="space-y-4">
         {domains.map(d => (
-          <section key={d.key} data-testid={`estate-${d.key}`} className="space-y-2">
+          <section
+            key={d.key}
+            data-testid={`estate-${d.key}`}
+            /* The tour's Discover beat speaks about "clouds, regions, and
+               VPCs" and "most of it reaches the world over public internet"
+               (cloudConnectTour.ts:126) — that is this one section, not all
+               three. Anchoring the spotlight on the outer wrapper made it
+               708px tall in an 812px viewport, 87% of the screen, which
+               highlights nothing and pushed the 'top'-placed tooltip onto
+               the spotlight via ProductTour's on-screen clamp. */
+            data-tour={d.key === 'cloud' ? 'discover-estate' : undefined}
+            className="space-y-2"
+          >
             <div>
               <h2 className="text-figma-sm font-semibold text-fw-heading">{d.label}</h2>
               <p className="text-figma-xs text-fw-bodyLight">{d.blurb}</p>
@@ -433,7 +445,12 @@ export function UnifiedDiscovery() {
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
               {d.stats.map(s => (
                 <div key={s.key} className="rounded-xl border border-fw-secondary bg-fw-base px-3 py-2.5">
-                  <div className="text-figma-lg font-semibold text-fw-heading tabular-nums">{s.value}</div>
+                  <div className="text-figma-lg font-semibold text-fw-heading tabular-nums">
+                    {s.value}
+                    {s.of !== undefined && (
+                      <span className="text-fw-bodyLight"> / {s.of}</span>
+                    )}
+                  </div>
                   <div className="text-[11px] uppercase tracking-wide text-fw-bodyLight">{s.label}</div>
                 </div>
               ))}

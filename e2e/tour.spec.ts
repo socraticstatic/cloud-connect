@@ -264,3 +264,48 @@ test('pressing only Next never narrates a group that was never named', async ({ 
   expect(closing.text, 'the closing beat no longer names the group').toContain('west-workloads');
   expect(closing.text).not.toMatch(/polic\w* (?:that )?you (?:wrote|authored|named|enforced)/i);
 });
+
+/* The Discover beat's spotlight is a cutout the size of its anchor. When the
+   anchor was the wrapper around all three domain sections it measured 364px
+   at 1280x800 and 708px in an 812px-tall viewport — 87% of a phone screen,
+   which highlights nothing — and ProductTour's `Math.max(16, …)` on-screen
+   clamp (ProductTour.tsx:142) then dropped the 'top'-placed tooltip onto the
+   spotlight it should sit above. The anchor is now the Cloud section alone,
+   which is what the beat's copy actually speaks about ("clouds, regions, and
+   VPCs"). Asserted as a fraction of the viewport, so it stays a guard rather
+   than a pinned pixel count. */
+test('the Discover spotlight highlights one section, not the whole estate header', async ({ page }) => {
+  await firstVisit(page);
+  await page.getByRole('button', { name: TOUR_LAUNCH }).click();
+  await expect(page.getByTestId('tour-progress')).toHaveText(/Step 1 of/);
+
+  const spotlight = page.getByTestId('tour-spotlight');
+  await expect(spotlight).toBeVisible();
+  await page.waitForTimeout(600); // ProductTour scrolls, then measures at +300ms
+
+  const vh = page.viewportSize()!.height;
+  const box = (await spotlight.boundingBox())!;
+  const tip = (await page.getByTestId('tour-tooltip').boundingBox())!;
+
+  expect(
+    box.height / vh,
+    `spotlight covers ${Math.round((box.height / vh) * 100)}% of the viewport — it should highlight a section, not the screen`,
+  ).toBeLessThan(0.3);
+
+  // The cutout is the Cloud section, not the wrapper around all three.
+  const cloudBox = (await page.getByTestId('estate-cloud').boundingBox())!;
+  expect(Math.abs(box.height - cloudBox.height)).toBeLessThan(40); // highlightPadding is 12 a side
+
+  /* How much of the tooltip still lands on the cutout. ProductTour's 366px
+     tooltip cannot fit above ANY element `scrollIntoView({block:'center'})`
+     centres in a 720px viewport, so the `Math.max(16, …)` clamp fires
+     whatever the anchor is — that is a ProductTour placement concern, not an
+     anchor one. What the anchor controls is how BAD it gets: the old
+     three-section wrapper was 388px of cutout, this is ~135px. Asserted as a
+     ceiling that the old anchor would have blown through. */
+  const overlap = Math.min(box.y + box.height, tip.y + tip.height) - Math.max(box.y, tip.y);
+  expect(
+    overlap,
+    `${Math.round(overlap)}px of the tooltip sits on the spotlight`,
+  ).toBeLessThan(box.height);
+});

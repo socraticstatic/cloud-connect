@@ -38,12 +38,53 @@ test('Discover reads in three domains', async ({ page }) => {
   await seedAuth(page);
   await page.goto('/#/discover', { waitUntil: 'domcontentloaded' });
 
-  for (const key of ['network', 'cloud', 'ai']) {
-    await expect(page.getByTestId(`estate-${key}`)).toBeVisible();
+  /* The heading and the blurb ARE the deliverable — the section wrappers on
+     their own satisfy the testids while saying nothing at all. Assert both
+     are on screen, with real text, per section. */
+  const headings: Record<string, string> = {
+    network: 'Network',
+    cloud: 'Cloud',
+    ai: 'AI workflows',
+  };
+  for (const [key, heading] of Object.entries(headings)) {
+    const section = page.getByTestId(`estate-${key}`);
+    await expect(section).toBeVisible();
+    await expect(section.getByRole('heading', { level: 2, name: heading })).toBeVisible();
+    const blurb = section.locator('p').first();
+    await expect(blurb).toBeVisible();
+    expect(((await blurb.textContent()) ?? '').trim().length).toBeGreaterThan(30);
   }
 
   const routes = await page.evaluate(
     () => (window as unknown as { CC: { counts(): { routes: number } } }).CC.counts().routes,
   );
   await expect(page.getByTestId('estate-network')).toContainText(String(routes));
+});
+
+/* The On-ramps tile used to read `onramps.length` — 4 — beside a sentence
+   about "the paths already under your control", while only one circuit was
+   active and two were seeded "unused capacity" / "not yet provisioned". It
+   now reads the engine's own `active / available` idiom, and it MOVES when
+   the estate does. */
+test('the on-ramps tile reads active over available, and moves when a circuit is activated', async ({ page }) => {
+  await seedAuth(page);
+  await page.goto('/#/discover', { waitUntil: 'domcontentloaded' });
+
+  type Ramps = {
+    CC: { activeOnramps(): number; onramps: unknown[]; activateOnramp(id: string): boolean };
+  };
+  const before = await page.evaluate(() => {
+    const cc = (window as unknown as Ramps).CC;
+    return { active: cc.activeOnramps(), total: cc.onramps.length };
+  });
+  expect(before.active).toBeLessThan(before.total); // the finding this tile now states honestly
+
+  const network = page.getByTestId('estate-network');
+  const label = network.locator('div').filter({ hasText: /^Active on-ramps$/ });
+  await expect(label).toHaveCount(1);
+  await expect(label.locator('..')).toContainText(`${before.active} / ${before.total}`);
+
+  await page.evaluate(() => (window as unknown as Ramps).CC.activateOnramp('dx1'));
+
+  await expect(label.locator('..')).toContainText(`${before.active + 1} / ${before.total}`);
 });

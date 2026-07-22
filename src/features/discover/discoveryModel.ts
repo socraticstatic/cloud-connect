@@ -115,6 +115,13 @@ export interface EstateStat {
   key: string;
   label: string;
   value: number;
+  /**
+   * Optional denominator, rendered as the engine's own `n / m` idiom
+   * (`state-actions.ts:21`, "Active on-ramps 1 / 4"). Used where the figure
+   * a viewer needs is a share of a total, not a bare count — stating only
+   * the total would claim capacity the customer does not actually hold.
+   */
+  of?: number;
 }
 
 export interface EstateDomain {
@@ -134,20 +141,34 @@ export function estateDomains(cc: CloudControl): EstateDomain[] {
   const c = cc.counts();
   const branches = (cc as unknown as { branches?: unknown[] }).branches ?? [];
   const onramps = (cc as unknown as { onramps?: unknown[] }).onramps ?? [];
+  /* `onramps.length` is every circuit in the model, including the two seeded
+     `active:false · unused capacity` ones and `nb2`, seeded "not yet
+     provisioned". Showing that total under a sentence about paths "already
+     under your control" counted circuits the customer does not have, and
+     the figure never moved when the page's own CTA activated one. The
+     engine already answers the honest question — `activeOnramps()` — and
+     already states it as `n / m` (`state-actions.ts:21`), which keeps the
+     available capacity visible without claiming it. */
+  const activeOnramps = (cc as unknown as { activeOnramps?(): number }).activeOnramps?.() ?? 0;
   const allRegions = Object.values(
     (cc as unknown as { regions: Record<string, { ai?: boolean }[]> }).regions,
   ).flat();
   const models = (cc as unknown as { modelCatalog?(): unknown[] }).modelCatalog?.() ?? [];
   const agents = (cc as unknown as { agentList?(): unknown[] }).agentList?.() ?? [];
+  /* AI endpoints still riding public internet (`state.ts:383`). The only
+     figure in this domain that is a posture finding rather than an
+     inventory count — and the one that lets the AI blurb name a thesis
+     word its own tiles can back. */
+  const aiExposed = (cc as unknown as { aiExposed?(): number }).aiExposed?.() ?? 0;
 
   return [
     {
       key: 'network',
       label: 'Network',
-      blurb: 'Sites and on-ramps — the paths already under your control, before traffic ever reaches a cloud.',
+      blurb: 'Your sites and the AT&T on-ramps reaching them — active over available, so control is a count, not a claim.',
       stats: [
         { key: 'sites', label: 'Sites', value: branches.length },
-        { key: 'onramps', label: 'On-ramps', value: onramps.length },
+        { key: 'onramps', label: 'Active on-ramps', value: activeOnramps, of: onramps.length },
         { key: 'routes', label: 'Routes', value: c.routes },
         { key: 'gateways', label: 'Gateways', value: c.gateways },
       ],
@@ -168,11 +189,12 @@ export function estateDomains(cc: CloudControl): EstateDomain[] {
     {
       key: 'ai',
       label: 'AI workflows',
-      blurb: 'GPU regions, models, and the agents calling them — where AI spend needs cost control most.',
+      blurb: 'GPU regions, models, and the agents calling them — with the AI endpoints still riding public internet, the security gap in this domain.',
       stats: [
         { key: 'aiRegions', label: 'AI regions', value: allRegions.filter(r => r.ai).length },
         { key: 'models', label: 'Models', value: models.length },
         { key: 'agents', label: 'Agents', value: agents.length },
+        { key: 'aiExposed', label: 'Exposed endpoints', value: aiExposed },
       ],
     },
   ];
