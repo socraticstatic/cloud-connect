@@ -27,8 +27,7 @@ export const CONNECTIVITY_PATHS: ConnectivityPath[] = [
     id: 'managed-direct',
     label: 'Direct cloud connect',
     promise: 'Attach your VPCs in-region. AT&T carries and observes everything past the hand-off.',
-    underlay:
-      'Shared high-capacity mid-mile into an AT&T-managed VPC. Where AT&T has no facility in the metro, the path extends over Equinix Fabric and hands off at L3 — transparently.',
+    underlay: 'Shared high-capacity mid-mile into an AT&T-managed VPC.',
   },
   {
     id: 'tenanted',

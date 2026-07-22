@@ -41,3 +41,19 @@ test('the steerable Paths table lives on Observe, not Connect', async ({ page })
   await page.goto('/#/observe', { waitUntil: 'domcontentloaded' });
   await expect(page.getByText('Flows & paths')).toBeVisible();
 });
+
+test('a selected region shows both connectivity paths with engine-derived latency', async ({ page }) => {
+  await seedAuth(page);
+  await page.goto('/#/connect', { waitUntil: 'domcontentloaded' });
+
+  await page.getByTestId('fabric-node-region-use1').click();
+
+  await expect(page.getByTestId('path-managed-direct')).toBeVisible();
+  await expect(page.getByTestId('path-tenanted')).toBeVisible();
+
+  const lat = await page.evaluate(() =>
+    (window as never as { CC: { regions: Record<string, { id: string; lat: number }[]> } })
+      .CC.regions.aws.find(r => r.id === 'use1')!.lat,
+  );
+  await expect(page.getByTestId('path-managed-direct')).toContainText(`${lat} ms`);
+});

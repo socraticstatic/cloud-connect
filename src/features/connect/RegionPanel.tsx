@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ProviderLogo } from '../../components/brand/ProviderLogo';
 import { useCloudControlActions } from '../../engine/react/useCloudControl';
 import { ATTACH_TYPES } from './attachCatalog';
+import { PathChoice } from './PathChoice.tsx';
 import type { FabricModel } from './FabricHero';
 import type { FabricRegion } from '../../engine/types';
 
@@ -86,6 +87,8 @@ export function RegionPanel({ region, model, onProvision, onProvisioned }: Regio
           </div>
         </div>
       </div>
+
+      <PathChoice cloudId={region.cloudId} regionId={region.regionId} />
 
       {/* attach types — region-scoped (folded from the old top-level block) */}
       <div className="space-y-2">
