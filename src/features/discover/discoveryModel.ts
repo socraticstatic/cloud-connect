@@ -117,19 +117,71 @@ export interface EstateStat {
   value: number;
 }
 
-/** The estate header tiles, in display order, from the engine's counts(). */
-export function estateStats(cc: CloudControl): EstateStat[] {
+export interface EstateDomain {
+  key: 'network' | 'cloud' | 'ai';
+  label: string;
+  /** One line on what this domain is, and what you control here. */
+  blurb: string;
+  stats: EstateStat[];
+}
+
+/**
+ * Discovery reads in three parts — the network you already have, the cloud
+ * estate on the other side of it, and the AI workloads riding both. The split
+ * is the stakeholders' ask; every figure is still a `counts()` derivation.
+ */
+export function estateDomains(cc: CloudControl): EstateDomain[] {
   const c = cc.counts();
+  const branches = (cc as unknown as { branches?: unknown[] }).branches ?? [];
+  const onramps = (cc as unknown as { onramps?: unknown[] }).onramps ?? [];
+  const allRegions = Object.values(
+    (cc as unknown as { regions: Record<string, { ai?: boolean }[]> }).regions,
+  ).flat();
+  const models = (cc as unknown as { modelCatalog?(): unknown[] }).modelCatalog?.() ?? [];
+  const agents = (cc as unknown as { agentList?(): unknown[] }).agentList?.() ?? [];
+
   return [
-    { key: 'clouds', label: 'Clouds', value: c.clouds },
-    { key: 'regions', label: 'Regions', value: c.regions },
-    { key: 'vpcs', label: 'VPC · VNet', value: c.vpcs },
-    { key: 'subnets', label: 'Subnets', value: c.subnets },
-    { key: 'routes', label: 'Routes', value: c.routes },
-    { key: 'gateways', label: 'Gateways', value: c.gateways },
-    { key: 'workloads', label: 'Workloads', value: c.workloads },
-    { key: 'attached', label: 'Attached', value: c.attached },
+    {
+      key: 'network',
+      label: 'Network',
+      blurb: 'Sites and on-ramps — the paths already under your control, before traffic ever reaches a cloud.',
+      stats: [
+        { key: 'sites', label: 'Sites', value: branches.length },
+        { key: 'onramps', label: 'On-ramps', value: onramps.length },
+        { key: 'routes', label: 'Routes', value: c.routes },
+        { key: 'gateways', label: 'Gateways', value: c.gateways },
+      ],
+    },
+    {
+      key: 'cloud',
+      label: 'Cloud',
+      blurb: 'Every hyperscaler account scanned to the subnet, so exposure is a security question you can answer, not guess at.',
+      stats: [
+        { key: 'clouds', label: 'Clouds', value: c.clouds },
+        { key: 'regions', label: 'Regions', value: c.regions },
+        { key: 'vpcs', label: 'VPC · VNet', value: c.vpcs },
+        { key: 'subnets', label: 'Subnets', value: c.subnets },
+        { key: 'workloads', label: 'Workloads', value: c.workloads },
+        { key: 'attached', label: 'Attached', value: c.attached },
+      ],
+    },
+    {
+      key: 'ai',
+      label: 'AI workflows',
+      blurb: 'GPU regions, models, and the agents calling them — where AI spend needs cost control most.',
+      stats: [
+        { key: 'aiRegions', label: 'AI regions', value: allRegions.filter(r => r.ai).length },
+        { key: 'models', label: 'Models', value: models.length },
+        { key: 'agents', label: 'Agents', value: agents.length },
+      ],
+    },
   ];
+}
+
+/** Every figure at once — the flattening of all three domains, kept for
+ *  callers that want the whole estate as one list (e.g. the tour). */
+export function estateStats(cc: CloudControl): EstateStat[] {
+  return estateDomains(cc).flatMap(d => d.stats);
 }
 
 /** Every expandable key in the tree — used by Expand-all. */
