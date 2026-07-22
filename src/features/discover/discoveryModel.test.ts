@@ -184,8 +184,9 @@ function expectEveryTileAgreesWithEngine(cc: Engine, when: string) {
   // `expect.soft` so ONE run names EVERY disagreeing tile, not just the first
   // — the review broke four figures at once and deserves four names back.
   for (const s of stats) {
+    // No `toBeTypeOf('function')` check here: the key-set equality assertion
+    // above already guarantees every tile key has an entry in TILE_SOURCE.
     const source = TILE_SOURCE[s.key];
-    expect(source, `${when}: no engine source mapped for tile "${s.key}"`).toBeTypeOf('function');
     expect.soft(s.value, `${when}: tile "${s.key}" disagrees with the engine`).toBe(source(cc));
 
     const denominator = TILE_DENOMINATOR[s.key];
@@ -222,7 +223,15 @@ describe('estateDomains', () => {
      no on-ramp activation moves routes. So each tile's own engine source is
      perturbed and the whole table re-checked against an estate no seed
      literal could match. The engine is a shared singleton, so every change
-     is undone in `finally`. */
+     is undone in `finally`.
+
+     Deltas are DISTINCT per source, not a uniform +1: `branches` and `clouds`
+     both seed at 6, and `modelCatalog()` and `agentList()` both seed at 3 — a
+     tile wired to the wrong source of the same size (Sites → counts().clouds,
+     Models → agentList().length) is invisible to a perturbation that moves
+     every same-sized pair by the same amount. Sites gets +2 while Clouds
+     gets +1; Models gets +2 while Agents gets +1 — a swap now lands on a
+     different post-perturbation number and the table catches it. */
   it('every figure follows a perturbation of its own engine source — no seed-valued literals', () => {
     const region = CC.regions.aws[0];
     const cloud = CC.clouds[0];
@@ -230,13 +239,22 @@ describe('estateDomains', () => {
     const realModelCatalog = CC.modelCatalog;
     const realAgentList = CC.agentList;
 
+    // Snapshot the whole tile set before mutating, so the restore below is
+    // verified as an absolute match rather than only a same-source compare —
+    // a leaked probe that moves tile and engine together would otherwise
+    // pass `expectEveryTileAgreesWithEngine` even after a broken restore.
+    const snapshotBefore = estateStats(CC as never);
+
     try {
       region.routes += 7;                 // routes
       region.gateways += 3;               // gateways
       region.subnets += 5;                // subnets
       region.ai = !seedRegionAi;          // aiRegions
       cloud.workloads += 11;              // workloads
-      CC.branches.push({ id: 'zz-site', name: 'Probe site', city: 'Probe', cidrs: ['10.98.0.0/20'] });
+      CC.branches.push(                   // sites: +2, distinct from clouds' +1 below
+        { id: 'zz-site-1', name: 'Probe site 1', city: 'Probe', cidrs: ['10.98.0.0/20'] },
+        { id: 'zz-site-2', name: 'Probe site 2', city: 'Probe', cidrs: ['10.98.16.0/20'] },
+      );
       CC.onramps.push({                   // the on-ramps denominator, not its value
         id: 'zz-ramp', name: 'Probe ramp', type: 'probe', sub: '', ic: 'nb',
         active: false, site: { name: 'probe', lat: 0, lon: 0 }, targets: [],
@@ -249,12 +267,14 @@ describe('estateDomains', () => {
         id: 'zz-vpc', name: 'zz', cidr: '10.99.0.0/16', azs: 1, subnets: 1,
         attached: false, role: 'probe',
       });
-      CC.clouds.push({                    // clouds
+      CC.clouds.push({                    // clouds: +1, distinct from sites' +2 above
         id: 'zz-cloud', name: 'Probe Cloud', color: '#475569', mk: 'zz',
         workloads: 3, attached: false,
       });
-      CC.modelCatalog = () => [...realModelCatalog(), { id: 'zz-model' }];   // models
-      CC.agentList = () => [...realAgentList(), { id: 'zz-agent' }];         // agents
+      // models: +2, distinct from agents' +1 below
+      CC.modelCatalog = () => [...realModelCatalog(), { id: 'zz-model-1' }, { id: 'zz-model-2' }];
+      // agents: +1, distinct from models' +2 above
+      CC.agentList = () => [...realAgentList(), { id: 'zz-agent' }];
 
       expectEveryTileAgreesWithEngine(CC, 'with every engine source perturbed');
     } finally {
@@ -265,6 +285,7 @@ describe('estateDomains', () => {
       CC.regions.aws.pop();
       CC.onramps.pop();
       CC.branches.pop();
+      CC.branches.pop();
       cloud.workloads -= 11;
       region.ai = seedRegionAi;
       region.subnets -= 5;
@@ -272,16 +293,28 @@ describe('estateDomains', () => {
       region.routes -= 7;
     }
 
-    // the restore actually restored — later tests read a clean seed
+    // the restore actually restored — later tests read a clean seed.
+    // `expectEveryTileAgreesWithEngine` compares tile to engine, and a leak
+    // moves both together, so it alone cannot see a leak; the snapshot
+    // `toEqual` below is the absolute check.
     expectEveryTileAgreesWithEngine(CC, 'after restore');
     expect(CC.counts().routes).toBe(124);
+    expect(estateStats(CC as never)).toEqual(snapshotBefore);
   });
 
   /* The section labels and blurbs ARE the deliverable — the brief's success
      criterion is that a viewer can say what each section is for. Without
      this, `label:'Network'` could be renamed to 'Cloud' and every blurb
      emptied with the whole suite still green. */
-  const THESIS_WORDS = ['control', 'security', 'observability', 'cost control'];
+  /* 'cost control' is dropped: under substring matching it was wholly
+     subsumed by 'control' (any blurb naming 'cost control' also contains
+     'control'), and that same substring match let 'uncontrolled' — a
+     negation — count as naming the thesis word. Matching is now
+     word-boundary, so 'control' matches only the standalone word and no
+     longer fires inside 'uncontrolled'. */
+  const THESIS_WORDS = ['control', 'security', 'observability'];
+  const namesThesisWord = (blurb: string) =>
+    THESIS_WORDS.some(w => new RegExp(`\\b${w}\\b`, 'i').test(blurb));
   it('each domain is distinctly labelled and blurbed, and each blurb names a thesis word', () => {
     const domains = estateDomains(CC as never);
     expect(domains.map(d => d.label)).toEqual(['Network', 'Cloud', 'AI workflows']);
@@ -290,7 +323,7 @@ describe('estateDomains', () => {
     for (const d of domains) {
       expect(d.blurb.trim().length, `"${d.key}" blurb is empty`).toBeGreaterThan(30);
       expect(
-        THESIS_WORDS.some(w => d.blurb.toLowerCase().includes(w)),
+        namesThesisWord(d.blurb),
         `"${d.key}" blurb names none of ${THESIS_WORDS.join(' / ')}: ${d.blurb}`,
       ).toBe(true);
     }
@@ -329,6 +362,13 @@ describe('estateDomains', () => {
     const seed = Object.fromEntries(
       estateStats(CC as never).map(s => [s.key, s.value]),
     ) as Record<string, number>;
+    // A static blurb states the endpoints are on the public internet
+    // regardless of what `aiExposed` says beside it — captured before the
+    // mutation so the assertion after it is a real before/after diff, not a
+    // read of whatever the string happens to be at the time.
+    const blurbBefore = estateDomains(CC as never)[2].blurb;
+    expect(CC.aiExposed()).toBeGreaterThan(0); // precondition: the exposed-state sentence applies
+    expect(blurbBefore.toLowerCase()).toContain('public internet');
 
     expect(CC.activateOnramp('nb2')).toBe(true);
     expectEveryTileAgreesWithEngine(CC, 'after activateOnramp(nb2)');
@@ -340,5 +380,16 @@ describe('estateDomains', () => {
     expect(now.attached, 'attached should have grown').toBeGreaterThan(seed.attached);
     expect(now.onramps, 'active on-ramps should have grown').toBeGreaterThan(seed.onramps);
     expect(now.aiExposed, 'exposed AI endpoints should have fallen').toBeLessThan(seed.aiExposed);
+
+    // The blurb is a `CC` derivation like every figure beside it: once
+    // `aiExposed()` reaches 0, the sentence must stop asserting exposure.
+    expect(now.aiExposed).toBe(0);
+    const blurbAfter = estateDomains(CC as never)[2].blurb;
+    expect(
+      blurbAfter,
+      'the AI blurb must change once aiExposed() reaches 0 — a static string would still assert the endpoints are exposed',
+    ).not.toBe(blurbBefore);
+    expect(blurbAfter.toLowerCase()).not.toContain('public internet');
+    expect(blurbAfter.toLowerCase()).toContain('security');
   });
 });

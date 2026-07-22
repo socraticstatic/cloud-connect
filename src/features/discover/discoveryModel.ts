@@ -165,7 +165,11 @@ export function estateDomains(cc: CloudControl): EstateDomain[] {
     {
       key: 'network',
       label: 'Network',
-      blurb: 'Your sites and the AT&T on-ramps reaching them — active over available, so control is a count, not a claim.',
+      /* Not "active over available" — `onramps.length` counts `nb2` (seeded
+         `planned:true · 'not yet provisioned'`) and anything `orderCircuit`
+         adds mid-provisioning, so "available" would claim readiness the
+         denominator does not hold. "On order" makes no such claim. */
+      blurb: 'Your sites and the AT&T on-ramps reaching them — active over every circuit on order, so control is a count, not a claim.',
       stats: [
         { key: 'sites', label: 'Sites', value: branches.length },
         { key: 'onramps', label: 'Active on-ramps', value: activeOnramps, of: onramps.length },
@@ -189,7 +193,15 @@ export function estateDomains(cc: CloudControl): EstateDomain[] {
     {
       key: 'ai',
       label: 'AI workflows',
-      blurb: 'GPU regions, models, and the agents calling them — with the AI endpoints still riding public internet, the security gap in this domain.',
+      /* A static sentence here would drift the moment `aiExposed()` reaches 0 —
+         through the tour's own beat (`cloudConnectTour.ts:160`) or either
+         Observe/Govern action card (`state-actions.ts:36,65`), all three call
+         `CC.activateOnramp('nb2')`. Both branches name security, so the
+         sentence stays true — and the thesis-word guard keeps passing — in
+         either state, precedent `state-actions.ts:44`. */
+      blurb: aiExposed
+        ? 'GPU regions, models, and the agents calling them — with the AI endpoints still riding public internet, the security gap in this domain.'
+        : 'GPU regions, models, and the agents calling them — every AI endpoint on a private path, the security gap in this domain closed.',
       stats: [
         { key: 'aiRegions', label: 'AI regions', value: allRegions.filter(r => r.ai).length },
         { key: 'models', label: 'Models', value: models.length },

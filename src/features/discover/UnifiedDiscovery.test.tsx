@@ -37,10 +37,12 @@ describe('UnifiedDiscovery drill-down tree', () => {
     }
   });
 
-  it('shows on-ramps as the engine does — active over available, and the active figure moves with the estate', () => {
+  it('renders on-ramps as active over total circuit inventory, not equal counts', () => {
     renderUD();
     const network = screen.getByTestId('estate-network');
-    const tile = within(network).getByText('Active on-ramps').closest('div')!.parentElement!;
+    // `getByText` already returns the label div itself, so `.parentElement`
+    // alone reaches the tile wrapper — a `.closest('div')` first is a no-op.
+    const tile = within(network).getByText('Active on-ramps').parentElement!;
     expect(tile).toHaveTextContent(`${CC.activeOnramps()} / ${CC.onramps.length}`);
     // The figure is the ACTIVE count, not the circuit inventory — the review's
     // complaint was a tile that read 4 while only 1 carried traffic.

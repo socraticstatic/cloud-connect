@@ -303,9 +303,21 @@ test('the Discover spotlight highlights one section, not the whole estate header
      anchor one. What the anchor controls is how BAD it gets: the old
      three-section wrapper was 388px of cutout, this is ~135px. Asserted as a
      ceiling that the old anchor would have blown through. */
+  /* `overlap < box.height` was a geometric identity, not a guard: an
+     interval's intersection with the spotlight can never exceed the
+     spotlight's own height, so it could only ever fail on exact full
+     coverage. Measured against the OLD wrapper anchor it was also true
+     (overlap 215.5 < box.height 387.5) — the "ceiling the old anchor would
+     have blown through" claim that used to sit here was false.
+
+     What actually matters is how much of the TOOLTIP itself the spotlight
+     eats — asserted here as a fraction of the tooltip's own height, which a
+     future placement regression (e.g. the `Math.max(16, …)` clamp pinning
+     the tooltip flush against a taller cutout) can genuinely fail. */
   const overlap = Math.min(box.y + box.height, tip.y + tip.height) - Math.max(box.y, tip.y);
+  const overlapFraction = overlap / tip.height;
   expect(
-    overlap,
-    `${Math.round(overlap)}px of the tooltip sits on the spotlight`,
-  ).toBeLessThan(box.height);
+    overlapFraction,
+    `${Math.round(overlapFraction * 100)}% of the tooltip's own height sits on the spotlight (${Math.round(overlap)}px of ${Math.round(tip.height)}px)`,
+  ).toBeLessThan(0.5);
 });
