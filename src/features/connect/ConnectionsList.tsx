@@ -97,7 +97,7 @@ export function ConnectionsList({ model, selected, onSelect, onProvisioned }: Co
                   <div className="flex items-center gap-2">
                     <LatencySpark region={region} />
                     <span className="text-figma-sm tabular-nums text-fw-body">{region.latencyMs}ms</span>
-                    <Link to="/observe" className="inline-flex items-center gap-0.5 text-figma-xs font-medium text-[#0057b8] hover:underline">
+                    <Link to="/naas/observe" className="inline-flex items-center gap-0.5 text-figma-xs font-medium text-[#0057b8] hover:underline">
                       View in Observe <ArrowRight size={12} />
                     </Link>
                   </div>

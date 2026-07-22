@@ -76,7 +76,7 @@ export function RegionPanel({ region, model, onProvision, onProvisioned }: Regio
         <div className="rounded-xl border border-fw-secondary bg-fw-wash p-3">
           <div className="flex items-center gap-1.5 text-figma-xs text-fw-bodyLight"><Gauge size={13} /> Performance</div>
           <div className="mt-1.5 text-figma-lg font-semibold text-fw-heading tabular-nums">{region.latencyMs}<span className="text-figma-sm font-normal text-fw-bodyLight">ms</span></div>
-          <Link to="/observe" className="mt-1 inline-flex items-center gap-0.5 text-figma-xs font-medium text-[#0057b8] hover:underline">View in Observe <ArrowRight size={12} /></Link>
+          <Link to="/naas/observe" className="mt-1 inline-flex items-center gap-0.5 text-figma-xs font-medium text-[#0057b8] hover:underline">View in Observe <ArrowRight size={12} /></Link>
         </div>
         <div className="rounded-xl border border-fw-secondary bg-fw-wash p-3">
           <div className="flex items-center gap-1.5 text-figma-xs text-fw-bodyLight"><Layers size={13} /> Reach</div>

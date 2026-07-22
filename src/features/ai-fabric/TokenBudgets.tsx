@@ -1,36 +1,59 @@
+import { Link } from 'react-router-dom';
 import { AttIcon } from '../../components/icons/AttIcon';
 import { StatTile } from '../../components/viz';
-import { useCloudControl } from '../../engine/react/useCloudControl';
-import { aiSpendTotals, fmtTokens, fmtUsd } from './aiSpend';
+import { useCloudControlLive } from '../../engine/react/useCloudControl';
+import { aiSpendTotals, fmtTokens, fmtUsd, statesRealMoney } from './aiSpend';
 
 /**
  * Token budgets and spend — cost control at the token layer.
  *
  * Every figure here is an `aiSpendTotals(cc)` derivation, which is the same
  * module the AI Fabric Observe screen's Cost and Savings KPI tiles read. The
- * two screens therefore agree by construction rather than by coincidence.
+ * two screens therefore agree by construction rather than by coincidence —
+ * and, via `useCloudControlLive`, at the same instant: the meters tick while
+ * a viewer is on the page, so a screen that froze at mount would state a
+ * figure the screen beside it had already moved past.
  *
- * An identity only meters once its endpoint's path is attached, so a freshly
- * seeded estate has budgets but no spend. That is a real state, not a blank
- * one: the ceilings still render, every row says why it is not metering, and
- * the summary line says where to go and attach one.
+ * ## One derivation per claim
+ *
+ * Two engine facts look alike and are not: an identity accrues token spend
+ * whenever its agent issues a request, but that spend only rides the private
+ * fabric once the endpoint is attached. The seeded estate rests with tokens
+ * metered and nothing attached. Every count below that says "how many
+ * identities are metering" reads `meteringCount`; every count that says "how
+ * many are on a governed path" reads `governedCount`; the token figures all
+ * read `tokensToday`. Nothing on this screen re-counts.
  */
 export function TokenBudgets() {
-  const spend = useCloudControl(aiSpendTotals);
+  const spend = useCloudControlLive(aiSpendTotals);
 
   const budgetPct =
     spend.budgetTokens > 0 ? Math.round((spend.tokensToday / spend.budgetTokens) * 100) : 0;
 
-  // The summary sentence has to be true in BOTH states the engine can reach.
-  // Nothing metering: no spend claim at all. Metering: the savings clause only
-  // appears when there is a saving to state.
-  const summary =
-    spend.tokensToday === 0
-      ? 'No identity is metering yet — token spend starts when a model endpoint is attached in AI Fabric · Connect. The ceilings below are the budgets set by the token policies on AI Fabric · Govern.'
-      : `${spend.meteringCount} of ${spend.identityCount} identities are metering against their budgets today.` +
-        (spend.savings > 0
-          ? ` Keeping them off the external model instead of routing everything to it holds ${fmtUsd(spend.savings)} of that spend back.`
-          : '');
+  const { meteringCount, governedCount, identityCount } = spend;
+  const ungoverned = identityCount - governedCount;
+
+  /* The summary has to be true in every state the engine can reach: nothing
+     metered, metering over the public internet (the seeded resting state),
+     and metering on the fabric. Each clause states one derived count. */
+  const meteringSentence =
+    meteringCount === 0
+      ? `No identity has metered a token yet. The ${identityCount} ceilings below are the budgets the token policies on AI Fabric · Govern set, and spend appears here the moment an agent issues its first request.`
+      : `${meteringCount} of ${identityCount} identit${meteringCount === 1 ? 'y is' : 'ies are'} metering against ${meteringCount === 1 ? 'its' : 'their'} budget today.`;
+
+  const pathSentence =
+    ungoverned === 0
+      ? ` All ${identityCount} call a model endpoint attached to the fabric, so their spend rides a governed path.`
+      : ` ${ungoverned} of ${identityCount} call a model endpoint that is not attached yet, so those requests leave over the public internet.`;
+
+  /* Guarded on the FORMATTED saving, not the raw float: at $0.0015 a
+     `savings > 0` test passes and the sentence prints "holds $0.00 back". */
+  const savingsSentence =
+    meteringCount > 0 && statesRealMoney(spend.savings)
+      ? ` Keeping them off the external model instead of routing everything to it holds ${fmtUsd(spend.savings)} of that spend back.`
+      : '';
+
+  const summary = meteringSentence + pathSentence + savingsSentence;
 
   /* Govern lists every token policy; only the metered app tags appear here.
      Say so, in the reader's terms and with the count derived — otherwise this
@@ -52,13 +75,24 @@ export function TokenBudgets() {
           value={`${budgetPct}%`}
           meter={{
             pct: budgetPct,
-            label: `${fmtTokens(spend.tokensToday)} of ${fmtTokens(spend.budgetTokens)} tokens across ${spend.identityCount} metered identities`,
+            label: `${fmtTokens(spend.tokensToday)} of ${fmtTokens(spend.budgetTokens)} tokens across ${identityCount} identities`,
           }}
         />
       </div>
 
       <div className="space-y-1">
-        <p className="text-figma-sm text-fw-bodyLight">{summary}</p>
+        <p className="text-figma-sm text-fw-bodyLight">
+          {summary}
+          {ungoverned > 0 && (
+            <>
+              {' '}
+              <Link to="/ai/connect" className="font-medium text-[#0057b8] hover:underline">
+                Attach them in AI Fabric · Connect
+              </Link>
+              .
+            </>
+          )}
+        </p>
         {unmeteredNote && <p className="text-figma-sm text-fw-bodyLight">{unmeteredNote}</p>}
       </div>
 
@@ -67,7 +101,7 @@ export function TokenBudgets() {
           <AttIcon name="bill" className="h-5 w-5 text-fw-body" />
           <span className="font-medium text-fw-heading">Token budgets</span>
           <span className="text-figma-xs text-fw-bodyLight">
-            {spend.meteringCount} / {spend.identityCount} metering
+            {meteringCount} / {identityCount} metering
           </span>
         </div>
 
@@ -105,16 +139,23 @@ export function TokenBudgets() {
                     {r.budgetTokens.toLocaleString()}
                   </td>
                   <td className="px-5 py-3 text-fw-body tabular-nums">{fmtUsd(r.spendToday)}</td>
+                  {/* Two facts, two lines. The pill answers "is it spending?";
+                      the line under it answers "over what path?". Collapsing
+                      them into one chip is what let the table read
+                      "Endpoint not attached" beside a non-zero token count. */}
                   <td className="px-5 py-3 text-center">
                     <span
                       className={`inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium whitespace-nowrap ${
-                        r.metering
+                        r.metering && r.onGovernedPath
                           ? 'bg-fw-successLight text-fw-success'
                           : 'bg-fw-neutral text-fw-bodyLight'
                       }`}
                     >
-                      {r.metering ? 'Metering' : 'Endpoint not attached'}
+                      {r.metering ? 'Metering' : 'No spend yet'}
                     </span>
+                    <div className="mt-1 text-figma-xs text-fw-bodyLight">
+                      {r.onGovernedPath ? 'Governed endpoint' : 'Endpoint not attached'}
+                    </div>
                   </td>
                 </tr>
               ))}

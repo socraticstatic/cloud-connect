@@ -8,7 +8,7 @@ import type {
   Briefing,
   BriefingBlock,
 } from './ObservabilityBinding';
-import { TAG_MODEL, aiSpendTotals, fmtTokens, fmtUsd } from '../ai-fabric/aiSpend';
+import { aiSpendTotals, fmtTokens, fmtUsd, tagModelMap } from '../ai-fabric/aiSpend';
 
 // Shapes consumed from state-billing.ts / state-console.ts / state-telemetry.ts
 // (all // @ts-nocheck at the source) — mirrored here for the fields this
@@ -47,9 +47,11 @@ interface Decision {
 // tokenMeterList() and modelRoutes() are both built by iterating the same
 // TOKEN_BUDGETS-keyed object in the same order (rd-helion, classified-helion,
 // shared-services), so index i of one corresponds to index i of the other.
-// TAG_MODEL and the token-money maths now live in ai-fabric/aiSpend.ts —
-// imported rather than re-declared, so the Cost KPI here and the Cost screen
-// at /ai/cost state the same figure by construction.
+// The tag -> model mapping and the token-money maths now live in
+// ai-fabric/aiSpend.ts — imported rather than re-declared, so the Cost KPI
+// here and the Cost screen at /ai/cost state the same figure by construction.
+// `tagModelMap` derives that mapping from CC.agentList()'s `invoke:*` scopes
+// rather than restating knowledge the engine already carries.
 
 // decisionLog() records governance outcomes over time but carries no tag/app
 // field, so a per-identity request-rate can't be read off it directly. This
@@ -112,6 +114,7 @@ function seriesFromNumbers(values: number[]): SeriesPoint[] {
 function buildAiRows(cc: CloudControl): AiRow[] {
   const meters = cc.tokenMeterList() as TokenMeter[];
   const routes = cc.modelRoutes() as ModelRoute[];
+  const tagModel = tagModelMap(cc);
   return meters.map((m, i) => {
     const r = routes[i];
     return {
@@ -122,7 +125,7 @@ function buildAiRows(cc: CloudControl): AiRow[] {
       budget: m.budget,
       pct: m.pct,
       model: r?.model ?? 'unknown model',
-      modelId: TAG_MODEL[m.tag] ?? '',
+      modelId: tagModel[m.tag],
       endpoint: r?.endpoint ?? '',
       cloud: r?.cloud ?? null,
       path: r?.path ?? 'public',
@@ -183,7 +186,8 @@ function buildFlowSeries(cc: CloudControl, tab: string): SeriesPoint[] {
   const seriesByTag = tags.map(tag => cc.tokenSeries(tag, SERIES_POINTS) as number[]);
   const sumAt = (i: number) => seriesByTag.reduce((s, arr) => s + (arr[i] ?? 0), 0);
   const catalog = cc.modelCatalog() as ModelCatalogEntry[];
-  const priceOfTag = (tag: string) => catalog.find(m => m.id === TAG_MODEL[tag])?.price ?? 0;
+  const tagModel = tagModelMap(cc);
+  const priceOfTag = (tag: string) => catalog.find(m => m.id === tagModel[tag])?.price ?? 0;
 
   switch (tab) {
     case 'requests': {
@@ -197,7 +201,7 @@ function buildFlowSeries(cc: CloudControl, tab: string): SeriesPoint[] {
       return seriesFromNumbers(pts);
     }
     case 'ttft': {
-      const modelIds = Array.from(new Set(Object.values(TAG_MODEL)));
+      const modelIds = Array.from(new Set(Object.values(tagModel)));
       const latSeries = modelIds.map(id => cc.modelLatencySeries(id, SERIES_POINTS) as number[]);
       const pts = Array.from({ length: SERIES_POINTS }, (_, i) => {
         const vals = latSeries.map(arr => arr[i]).filter((v): v is number => typeof v === 'number');

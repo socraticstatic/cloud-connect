@@ -1,5 +1,5 @@
 import { AiDomainPage } from './AiDomainPage';
-import { useCloudControl } from '../../engine/react/useCloudControl';
+import { useCloudControlLive } from '../../engine/react/useCloudControl';
 import { ObservabilityShell } from '../observe/ObservabilityShell';
 import { aiBinding } from '../observe/aiBinding';
 import { PromptTrace } from './PromptTrace';
@@ -13,9 +13,16 @@ import { GovernanceDecisions } from './GovernanceDecisions';
  * Order matters and is not cosmetic: GovernanceDecisions' empty state reads
  * "run a trace above to populate this view", so PromptTrace has to render
  * above it or that sentence stops being true.
+ *
+ * The binding is subscribed LIVE (telemetry `hits` included, unlike the
+ * default hook). Two reasons, one of them a defect: this screen's own
+ * description promises "live meters", and its Cost/Savings KPIs state the
+ * same `aiSpend` derivation the /ai/cost screen states. Frozen at their
+ * respective mount instants, the two screens disagreed by a tick whenever a
+ * viewer crossed between them.
  */
 export function AiObservePage() {
-  const observability = useCloudControl(aiBinding);
+  const observability = useCloudControlLive(aiBinding);
 
   return (
     <AiDomainPage

@@ -60,3 +60,25 @@ export const NAV_ITEMS: CuratedNavItem[] = [DISCOVER, ...NAV_DOMAINS.flatMap(d =
 
 /** Discover, alone above both domains. */
 export const NAV_DISCOVER: CuratedNavItem = DISCOVER;
+
+/**
+ * Is `href` the destination the viewer is currently on?
+ *
+ * Exact, or a parent of the current path. `/naas/connect` and `/ai/connect`
+ * are different destinations sharing a label, so a bare `startsWith` on the
+ * href is not enough — it would also light `/ai` for `/ai-fabric` if that
+ * path ever came back.
+ *
+ * Lives here rather than in either nav because the desktop bar and the mobile
+ * drawer are the same navigation seen at two widths. They disagreed: the bar
+ * matched exact-or-parent, the drawer matched `pathname === item.to`, so a
+ * deep link under a section highlighted nothing in the drawer and its parent
+ * in the bar. One rule, one place.
+ */
+export function isNavRouteActive(pathname: string, href: string): boolean {
+  // /manage owns the groups screens too; they are one destination in the nav.
+  if (href === '/manage') {
+    return pathname.startsWith('/manage') || pathname.startsWith('/groups');
+  }
+  return pathname === href || pathname.startsWith(href + '/');
+}

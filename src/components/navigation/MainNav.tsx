@@ -10,7 +10,7 @@ import { TenantSelector } from './TenantSelector';
 import { TourLauncher } from '../../features/tour/TourLauncher';
 import { CommandPalette } from '../../features/command/CommandPalette';
 import { UndoControl } from '../../features/undo/UndoControl';
-import { NAV_DISCOVER, NAV_DOMAINS, NAV_ITEMS } from './navItems';
+import { NAV_DISCOVER, NAV_DOMAINS, NAV_ITEMS, isNavRouteActive } from './navItems';
 import { Button } from '../common/Button';
 import { useStore } from '../../store/useStore';
 import { usePermissions } from '../../hooks/usePermission';
@@ -84,17 +84,9 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
     return false;
   };
 
-  /* Active-route matching. `/naas/connect` and `/ai/connect` are different
-     destinations that share a label, so a bare `startsWith` on the label's
-     path is not enough — match the path exactly, or as a parent of the
-     current one. A plain prefix test would also light `/ai` for `/ai-fabric`
-     if that path ever came back. */
-  const isRouteActive = (href: string) => {
-    if (href === '/manage') {
-      return location.pathname.startsWith('/manage') || location.pathname.startsWith('/groups');
-    }
-    return location.pathname === href || location.pathname.startsWith(href + '/');
-  };
+  /* Active-route matching lives in navItems.ts so this bar and the mobile
+     drawer cannot drift apart — they are the same navigation at two widths. */
+  const isRouteActive = (href: string) => isNavRouteActive(location.pathname, href);
 
   /** One nav link. `compact` is the in-group form: no icon (the same three
    *  icons repeat across both domains, so they disambiguate nothing there)

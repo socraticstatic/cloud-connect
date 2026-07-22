@@ -135,12 +135,23 @@ test('AI Fabric states the same budgets on Govern and on Cost', async ({ page })
 /* The Cost screen states token spend; the Observe screen states the same
    figure in its Cost KPI tile. Two screens, one derivation.
  *
- * The meters tick on a 3s interval (state-rules startHits), so reading the two
- * screens at two different instants would compare two different moments and
- * fail for reasons that have nothing to do with agreement. The ticker is
- * stopped first (CC.stopHits) and the crossing is made through the nav rather
- * than page.goto, so the engine — and therefore the figure — is the same one
- * on both screens. */
+ * ## Freezing the estate, correctly
+ *
+ * TWO independent things move the token meters, and an earlier version of this
+ * comment claimed one of them was all of them:
+ *
+ *   1. `state-rules` `tickHits` — a 3s interval carrying `_.tickTokens`.
+ *      `CC.stopHits()` stops it. This is the one that was stopped.
+ *   2. `state-console` `agentTick` — a SEPARATE, ungated 7s `setInterval` with
+ *      no handle kept. Its promptTrace -> meterTokens path meters regardless of
+ *      endpoint readiness, and `stopHits()` has no effect on it whatsoever.
+ *
+ * So the estate was never frozen; the spec passed (60/60 under
+ * `--repeat-each=6`) because both screens now read the meters live, not
+ * because nothing was moving. Suspending every agent is the engine's own
+ * supported freeze for (2): `agentTick` returns immediately when nothing is
+ * enabled. Both are stopped below, so a failure here means the two screens
+ * genuinely disagree rather than that a timer fired mid-assertion. */
 test('AI Fabric states the same token spend on Cost and on Observe', async ({ page }) => {
   await seedAuth(page);
   await page.goto('/#/discover', { waitUntil: 'domcontentloaded' });
@@ -150,11 +161,14 @@ test('AI Fabric states the same token spend on Cost and on Observe', async ({ pa
       CC: {
         stopHits: () => boolean;
         activateOnramp: (id: string) => void;
+        agentList: () => { id: string; enabled: boolean }[];
+        toggleAgent: (id: string) => boolean;
         _: { tickTokens: (rng: () => number) => boolean };
         tokenMeterList: () => { today: number }[];
       };
     }).CC;
-    CC.stopHits();
+    CC.stopHits();                                        // the 3s hit ticker
+    CC.agentList().filter(a => a.enabled).forEach(a => CC.toggleAgent(a.id)); // the 7s agent ticker
     // Lighting nb2 makes shared-services meter. The rng is a constant, not
     // Math.random, so the volume is the same on every run.
     CC.activateOnramp('nb2');
@@ -178,4 +192,69 @@ test('AI Fabric states the same token spend on Cost and on Observe', async ({ pa
   const onObserveScreen = (await kpi.innerText()).match(/\$[\d.]+k?/)?.[0];
 
   expect(onObserveScreen).toBe(onCostScreen);
+});
+
+/* Agreeing on a frozen estate is the easy half. The real complaint was that a
+   viewer crosses between these two screens WHILE the meters move, and each
+   screen had frozen at its own mount instant — so Observe stated 753k/$1.57
+   and Cost, opened a moment later, stated 779k/$1.62 for the same estate.
+ *
+ * Both estate tickers are stopped, then the meters are moved by hand under a
+ * MOUNTED Observe screen. If that screen re-renders, it is reading the engine
+ * live rather than its mount snapshot, and the two screens cannot drift apart.
+ * Deterministic: an explicit token count, no rng, no wall clock. */
+test('the AI money screens track the meters instead of freezing at mount', async ({ page }) => {
+  await seedAuth(page);
+  await page.goto('/#/discover', { waitUntil: 'domcontentloaded' });
+
+  const attachedTag = await page.evaluate(() => {
+    const CC = (window as unknown as {
+      CC: {
+        stopHits: () => boolean;
+        activateOnramp: (id: string) => void;
+        agentList: () => { id: string; enabled: boolean }[];
+        toggleAgent: (id: string) => boolean;
+        _: { tickTokens: (rng: () => number) => boolean };
+        tokenMeterList: () => { tag: string; ready: boolean }[];
+      };
+    }).CC;
+    CC.stopHits();
+    CC.agentList().filter(a => a.enabled).forEach(a => CC.toggleAgent(a.id));
+    CC.activateOnramp('nb2');
+    CC._.tickTokens(() => 0.5);
+    return CC.tokenMeterList().find(m => m.ready)?.tag ?? null;
+  });
+  expect(attachedTag, 'nothing is attached, so nothing can be metered live').toBeTruthy();
+
+  const aiGroup = page.getByLabel('Main navigation').getByRole('group', { name: 'AI Fabric' });
+  await aiGroup.getByRole('link', { name: 'Observe', exact: true }).click();
+
+  const kpi = page.getByTestId('kpi-tile').filter({ hasText: /^Cost/ }).first();
+  await expect(kpi).toBeVisible();
+  const before = (await kpi.innerText()).match(/\$[\d.]+k?/)?.[0];
+  expect(before).toBeTruthy();
+
+  // Exactly what a tick does: mutate the meters, then emit `hits`.
+  await page.evaluate(tag => {
+    const CC = (window as unknown as {
+      CC: {
+        meterTokens: (tag: string, n: number) => void;
+        _: { emit: (e: { type: string }) => void };
+      };
+    }).CC;
+    CC.meterTokens(tag as string, 200_000);
+    CC._.emit({ type: 'hits' });
+  }, attachedTag);
+
+  await expect(kpi, 'the Observe screen froze at its mount instant').not.toHaveText(
+    new RegExp(before!.replace(/[$.]/g, '\\$&')),
+  );
+  const after = (await kpi.innerText()).match(/\$[\d.]+k?/)?.[0];
+
+  await aiGroup.getByRole('link', { name: 'Cost', exact: true }).click();
+  const costTile = page.getByTestId('ai-cost-totals').filter({ hasText: 'Spend today' });
+  await expect(costTile).toBeVisible();
+  const onCostScreen = (await costTile.innerText()).match(/\$[\d.]+k?/)?.[0];
+
+  expect(onCostScreen, 'Cost must state what Observe was showing a moment ago').toBe(after);
 });

@@ -444,7 +444,7 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
           <foreignObject x={Math.max(4, hoverInfo.x - 150)} y={Math.max(2, hoverInfo.y)} width={200} height={34}>
             <div className="flex items-center justify-end gap-1.5 whitespace-nowrap rounded-md border border-fw-secondary bg-white px-2 py-1 text-[10px] shadow-sm">
               <span className="font-semibold tabular-nums text-fw-heading">{hoverInfo.region.latencyMs}ms</span>
-              <Link to="/observe" className="font-medium text-[#0057b8] hover:underline">View in Observe →</Link>
+              <Link to="/naas/observe" className="font-medium text-[#0057b8] hover:underline">View in Observe →</Link>
             </div>
           </foreignObject>
         )}

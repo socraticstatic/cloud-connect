@@ -20,10 +20,24 @@ import type { CloudControl, CloudControlEvent } from '../types';
  */
 let version = 0;
 
+/**
+ * The same counter for subscribers that DO want telemetry ticks.
+ *
+ * Kept separate on purpose. `hits` fires every 3s for the life of the page and
+ * carries the token meters with it, so a screen stating live meter figures has
+ * to see it — but making every subscriber see it would re-render the whole
+ * app on a timer. Each subscriber only ever advances its own counter, so a
+ * live subscriber being mounted cannot drag the ordinary ones along.
+ *
+ * See `useCloudControlLive` for who opts in and why.
+ */
+let liveVersion = 0;
+
 // Registering the same listener object twice (e.g. React invoking subscribe
 // again in StrictMode) would double the increments per mutation; a Set of
 // wrapped callbacks keyed by the original `cb` avoids that.
 const wrappedByCallback = new WeakMap<() => void, (ev?: CloudControlEvent) => void>();
+const liveWrappedByCallback = new WeakMap<() => void, (ev?: CloudControlEvent) => void>();
 
 function subscribe(cb: () => void) {
   let wrapped = wrappedByCallback.get(cb);
@@ -43,8 +57,24 @@ function subscribe(cb: () => void) {
   return CC.subscribe(wrapped);
 }
 
+function subscribeLive(cb: () => void) {
+  let wrapped = liveWrappedByCallback.get(cb);
+  if (!wrapped) {
+    wrapped = () => {
+      liveVersion++;
+      cb();
+    };
+    liveWrappedByCallback.set(cb, wrapped);
+  }
+  return CC.subscribe(wrapped);
+}
+
 function getSnapshot() {
   return version;
+}
+
+function getLiveSnapshot() {
+  return liveVersion;
 }
 
 /**
@@ -67,6 +97,42 @@ export function useCloudControl<T>(selector: (cc: CloudControl) => T): T {
   // on every render — this is what keeps an object-returning selector from
   // producing a "new" value each render even though the store snapshot (v)
   // is stable.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => selectorRef.current(CC), [v]);
+}
+
+/**
+ * Same contract as `useCloudControl`, but also re-runs on telemetry `hits`.
+ *
+ * ## Why this exists
+ *
+ * `hits` fires every 3s and carries `_.tickTokens` with it, so the AI token
+ * meters move while a viewer sits on a page. `useCloudControl` drops the event
+ * — correctly, for the ~30 surfaces whose figures only change on a mutation —
+ * which means a screen subscribed through it freezes at its mount instant.
+ *
+ * That was invisible while one screen stated token money. The domain split
+ * created a second: `/ai/observe` (Cost + Savings KPIs) and `/ai/cost` (Spend
+ * today) now state the same derivation on two screens a viewer crosses
+ * between. Mounted at different instants, they froze at different values and
+ * disagreed by a tick or two — the same estate, two figures, measured
+ * disagreeing on 3 of 5 crossings.
+ *
+ * ## What it costs
+ *
+ * One extra React render per 3s tick, per mounted subscriber. It is opt-in for
+ * exactly that reason: only the two AI money surfaces use it, so the nav,
+ * Discover, and every NaaS screen still ignore `hits` exactly as before. Both
+ * of these screens describe themselves as live ("the fabric meters spend as
+ * requests are routed", "live meters across every identity"), so the render is
+ * the behaviour the copy already claims.
+ */
+export function useCloudControlLive<T>(selector: (cc: CloudControl) => T): T {
+  const selectorRef = useRef(selector);
+  selectorRef.current = selector;
+
+  const v = useSyncExternalStore(subscribeLive, getLiveSnapshot, getLiveSnapshot);
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(() => selectorRef.current(CC), [v]);
 }

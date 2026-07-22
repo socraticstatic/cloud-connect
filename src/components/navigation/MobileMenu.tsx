@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Bell, HelpCircle } from 'lucide-react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { AttIcon } from '../icons/AttIcon';
-import { NAV_DISCOVER, NAV_DOMAINS, type CuratedNavItem } from './navItems';
+import { NAV_DISCOVER, NAV_DOMAINS, isNavRouteActive, type CuratedNavItem } from './navItems';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -59,7 +59,10 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
   };
 
   const renderDrawerItem = (item: CuratedNavItem) => {
-    const active = location.pathname === item.to;
+    // Same rule the desktop bar uses (navItems.ts) — exact or parent. This
+    // used to be `location.pathname === item.to`, so a deep link under a
+    // section highlighted nothing here while the bar highlighted its parent.
+    const active = isNavRouteActive(location.pathname, item.to);
     return (
       <button
         key={item.to}
@@ -190,11 +193,20 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
                         transition={{ delay: 0.1 + domainIndex * 0.05, duration: 0.2 }}
                         className="pt-2"
                       >
+                        {/* Label only. The domain blurbs used to sit here, two
+                            lines each, and they were what the search box's
+                            reclaimed 73px got spent on: the AI Fabric group's
+                            four verbs still started below an 800px fold, under
+                            a sentence clipped mid-word. Every verb already
+                            carries its own description one line down, so the
+                            blurb was the second-least load-bearing text in a
+                            drawer that is the ONLY way to reach these screens
+                            below 1280px. NAV_DOMAINS still carries `blurb` —
+                            nothing was deleted from the model. */}
                         <div className="px-4 pb-1">
                           <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-fw-bodyLight">
                             {domain.label}
                           </div>
-                          <p className="mt-0.5 text-figma-sm text-fw-bodyLight">{domain.blurb}</p>
                         </div>
                         <div className="space-y-1">
                           {domain.items.map(renderDrawerItem)}

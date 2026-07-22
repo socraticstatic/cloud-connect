@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, beforeAll } from 'vitest';
 import { CC } from '../../engine';
@@ -6,7 +6,7 @@ import { AiConnectPage } from './AiConnectPage';
 import { AiGovernPage } from './AiGovernPage';
 import { AiObservePage } from './AiObservePage';
 import { AiCostPage } from './AiCostPage';
-import { aiSpendTotals, fmtTokens, fmtUsd } from './aiSpend';
+import { aiSpendTotals, fmtTokens, fmtUsd, statesRealMoney } from './aiSpend';
 import { aiBinding } from '../observe/aiBinding';
 
 /**
@@ -18,6 +18,28 @@ import { aiBinding } from '../observe/aiBinding';
  * The engine is a shared singleton and mutations persist within a file, so
  * nothing here clicks a mutating control.
  */
+
+/* ------------------------------------------------------------------ *
+ * Determinism: stop the agents before they can meter.
+ *
+ * `state-console.ts` fires `agentTick` on a bare, ungated 7s interval, and
+ * its promptTrace -> meterTokens path meters whether or not an endpoint is
+ * attached. The unlit assertions below therefore only held because vitest
+ * usually finishes the file inside seven seconds — on a slow machine, or
+ * under `--repeat-each`, the first tick lands mid-file and the estate is no
+ * longer unlit. That is a test passing on a race.
+ *
+ * Suspending every agent is the engine's own supported freeze: `agentTick`
+ * returns immediately when nothing is enabled. Done at module scope, so it
+ * takes effect in the same tick the engine is imported, long before 7s.
+ * ------------------------------------------------------------------ */
+(CC.agentList() as { id: string; enabled: boolean }[])
+  .filter(a => a.enabled)
+  .forEach(a => CC.toggleAgent(a.id));
+
+const tickMeters = () =>
+  (CC._ as unknown as { tickTokens: (rng: () => number) => boolean }).tickTokens(() => 0.5);
+const emitHits = () => (CC._ as unknown as { emit: (e: { type: string }) => void }).emit({ type: 'hits' });
 
 const at = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
 
@@ -93,27 +115,93 @@ describe('AI Fabric · Observe', () => {
   });
 });
 
-describe('AI Fabric · Cost — nothing metering yet', () => {
+describe('AI Fabric · Cost — nothing metered yet', () => {
   /* The seeded estate has budgets and no spend: no AI endpoint's path is
-     attached, so no identity meters. That is a real state and it must not
-     render as a blank screen, nor as a screen claiming a saving it cannot
-     have. This describe runs FIRST, before the one below lights the fabric —
-     the engine is a shared singleton and mutations persist within a file. */
-  it('renders the ceilings and says why nothing is metering', () => {
+     attached and (with the agents frozen above) nothing has been metered. That
+     is a real state and it must not render as a blank screen, nor as a screen
+     claiming a saving it cannot have. This describe runs FIRST, before the
+     ones below mutate the engine. */
+  it('renders the ceilings and says why nothing has metered', () => {
     at(<AiCostPage />);
 
     const totals = aiSpendTotals(CC);
-    expect(totals.tokensToday, 'this describe assumes an unlit estate').toBe(0);
+    expect(totals.tokensToday, 'the agents are frozen, so this is exact').toBe(0);
+    expect(totals.meteringCount).toBe(0);
 
-    expect(screen.getByText(/No identity is metering yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/No identity has metered a token yet/i)).toBeInTheDocument();
     expect(screen.queryByText(/holds \$/i)).toBeNull();
 
     // Not blank: every ceiling is on screen even with nothing spent.
     for (const r of totals.rows) {
       const row = screen.getByRole('row', { name: new RegExp(r.tag) });
       expect(row).toHaveTextContent(r.budgetTokens.toLocaleString());
+      expect(row).toHaveTextContent('No spend yet');
       expect(row).toHaveTextContent('Endpoint not attached');
     }
+  });
+});
+
+describe('AI Fabric · Cost — metered, but nothing attached', () => {
+  /* THE state a cold demo opens in, and the one the screen used to contradict
+     itself in three ways at once. The engine meters an identity's tokens from
+     promptTrace whether or not its endpoint is attached, so tokens appear with
+     `ready` still false. Metering directly is exactly what promptTrace does —
+     no timer, no rng.
+
+     Every count that says "how many are metering" must agree with every other
+     one, and with the token column beside them. */
+  beforeAll(() => {
+    const unattached = (CC.tokenMeterList() as { tag: string; ready: boolean }[]).find(m => !m.ready)!;
+    CC.meterTokens(unattached.tag, 507);
+  });
+
+  it('states one metering count, not three, and never one that denies the tokens', () => {
+    at(<AiCostPage />);
+
+    const totals = aiSpendTotals(CC);
+    expect(totals.tokensToday, 'tokens are metered').toBeGreaterThan(0);
+    expect(totals.governedCount, 'and nothing is attached').toBe(0);
+    expect(totals.meteringCount).toBeGreaterThan(0);
+
+    // The summary sentence, the table header and the row chips are the same
+    // derivation. The screen used to state 1, 0 and 0 simultaneously.
+    expect(
+      screen.getByText(
+        new RegExp(`${totals.meteringCount} of ${totals.identityCount} identit`),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(`${totals.meteringCount} / ${totals.identityCount} metering`),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText('Metering')).toHaveLength(totals.meteringCount);
+
+    // The old copy claimed nothing was metering while the tokens column
+    // showed hundreds. It must not come back.
+    expect(screen.queryByText(/No identity has metered a token yet/i)).toBeNull();
+  });
+
+  it('never states a saving that rounds to $0.00', () => {
+    at(<AiCostPage />);
+    const totals = aiSpendTotals(CC);
+
+    // Raw guard passes here; the formatted one is what the screen must use.
+    expect(totals.savings).toBeGreaterThan(0);
+    expect(statesRealMoney(totals.savings), 'sub-cent — not worth a sentence').toBe(false);
+    expect(screen.queryByText(/holds \$0\.00/)).toBeNull();
+    expect(screen.queryByText(/holds/)).toBeNull();
+  });
+
+  it('says the spend is leaving over the public internet, and where to fix it', () => {
+    at(<AiCostPage />);
+    const totals = aiSpendTotals(CC);
+    const ungoverned = totals.identityCount - totals.governedCount;
+
+    expect(
+      screen.getByText(new RegExp(`${ungoverned} of ${totals.identityCount} call a model endpoint`)),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /Attach them in AI Fabric · Connect/i }),
+    ).toHaveAttribute('href', '/ai/connect');
   });
 });
 
@@ -125,7 +213,7 @@ describe('AI Fabric · Cost — metering', () => {
      setup is deterministic — a fixed rng, never Math.random. */
   beforeAll(() => {
     CC.activateOnramp('nb2');
-    (CC._ as { tickTokens: (rng: () => number) => boolean }).tickTokens(() => 0.5);
+    tickMeters();
   });
 
   it('actually meters, so the assertions below are not vacuous', () => {
@@ -157,7 +245,8 @@ describe('AI Fabric · Cost — metering', () => {
       const row = screen.getByRole('row', { name: new RegExp(r.tag) });
       expect(row).toHaveTextContent(r.budgetTokens.toLocaleString());
       expect(row).toHaveTextContent(`${r.pct}% of budget`);
-      expect(row).toHaveTextContent(r.metering ? 'Metering' : 'Endpoint not attached');
+      expect(row).toHaveTextContent(r.metering ? 'Metering' : 'No spend yet');
+      expect(row).toHaveTextContent(r.onGovernedPath ? 'Governed endpoint' : 'Endpoint not attached');
     }
   });
 
@@ -212,5 +301,40 @@ describe('AI Fabric · Cost — metering', () => {
 
     at(<AiCostPage />);
     expect(within(tile('Spend today')).getByText(costKpi)).toBeInTheDocument();
+  });
+
+  /* Agreeing on the same DERIVATION is not the same as agreeing on the same
+     INSTANT. The meters tick every 3s; `useCloudControl` drops the `hits`
+     event that carries them, so both money screens used to freeze at their own
+     mount time and a viewer crossing between them saw two figures for one
+     estate (measured disagreeing on 3 of 5 crossings in Chromium). Both now
+     subscribe live. This test moves the meters under a MOUNTED Observe screen:
+     if it re-renders, it cannot have frozen. */
+  it('tracks the meters while mounted, so the two money screens cannot freeze apart', async () => {
+    const observe = at(<AiObservePage />);
+    const costTile = () =>
+      within(observe.container)
+        .getAllByTestId('kpi-tile')
+        .find(t => /^Cost/.test(t.textContent ?? ''))!;
+
+    const before = costTile().textContent ?? '';
+    expect(before).toContain(fmtUsd(aiSpendTotals(CC).spendToday));
+
+    // Exactly what a tick does: mutate the meters, then emit `hits`.
+    const attached = (CC.tokenMeterList() as { tag: string; ready: boolean }[]).find(m => m.ready)!;
+    await act(async () => {
+      CC.meterTokens(attached.tag, 200_000);
+      emitHits();
+    });
+
+    const after = costTile().textContent ?? '';
+    expect(after, 'the mounted Observe screen froze at its mount instant').not.toBe(before);
+    expect(after).toContain(fmtUsd(aiSpendTotals(CC).spendToday));
+
+    // And the Cost screen, mounted after that tick, states the same figure.
+    const cost = at(<AiCostPage />);
+    const spendTile = within(within(cost.container).getByTestId('ai-cost-totals'))
+      .getByText('Spend today').parentElement as HTMLElement;
+    expect(spendTile).toHaveTextContent(fmtUsd(aiSpendTotals(CC).spendToday));
   });
 });
