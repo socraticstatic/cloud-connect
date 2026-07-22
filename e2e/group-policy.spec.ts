@@ -32,7 +32,7 @@ test('a person can author, preview, read back and enforce a group-to-group polic
     sessionStorage.clear();
   });
 
-  await page.goto('/#/govern', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/naas/govern', { waitUntil: 'domcontentloaded' });
   await dismissFirstVisitOverlays(page);
 
   // --- open the rule builder ---
@@ -125,7 +125,7 @@ test('a relative destination without a source group cannot be committed', async 
     sessionStorage.clear();
   });
 
-  await page.goto('/#/govern', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/naas/govern', { waitUntil: 'domcontentloaded' });
   await dismissFirstVisitOverlays(page);
 
   const rulesBefore = await page.evaluate(

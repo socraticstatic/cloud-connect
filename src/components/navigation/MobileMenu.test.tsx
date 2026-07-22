@@ -101,9 +101,14 @@ describe('MobileMenu', () => {
     expect(screen.getByText('5')).toBeInTheDocument();
   });
 
-  it('displays search input', () => {
+  /* The drawer's "Search..." input was removed: it wrote to local state that
+     nothing ever read, so typing in it did nothing. Asserting it renders was
+     asserting that a dead control is present. What the drawer owes the user
+     at these widths is reachable navigation — covered above and in
+     MainNav.test.tsx — and the working search lives in the top bar. */
+  it('does not render a search box that searches nothing', () => {
     renderMobileMenu();
 
-    expect(screen.getByPlaceholderText('Search...')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Search...')).not.toBeInTheDocument();
   });
 });

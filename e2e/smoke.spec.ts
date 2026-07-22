@@ -1,13 +1,22 @@
 import { test, expect } from '@playwright/test';
 import { seedAuth } from '../tests/e2e/helpers';
 
-test('boots to Discover, nav shows six sections, attach works on Connect', async ({ page }) => {
+test('boots to Discover, nav shows both domains, attach works on NaaS Connect', async ({ page }) => {
   await seedAuth(page);
   await page.goto('/');
   await expect(page).toHaveTitle(/Cloud Connect/);
   const mainNav = page.getByLabel('Main navigation');
-  for (const l of ['Discover', 'Connect', 'Govern', 'Observe', 'Cost', 'AI Fabric'])
-    await expect(mainNav.getByRole('link', { name: l })).toBeVisible();
+  // Two domains, each carrying the same four verbs. The verb labels repeat by
+  // design, so each domain is asserted through its own named group — which is
+  // also the only thing a screen-reader user has to tell them apart.
+  await expect(mainNav.getByRole('link', { name: 'Discover', exact: true })).toBeVisible();
+  for (const domain of ['NaaS', 'AI Fabric']) {
+    const group = mainNav.getByRole('group', { name: domain });
+    await expect(group).toBeVisible();
+    for (const verb of ['Connect', 'Govern', 'Observe', 'Cost']) {
+      await expect(group.getByRole('link', { name: verb, exact: true })).toBeVisible();
+    }
+  }
   // Discover is a read view of the unified estate — no attach control here.
   // The rebuilt Discover tree exposes Expand/Collapse controls and per-row
   // connection-state indicators (via the AT&T fabric / public internet).
@@ -16,7 +25,7 @@ test('boots to Discover, nav shows six sections, attach works on Connect', async
 
   // Provisioning now lives on the Connect cloud fabric; provisioning a region
   // persists a visible state change (its edge flips public → private).
-  await page.goto('/#/connect', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/naas/connect', { waitUntil: 'domcontentloaded' });
   const usw2Edge = page.locator('[data-fabric-edge][data-region-id="usw2"]').first();
   await expect(usw2Edge).toHaveAttribute('data-path', 'public');
   await page.getByTestId('fabric-node-region-usw2').click();

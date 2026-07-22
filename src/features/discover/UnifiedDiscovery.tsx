@@ -413,7 +413,7 @@ export function UnifiedDiscovery() {
       <FlowBar
         cta={
           publicWorkloads > 0
-            ? { label: `Attach ${publicWorkloads} public workloads`, to: '/connect?from=discover' }
+            ? { label: `Attach ${publicWorkloads} public workloads`, to: '/naas/connect?from=discover' }
             : undefined
         }
       />
@@ -486,7 +486,7 @@ export function UnifiedDiscovery() {
             found.
           </span>
           <Link
-            to="/govern?tab=groups"
+            to="/naas/govern?tab=groups"
             className="font-medium text-fw-link underline underline-offset-2"
           >
             See it in Govern → Groups

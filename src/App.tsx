@@ -3,6 +3,21 @@ import { useState, useEffect, Suspense, lazy, memo } from 'react';
 import { startLmccLifecycleClock } from './data/lmccLifecycleClock';
 import { restoreFromLocation } from './features/share/shareLink';
 
+/**
+ * A legacy-path redirect that keeps the query string.
+ *
+ * `<Navigate to="/naas/govern" />` replaces the whole location, so a shared
+ * `#/govern?tab=groups` link would land on Govern with its tab reset — the
+ * deep link silently degrading to a shallow one. The retired verb paths all
+ * carry query state somewhere (`?tab=` on Govern, `?from=discover` on
+ * Connect, the share-link payload `restoreFromLocation` reads), so the
+ * search is forwarded rather than dropped.
+ */
+function LegacyRedirect({ to }: { to: string }) {
+  const { search } = useLocation();
+  return <Navigate to={{ pathname: to, search }} replace />;
+}
+
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
@@ -56,9 +71,32 @@ const LazyCostPage = lazy(() =>
   }))
 );
 
-const LazyAiFabricPage = lazy(() =>
-  import('./features/ai-fabric/AiFabricPage').then(module => ({
-    default: module.AiFabricPage
+// The AI Fabric is its own domain now, carrying the same four verbs as NaaS.
+// What used to be one tabbed page (AiFabricPage) is four screens, each holding
+// blocks that page already had: model catalog → Connect, token policies +
+// agents → Govern, observability shell + prompt trace + decision log →
+// Observe, token budgets → Cost.
+const LazyAiConnectPage = lazy(() =>
+  import('./features/ai-fabric/AiConnectPage').then(module => ({
+    default: module.AiConnectPage
+  }))
+);
+
+const LazyAiGovernPage = lazy(() =>
+  import('./features/ai-fabric/AiGovernPage').then(module => ({
+    default: module.AiGovernPage
+  }))
+);
+
+const LazyAiObservePage = lazy(() =>
+  import('./features/ai-fabric/AiObservePage').then(module => ({
+    default: module.AiObservePage
+  }))
+);
+
+const LazyAiCostPage = lazy(() =>
+  import('./features/ai-fabric/AiCostPage').then(module => ({
+    default: module.AiCostPage
   }))
 );
 
@@ -282,35 +320,67 @@ function App() {
                   </Suspense>
                 } />
 
-                <Route path="/connect" element={
+                {/* NaaS — network as a service. Its four verbs. */}
+                <Route path="/naas/connect" element={
                   <Suspense fallback={<LoadingFallback />}>
                     <LazyConnectPage />
                   </Suspense>
                 } />
 
-                <Route path="/govern" element={
+                <Route path="/naas/govern" element={
                   <Suspense fallback={<LoadingFallback />}>
                     <LazyGovernPage />
                   </Suspense>
                 } />
 
-                <Route path="/observe" element={
+                <Route path="/naas/observe" element={
                   <Suspense fallback={<LoadingFallback />}>
                     <LazyObservePage />
                   </Suspense>
                 } />
 
-                <Route path="/cost" element={
+                <Route path="/naas/cost" element={
                   <Suspense fallback={<LoadingFallback />}>
                     <LazyCostPage />
                   </Suspense>
                 } />
 
-                <Route path="/ai-fabric" element={
+                {/* AI Fabric — the token layer. The same four verbs. */}
+                <Route path="/ai/connect" element={
                   <Suspense fallback={<LoadingFallback />}>
-                    <LazyAiFabricPage />
+                    <LazyAiConnectPage />
                   </Suspense>
                 } />
+
+                <Route path="/ai/govern" element={
+                  <Suspense fallback={<LoadingFallback />}>
+                    <LazyAiGovernPage />
+                  </Suspense>
+                } />
+
+                <Route path="/ai/observe" element={
+                  <Suspense fallback={<LoadingFallback />}>
+                    <LazyAiObservePage />
+                  </Suspense>
+                } />
+
+                <Route path="/ai/cost" element={
+                  <Suspense fallback={<LoadingFallback />}>
+                    <LazyAiCostPage />
+                  </Suspense>
+                } />
+
+                {/* The flat verb routes this nav used to ship, and the single
+                    /ai-fabric page that has been split into the four above.
+                    Kept as redirects so shared links, bookmarks and the
+                    archived deployment's URLs still land somewhere real.
+                    /ai-fabric goes to /ai/govern because the token-policy
+                    table is what that page always led with. */}
+                <Route path="/connect" element={<LegacyRedirect to="/naas/connect" />} />
+                <Route path="/govern" element={<LegacyRedirect to="/naas/govern" />} />
+                <Route path="/observe" element={<LegacyRedirect to="/naas/observe" />} />
+                <Route path="/cost" element={<LegacyRedirect to="/naas/cost" />} />
+                <Route path="/ai-fabric" element={<LegacyRedirect to="/ai/govern" />} />
 
                 <Route path="/netops" element={
                   <Suspense fallback={<LoadingFallback />}>

@@ -10,7 +10,7 @@ import { TenantSelector } from './TenantSelector';
 import { TourLauncher } from '../../features/tour/TourLauncher';
 import { CommandPalette } from '../../features/command/CommandPalette';
 import { UndoControl } from '../../features/undo/UndoControl';
-import { NAV_ITEMS } from './navItems';
+import { NAV_DISCOVER, NAV_DOMAINS, NAV_ITEMS } from './navItems';
 import { Button } from '../common/Button';
 import { useStore } from '../../store/useStore';
 import { usePermissions } from '../../hooks/usePermission';
@@ -62,14 +62,17 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
   });
 
-  const defaultItems: NavItem[] = NAV_ITEMS.map(navItem => ({
+  const toNavItem = (navItem: (typeof NAV_ITEMS)[number]): NavItem => ({
     label: navItem.label,
     icon: ({ className }: { className?: string }) => <AttIcon name={navItem.icon} className={className} />,
     href: navItem.to,
     description: navItem.description
-  }));
+  });
 
-  const navItems = items.length ? items : defaultItems;
+  // A caller-supplied `items` list is still rendered as one flat row — it has
+  // no domains to group by. The curated nav renders NAV_DOMAINS instead.
+  const usingCuratedNav = items.length === 0;
+  const navItems = usingCuratedNav ? NAV_ITEMS.map(toNavItem) : items;
 
   // Check if a nav item is disabled by role
   // User role: can only View. No Create, no Configure.
@@ -79,6 +82,84 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
     if (href === '/create' && !canCreate) return true;
     if (href === '/configure' && !canEdit) return true;
     return false;
+  };
+
+  /* Active-route matching. `/naas/connect` and `/ai/connect` are different
+     destinations that share a label, so a bare `startsWith` on the label's
+     path is not enough — match the path exactly, or as a parent of the
+     current one. A plain prefix test would also light `/ai` for `/ai-fabric`
+     if that path ever came back. */
+  const isRouteActive = (href: string) => {
+    if (href === '/manage') {
+      return location.pathname.startsWith('/manage') || location.pathname.startsWith('/groups');
+    }
+    return location.pathname === href || location.pathname.startsWith(href + '/');
+  };
+
+  /** One nav link. `compact` is the in-group form: no icon (the same three
+   *  icons repeat across both domains, so they disambiguate nothing there)
+   *  and the active underline sits under the label rather than the bar. */
+  const renderNavLink = (item: NavItem, compact = false) => {
+    const Icon = item.icon;
+    const disabled = isNavDisabled(item.href);
+    const isActive = !disabled && isRouteActive(item.href);
+
+    return (
+      <Link
+        key={item.href}
+        to={disabled ? '#' : item.href}
+        onClick={disabled ? (e: React.MouseEvent) => e.preventDefault() : undefined}
+        onMouseEnter={() => !disabled && setHoveredItem(item.href)}
+        onMouseLeave={() => setHoveredItem(null)}
+        aria-current={isActive ? 'page' : undefined}
+        className={`
+          group relative inline-flex items-center border-b-2 font-medium no-rounded
+          transition-all duration-200 tracking-[-0.03em] whitespace-nowrap
+          ${compact ? 'px-0.5 pb-1 text-figma-sm' : 'px-1 py-4 h-full text-figma-base'}
+          ${disabled
+            ? 'border-transparent text-fw-disabled cursor-not-allowed opacity-50'
+            : isActive
+              ? 'border-fw-active text-fw-link'
+              : 'border-transparent text-fw-heading hover:border-fw-secondary hover:text-fw-body'
+          }
+        `}
+      >
+        {!compact && (
+          <Icon className={`
+            h-5 w-5 mr-1.5 transition-transform duration-200 flex-shrink-0
+            ${!disabled && hoveredItem === item.href ? 'scale-110' : ''}
+            ${disabled ? 'text-fw-disabled' : isActive ? 'text-fw-link' : 'text-fw-heading'}
+          `}
+          />
+        )}
+        <span className={`
+          transition-all duration-200 tracking-[-0.03em]
+          ${!disabled && hoveredItem === item.href ? 'transform translate-y-[-1px]' : ''}
+        `}>
+          {item.label}
+        </span>
+
+        {/* Enhanced Tooltip — for the in-group verbs this is where the
+            difference between the two domains' identically-labelled links
+            is spelled out. */}
+        {hoveredItem === item.href && (
+          <div
+            className="absolute top-full mt-4 p-4 bg-fw-base rounded-lg shadow-lg border border-fw-secondary w-64" style={{ zIndex: 50 }}
+          >
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-figma-base font-medium text-fw-heading">{item.label}</span>
+                <Icon className="h-4 w-4 text-fw-bodyLight" />
+              </div>
+              <p className="whitespace-normal text-figma-sm text-fw-bodyLight">{item.description}</p>
+            </div>
+            <div className="absolute -top-1 left-1/2 transform -translate-x-1/2">
+              <div className="border-x-4 border-x-transparent border-b-4 border-b-fw-base"></div>
+            </div>
+          </div>
+        )}
+      </Link>
+    );
   };
 
   const handleLogoClick = () => {
@@ -135,67 +216,49 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
               </div>
             </div>
 
-            {/* Desktop Navigation */}
-            <div className="hidden min-[1280px]:flex min-[1280px]:items-center min-[1280px]:h-full ml-6 gap-3 min-[1440px]:gap-5 min-[1680px]:gap-7">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const disabled = isNavDisabled(item.href);
-                // Special handling: /groups routes should be considered part of /manage
-                const isActive = !disabled && (item.href === '/manage'
-                  ? (location.pathname.startsWith('/manage') || location.pathname.startsWith('/groups'))
-                  : location.pathname.startsWith(item.href));
+            {/* Desktop Navigation.
 
-                return (
-                  <Link
-                    key={item.href}
-                    to={disabled ? '#' : item.href}
-                    onClick={disabled ? (e: React.MouseEvent) => e.preventDefault() : undefined}
-                    onMouseEnter={() => !disabled && setHoveredItem(item.href)}
-                    onMouseLeave={() => setHoveredItem(null)}
-                    className={`
-                      group relative inline-flex items-center px-1 py-4 border-b-2 text-figma-base font-medium no-rounded
-                      transition-all duration-200 h-full tracking-[-0.03em] whitespace-nowrap
-                      ${disabled
-                        ? 'border-transparent text-fw-disabled cursor-not-allowed opacity-50'
-                        : isActive
-                          ? 'border-fw-active text-fw-link'
-                          : 'border-transparent text-fw-heading hover:border-fw-secondary hover:text-fw-body'
-                      }
-                    `}
-                  >
-                    <Icon className={`
-                      h-5 w-5 mr-1.5 transition-transform duration-200 flex-shrink-0
-                      ${!disabled && hoveredItem === item.href ? 'scale-110' : ''}
-                      ${disabled ? 'text-fw-disabled' : isActive ? 'text-fw-link' : 'text-fw-heading'}
-                    `}
-                    />
-                    <span className={`
-                      transition-all duration-200 tracking-[-0.03em]
-                      ${!disabled && hoveredItem === item.href ? 'transform translate-y-[-1px]' : ''}
-                    `}>
-                      {item.label}
-                    </span>
+                Curated nav: Discover sits alone, then NaaS and AI Fabric each
+                render as a labelled group of the same four verbs. The two
+                domains carry IDENTICAL labels (Connect/Govern/Observe/Cost),
+                so the group label is load-bearing, not decoration — it is the
+                accessible name of the group each link belongs to. */}
+            <div className="hidden min-[1280px]:flex min-[1280px]:items-center min-[1280px]:h-full ml-6">
+              {usingCuratedNav ? (
+                <div className="flex items-end h-full pb-2.5 gap-4 min-[1440px]:gap-5 min-[1680px]:gap-7">
+                  <div className="flex flex-col">
+                    {/* Spacer matching a domain label's line box, so Discover's
+                        link sits on the same baseline as the verbs beside it. */}
+                    <span className="h-4" aria-hidden="true" />
+                    {renderNavLink(toNavItem(NAV_DISCOVER))}
+                  </div>
 
-                    {/* Enhanced Tooltip */}
-                    {hoveredItem === item.href && (
+                  {NAV_DOMAINS.map(domain => (
+                    <div key={domain.key} className="flex items-end gap-4 min-[1440px]:gap-5">
+                      <span className="w-px h-8 bg-fw-secondary" aria-hidden="true" />
                       <div
-                        className="absolute top-full mt-4 p-4 bg-fw-base rounded-lg shadow-lg border border-fw-secondary w-64" style={{ zIndex: 50 }}
+                        role="group"
+                        aria-labelledby={`nav-domain-${domain.key}`}
+                        className="flex flex-col"
                       >
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-figma-base font-medium text-fw-heading">{item.label}</span>
-                            <Icon className="h-4 w-4 text-fw-bodyLight" />
-                          </div>
-                          <p className="whitespace-normal text-figma-sm text-fw-bodyLight">{item.description}</p>
-                        </div>
-                        <div className="absolute -top-1 left-1/2 transform -translate-x-1/2">
-                          <div className="border-x-4 border-x-transparent border-b-4 border-b-fw-base"></div>
+                        <span
+                          id={`nav-domain-${domain.key}`}
+                          className="h-4 text-[10px] leading-4 font-semibold uppercase tracking-[0.1em] text-fw-bodyLight whitespace-nowrap"
+                        >
+                          {domain.label}
+                        </span>
+                        <div className="flex items-end gap-3 min-[1440px]:gap-4">
+                          {domain.items.map(item => renderNavLink(toNavItem(item), true))}
                         </div>
                       </div>
-                    )}
-                  </Link>
-                );
-              })}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-center h-full gap-3 min-[1440px]:gap-5 min-[1680px]:gap-7">
+                  {navItems.map(item => renderNavLink(item))}
+                </div>
+              )}
             </div>
           </div>
 

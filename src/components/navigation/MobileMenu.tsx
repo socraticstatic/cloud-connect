@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Bell, HelpCircle, Search } from 'lucide-react';
+import { X, Bell, HelpCircle } from 'lucide-react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { AttIcon } from '../icons/AttIcon';
-import { NAV_ITEMS } from './navItems';
+import { NAV_DISCOVER, NAV_DOMAINS, type CuratedNavItem } from './navItems';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -24,21 +24,17 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
   const navigate = useNavigate();
   const location = useLocation();
   const menuRef = useFocusTrap(isOpen);
-  const [searchQuery, setSearchQuery] = useState('');
   const [animationComplete, setAnimationComplete] = useState(false);
 
-  // Define navigation items with enabled/disabled state.
+  // Below 1280px this drawer is the ONLY way to reach any section, so it
+  // carries the full curated nav: Discover, then NaaS and AI Fabric as two
+  // labelled groups. Both groups hold the same four verb labels, so each is
+  // a real `role="group"` with the domain as its accessible name — that
+  // label is the only thing telling "Connect" from "Connect".
   // (A trailing "Utilities" item pointing at /profile used to live here —
   // removed because /profile is a Navigate to /discover, i.e. a no-op that
   // only closed the menu. See handleNavigation's /profile call below, which
   // was the same dead end from a second entry point.)
-  const navItems = NAV_ITEMS.map(navItem => ({
-    label: navItem.label,
-    icon: ({ className }: { className?: string }) => <AttIcon name={navItem.icon} className={className} />,
-    href: navItem.to,
-    description: navItem.description,
-    disabled: false
-  }));
 
   // Prevent body scrolling when menu is open
   useEffect(() => {
@@ -60,6 +56,30 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
     setTimeout(() => {
       navigate(path);
     }, 100);
+  };
+
+  const renderDrawerItem = (item: CuratedNavItem) => {
+    const active = location.pathname === item.to;
+    return (
+      <button
+        key={item.to}
+        onClick={() => handleNavigation(item.to)}
+        aria-current={active ? 'page' : undefined}
+        className={`
+          w-full flex items-center px-4 py-3 text-figma-base rounded-xl transition-colors
+          ${active ? 'bg-fw-accent text-fw-link font-medium' : 'text-fw-body hover:bg-fw-neutral'}
+        `}
+      >
+        <AttIcon
+          name={item.icon}
+          className={`h-6 w-6 mr-3 ${active ? 'text-fw-link' : 'text-fw-bodyLight'}`}
+        />
+        <div className="text-left">
+          <div>{item.label}</div>
+          <div className="text-figma-sm text-fw-bodyLight">{item.description}</div>
+        </div>
+      </button>
+    );
   };
 
   // Portalled straight to document.body (same pattern OverflowMenu uses).
@@ -138,19 +158,63 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
               </div>
             </div>
 
-            {/* Search */}
-            <div className="p-4 border-b border-fw-secondary">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-fw-bodyLight h-5 w-5" />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 h-10 border border-fw-secondary rounded-lg focus:ring-2 focus:ring-fw-active focus:border-fw-active"
-                />
-              </div>
+            {/* Navigation comes first.
+
+                Below 1280px this drawer is the only route to any section, and
+                the domain split doubled the list: Discover plus two domains of
+                four verbs each. With Search and the profile card above it (169
+                px between them) the AI Fabric group started below the fold on
+                an 800px-tall viewport — reachable by scrolling, invisible
+                without it, on the surface that is the ONLY way there. Nothing
+                was deleted; the navigation simply leads in a navigation
+                drawer, and the two supporting blocks follow it. */}
+            <div className="flex-1 overflow-y-auto py-2">
+              <AnimatePresence>
+                {animationComplete && (
+                  <div className="space-y-2 px-2">
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.05, duration: 0.2 }}
+                    >
+                      {renderDrawerItem(NAV_DISCOVER)}
+                    </motion.div>
+
+                    {NAV_DOMAINS.map((domain, domainIndex) => (
+                      <motion.div
+                        key={domain.key}
+                        role="group"
+                        aria-label={domain.label}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 + domainIndex * 0.05, duration: 0.2 }}
+                        className="pt-2"
+                      >
+                        <div className="px-4 pb-1">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-fw-bodyLight">
+                            {domain.label}
+                          </div>
+                          <p className="mt-0.5 text-figma-sm text-fw-bodyLight">{domain.blurb}</p>
+                        </div>
+                        <div className="space-y-1">
+                          {domain.items.map(renderDrawerItem)}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </AnimatePresence>
             </div>
+
+            {/* A "Search..." input used to sit here. It was wired to local
+                state that nothing ever read — no submit, no filter, no
+                results — so typing in it did nothing at all. With Discover
+                plus two domains of four verbs, its 73px was the difference
+                between the AI Fabric group being visible in an 800px drawer
+                and being hidden below the fold on the one surface that can
+                reach it. Removed as a dead affordance, the same call already
+                made in this file for Sign Out and the profile chevron; the
+                real search lives in the top bar (SearchBar). */}
 
             {/* User Profile */}
             <div className="p-4 border-b border-fw-secondary bg-fw-wash">
@@ -178,53 +242,6 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
                     menu. Removed rather than pointing it somewhere real,
                     since there is no profile screen in this app. */}
               </div>
-            </div>
-
-            {/* Navigation */}
-            <div className="flex-1 overflow-y-auto py-2">
-              <AnimatePresence>
-                {animationComplete && (
-                  <div className="space-y-1 px-2">
-                    {navItems.map((item, index) => (
-                      <motion.div
-                        key={item.href}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{
-                          delay: index * 0.05,
-                          duration: 0.2
-                        }}
-                      >
-                        <button
-                          onClick={() => handleNavigation(item.href, item.disabled)}
-                          className={`
-                            w-full flex items-center px-4 py-3 text-figma-base rounded-2xl transition-colors
-                            ${location.pathname === item.href && !item.disabled
-                              ? 'bg-fw-accent text-fw-link font-medium'
-                              : item.disabled
-                                ? 'text-fw-bodyLight cursor-not-allowed'
-                                : 'text-fw-body hover:bg-fw-neutral'
-                            }
-                          `}
-                          disabled={item.disabled}
-                        >
-                          <item.icon className={`h-6 w-6 mr-3 ${
-                            location.pathname === item.href && !item.disabled
-                              ? 'text-fw-link'
-                              : item.disabled
-                                ? 'text-fw-bodyLight'
-                                : 'text-fw-bodyLight'
-                          }`} />
-                          <div className="text-left">
-                            <div>{item.label}</div>
-                            <div className="text-figma-sm text-fw-bodyLight">{item.description}</div>
-                          </div>
-                        </button>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </AnimatePresence>
             </div>
 
             {/* Footer */}

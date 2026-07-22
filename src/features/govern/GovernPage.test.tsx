@@ -27,7 +27,7 @@ test('/govern?tab=groups opens on the Groups table, not on Policies', () => {
 });
 
 test('/govern?tab=policies and a bare /govern both open on Policies', () => {
-  for (const path of ['/govern?tab=policies', '/govern', '/govern?tab=nonsense']) {
+  for (const path of ['/naas/govern?tab=policies', '/naas/govern', '/naas/govern?tab=nonsense']) {
     const { container, unmount } = render(at(path));
     expect(
       container.querySelector('[data-tour="govern-rules"]'),

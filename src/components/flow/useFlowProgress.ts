@@ -15,13 +15,18 @@ export interface FlowStageProgress extends FlowStage {
   status: FlowStatus;
 }
 
-/** The flow spine, left → right. Order is canonical and stable. */
+/** The flow spine, left → right. Order is canonical and stable.
+ *
+ *  This is the NaaS spine: Discover, then NaaS's own four verbs. The AI
+ *  Fabric's verbs are deliberately absent — it is a separate domain with its
+ *  own Connect/Govern/Observe/Cost, and its screens do not render this rail
+ *  (see AiDomainPage). */
 export const FLOW_STAGES: readonly FlowStage[] = [
   { stage: 'discover', label: 'Discover', route: '/discover' },
-  { stage: 'connect', label: 'Connect', route: '/connect' },
-  { stage: 'govern', label: 'Govern', route: '/govern' },
-  { stage: 'observe', label: 'Observe', route: '/observe' },
-  { stage: 'cost', label: 'Cost', route: '/cost' },
+  { stage: 'connect', label: 'Connect', route: '/naas/connect' },
+  { stage: 'govern', label: 'Govern', route: '/naas/govern' },
+  { stage: 'observe', label: 'Observe', route: '/naas/observe' },
+  { stage: 'cost', label: 'Cost', route: '/naas/cost' },
 ] as const;
 
 /* Baselines captured once at module load, from the engine's initial state.

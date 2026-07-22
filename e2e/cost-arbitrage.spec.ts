@@ -22,7 +22,7 @@ test('attaching a path on Cost raises the hero savings and flips the bucket to c
   page.on('pageerror', e => errors.push(String(e)));
 
   await seedAuth(page);
-  await page.goto('/#/cost', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/naas/cost', { waitUntil: 'domcontentloaded' });
 
   const savings = page.getByTestId('hero-savings');
   await expect(savings).toBeVisible();

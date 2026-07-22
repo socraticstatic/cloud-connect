@@ -15,15 +15,15 @@ describe('FlowBar', () => {
   });
 
   it('renders the CTA as a link to the given route with the label + arrow', () => {
-    renderAt('/discover', <FlowBar cta={{ label: 'Attach 142 public workloads', to: '/connect' }} />);
+    renderAt('/discover', <FlowBar cta={{ label: 'Attach 142 public workloads', to: '/naas/connect' }} />);
     const link = screen.getByRole('link', { name: /attach 142 public workloads/i });
-    expect(link).toHaveAttribute('href', '/connect');
+    expect(link).toHaveAttribute('href', '/naas/connect');
     expect(within(link).getByText('Attach 142 public workloads')).toBeInTheDocument();
   });
 
   it('renders the CTA as a button and fires onClick when no route is given', () => {
     const onClick = vi.fn();
-    renderAt('/cost', <FlowBar cta={{ label: 'Steer to save', onClick }} />);
+    renderAt('/naas/cost', <FlowBar cta={{ label: 'Steer to save', onClick }} />);
     const btn = screen.getByRole('button', { name: /steer to save/i });
     fireEvent.click(btn);
     expect(onClick).toHaveBeenCalledTimes(1);

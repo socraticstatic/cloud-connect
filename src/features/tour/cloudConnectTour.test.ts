@@ -34,8 +34,8 @@ describe('cloudConnectTour', () => {
   });
 
   it('binds the cost step title/description to the cost DEMO_BEAT', () => {
-    const costStep = cloudConnectTour.find(s => sectionOf(s.route) === '/cost');
-    const costBeat = DEMO_BEATS.find(b => b.route === '/cost')!;
+    const costStep = cloudConnectTour.find(s => sectionOf(s.route) === '/naas/cost');
+    const costBeat = DEMO_BEATS.find(b => b.route === '/naas/cost')!;
     expect(costStep).toBeDefined();
     expect(costStep!.title).toBe(costBeat.title);
     expect(readCopy(costStep!.description)).toBe(costBeat.narration);
@@ -62,8 +62,8 @@ describe('cloudConnectTour', () => {
     }
     // Discover names it; Govern reads it back; Policies writes it into a rule.
     expect(sectionOf(beat('discover-sites').route)).toBe('/discover');
-    expect(beat('govern-groups').route).toBe('/govern?tab=groups');
-    expect(beat('group-policy').route).toBe('/govern?tab=policies');
+    expect(beat('govern-groups').route).toBe('/naas/govern?tab=groups');
+    expect(beat('group-policy').route).toBe('/naas/govern?tab=policies');
   });
 
   it('threads the groups beats inside the arc rather than appending them', () => {

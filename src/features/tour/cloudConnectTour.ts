@@ -4,7 +4,7 @@ import { DEMO_BEATS } from '../demo/demoScript';
 
 // The Cost beat is the single source of truth for the Cost step's copy — the
 // six-beat demo arc (demoScript.ts) owns the narrative; the Tour renders it.
-const COST_BEAT = DEMO_BEATS.find(b => b.route === '/cost')!;
+const COST_BEAT = DEMO_BEATS.find(b => b.route === '/naas/cost')!;
 
 /* ------------------------- the groups thread -------------------------
 
@@ -94,8 +94,9 @@ function ensurePayoffRule(): void {
 }
 
 /**
- * Guided tour of Cloud Connect. The six-beat MVP demo arc — Discover →
- * Connect → Govern → Observe → Cost → AI Fabric — is the spine, and step
+ * Guided tour of Cloud Connect. The six-beat MVP demo arc — Discover, then
+ * NaaS's Connect → Govern → Observe → Cost, closing on the AI Fabric's own
+ * Govern — is the spine, and step
  * order is still bound to `DEMO_BEATS` (demoScript.ts): the tour visits those
  * sections in that order and never doubles back to one it has left.
  *
@@ -104,7 +105,7 @@ function ensurePayoffRule(): void {
  * you do while looking at them, so it belongs in Discover; reading the group
  * back and writing it into a policy belong in Govern, next to the rule beat
  * that already explains how a rule is shaped. Bolting all three onto the end
- * would have made the payoff arrive after Cost and AI Fabric had already
+ * would have made the payoff arrive after Cost and the AI Fabric had already
  * closed the story.
  *
  * Each step's `targetSelector` is a `data-tour` attribute added to the
@@ -151,7 +152,7 @@ export const cloudConnectTour: (TourStep & { route: string })[] = [
     title: 'Attach — NaaS in one click',
     description:
       'Connectivity as a service: no circuits ordered, no boxes racked. This provisions a NetBond on-ramp and attaches the GPU clouds. Watch the fabric lines turn green and start flowing — private paths replace the public-internet routes from Discover.',
-    route: '/connect',
+    route: '/naas/connect',
     targetSelector: '[data-tour="connect-onramp"]',
     placement: 'top',
     highlightPadding: 12,
@@ -165,7 +166,7 @@ export const cloudConnectTour: (TourStep & { route: string })[] = [
     title: 'Govern with real rules',
     description:
       'Policy the way operators write it: IF traffic FROM a tag — or, as you’ll see, a name — TO destination THEN action, with a dry-run preview against live flows before anything enforces. Enforcing this rule inserts an inline inspection point — the routes in Discover physically rewire.',
-    route: '/govern',
+    route: '/naas/govern',
     targetSelector: '[data-tour="govern-rules"]',
     placement: 'top',
     highlightPadding: 12,
@@ -200,7 +201,7 @@ export const cloudConnectTour: (TourStep & { route: string })[] = [
       // would be true of the product and false of the example.
       return `${list.length} groups covering ${objects} estate objects. Every one is resolved right now, not stored — “West workloads” holds ${west.count} by matching a predicate, so a workload tagged tomorrow is in it tomorrow. “${SITES_GROUP_LABEL}” holds ${mine.count}: you named it in Discover, so it holds exactly the sites you picked, no more and no fewer. The id underneath each label is what every rule stores; the label is only what you read.`;
     },
-    route: '/govern?tab=groups',
+    route: '/naas/govern?tab=groups',
     targetSelector: '[data-tour="govern-groups"]',
     placement: 'top',
     highlightPadding: 12,
@@ -218,7 +219,7 @@ export const cloudConnectTour: (TourStep & { route: string })[] = [
       const cloudCount = cloudCountFor(resolved.vpcIds);
       return `The sentence the whole thing exists for: allow ${SITES_GROUP_LABEL.toLowerCase()} to talk to west workloads — two names, no addresses, spanning ${cloudCount} cloud${cloudCount === 1 ? '' : 's'}. Dry-run first: it matches ${dry.matched.length} modelled flows carrying ${dry.gbps} Gbps, every one of them named. Enforce it and the rule joins the table above, still reading as that sentence — not a table of addresses.`;
     },
-    route: '/govern?tab=policies',
+    route: '/naas/govern?tab=policies',
     targetSelector: '[data-tour="govern-rules"]',
     placement: 'top',
     highlightPadding: 12,
@@ -232,7 +233,7 @@ export const cloudConnectTour: (TourStep & { route: string })[] = [
     title: 'Observe the bytes',
     description:
       'Telemetry derives from the same model every other tab reads. Attaching an on-ramp steps these latency lines down to the private envelope, and egress shifts toward committed pricing. Hover for the crosshair; the charts are live, not a snapshot.',
-    route: '/observe',
+    route: '/naas/observe',
     targetSelector: '[data-tour="observe-telemetry"]',
     placement: 'top',
     highlightPadding: 12,
@@ -241,7 +242,7 @@ export const cloudConnectTour: (TourStep & { route: string })[] = [
     id: 'cost',
     title: COST_BEAT.title,
     description: COST_BEAT.narration,
-    route: '/cost',
+    route: '/naas/cost',
     targetSelector: '[data-tour="cost-hero"]',
     placement: 'top',
     highlightPadding: 12,
@@ -251,13 +252,13 @@ export const cloudConnectTour: (TourStep & { route: string })[] = [
     title: 'Token policies under governance',
     description:
       // One added sentence, and it must stay true on BOTH tour paths: "you
-      // saw in Govern" refers to the govern-groups beat reading the seeded
+      // saw in NaaS · Govern" refers to the govern-groups beat reading the seeded
       // group back — which renders whether or not the viewer clicked any
       // action — never to a policy the Next-only path did not author. The
       // tour spec's groups-thread position guard exempts this final beat
       // deliberately (see tour.spec.ts).
-      'The tokens layer gets the same treatment as bytes: every app has a budget, a scope, and an optional guardrail. The same west-workloads group you saw in Govern scopes a token policy here too — resolved live against the estate. Enforce a policy here and a classified request to an external model is denied at the token layer — the network never carries it.',
-    route: '/ai-fabric',
+      'The tokens layer gets the same treatment as bytes: every app has a budget, a scope, and an optional guardrail. The same west-workloads group you saw in NaaS · Govern scopes a token policy here too — resolved live against the estate. Enforce a policy here and a classified request to an external model is denied at the token layer — the network never carries it.',
+    route: '/ai/govern',
     targetSelector: '[data-tour="aifabric-policies"]',
     placement: 'top',
     highlightPadding: 12,

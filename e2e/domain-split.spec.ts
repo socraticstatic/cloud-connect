@@ -1,0 +1,181 @@
+import { test, expect } from '@playwright/test';
+import { seedAuth } from '../tests/e2e/helpers';
+
+/**
+ * The NaaS / AI Fabric split, walked as a person walks it.
+ *
+ * Three things this pins that nothing else does:
+ *
+ *  1. Every retired path still lands somewhere real. Shared links, bookmarks
+ *     and the archived deployment all point at the flat verb routes; a
+ *     redirect that silently 404s is a dead link in someone else's document.
+ *  2. `/naas/<verb>` and `/ai/<verb>` are genuinely different screens. Two
+ *     routes rendering the same page would pass every "does it render" check
+ *     while making the whole split cosmetic.
+ *  3. No AI screen is blank. Each names the block that moved onto it.
+ */
+
+const LEGACY: { from: string; to: RegExp }[] = [
+  { from: '/connect', to: /#\/naas\/connect/ },
+  { from: '/govern', to: /#\/naas\/govern/ },
+  { from: '/observe', to: /#\/naas\/observe/ },
+  { from: '/cost', to: /#\/naas\/cost/ },
+  // The single AI Fabric page led with the token-policy table, which is what
+  // /ai/govern carries — so that is where the retired path lands.
+  { from: '/ai-fabric', to: /#\/ai\/govern/ },
+];
+
+for (const legacy of LEGACY) {
+  test(`legacy ${legacy.from} redirects into its domain`, async ({ page }) => {
+    await seedAuth(page);
+    await page.goto(`/#${legacy.from}`, { waitUntil: 'domcontentloaded' });
+    await expect(page).toHaveURL(legacy.to);
+    // …and the destination actually rendered, rather than redirecting into a
+    // blank route.
+    await expect(page.locator('#main-content').getByRole('heading').first()).toBeVisible();
+  });
+}
+
+/* The retired verb paths carried query state — Govern's `?tab=`, Connect's
+   `?from=discover`, the share-link payload. A redirect that drops the search
+   turns every shared deep link into a shallow one. */
+test('a legacy deep link keeps its query across the redirect', async ({ page }) => {
+  await seedAuth(page);
+  await page.goto('/#/govern?tab=groups', { waitUntil: 'domcontentloaded' });
+  await expect(page).toHaveURL(/#\/naas\/govern\?tab=groups/);
+  // The tab the query asked for is the one that opened.
+  await expect(page.getByRole('button', { name: /^Groups/ })).toBeVisible();
+});
+
+test('the two domains are different screens, not the same page twice', async ({ page }) => {
+  await seedAuth(page);
+
+  await page.goto('/#/naas/connect', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('[data-fabric-node]').first()).toBeVisible();
+  await expect(page.locator('#main-content').getByText('Model catalog')).toHaveCount(0);
+
+  await page.goto('/#/ai/connect', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#main-content').getByText('Model catalog')).toBeVisible();
+  await expect(page.locator('[data-fabric-node]')).toHaveCount(0);
+
+  await page.goto('/#/naas/govern', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#main-content').getByText('Token policies')).toHaveCount(0);
+
+  await page.goto('/#/ai/govern', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#main-content').getByText('Token policies')).toBeVisible();
+});
+
+/* The AI Fabric's four screens, each holding the block that moved onto it.
+   "Do not ship a blank route" is the rule; this is the assertion for it. */
+test('every AI Fabric verb renders the block that moved onto it', async ({ page }) => {
+  await seedAuth(page);
+
+  const expected: [string, RegExp][] = [
+    ['/ai/connect', /Model catalog/],
+    ['/ai/govern', /Token policies/],
+    ['/ai/observe', /Prompt trace/],
+    ['/ai/cost', /Token budgets/],
+  ];
+
+  for (const [route, block] of expected) {
+    await page.goto(`/#${route}`, { waitUntil: 'domcontentloaded' });
+    const main = page.locator('#main-content');
+    await expect(main.getByRole('heading', { name: /AI Fabric ·/ }).first()).toBeVisible();
+    await expect(main.getByText(block).first()).toBeVisible();
+  }
+});
+
+/* Govern sets the ceilings; Cost meters against them. The two screens must
+   state the SAME budget for the same identity — and Govern lists policies Cost
+   does not meter, which is the discrepancy a viewer notices first. Budgets do
+   not tick, so this is stable to assert across two page loads. */
+test('AI Fabric states the same budgets on Govern and on Cost', async ({ page }) => {
+  await seedAuth(page);
+
+  await page.goto('/#/ai/govern', { waitUntil: 'domcontentloaded' });
+  const policies = await page.evaluate(() =>
+    (window as unknown as {
+      CC: { tokenPolicyList: () => { tag: string; budget: number }[] };
+    }).CC.tokenPolicyList().map(p => ({ tag: p.tag, budget: p.budget })),
+  );
+  expect(policies.length).toBeGreaterThan(0);
+  // Scoped to the policies table: the Agents table on the same screen names
+  // the same tags in its App column, and a bare row lookup matches both.
+  const policyTable = page.locator('[data-tour="aifabric-policies"]');
+  for (const p of policies) {
+    await expect(
+      policyTable.getByRole('row').filter({ hasText: p.tag }),
+    ).toContainText(p.budget.toLocaleString());
+  }
+
+  await page.goto('/#/ai/cost', { waitUntil: 'domcontentloaded' });
+  const metered = await page.evaluate(() =>
+    (window as unknown as { CC: { tokenMeterList: () => { tag: string }[] } }).CC
+      .tokenMeterList()
+      .map(m => m.tag),
+  );
+
+  for (const p of policies) {
+    if (metered.includes(p.tag)) {
+      // Metered here — same ceiling as Govern, to the digit.
+      await expect(
+        page.getByRole('row').filter({ hasText: p.tag }),
+      ).toContainText(p.budget.toLocaleString());
+    } else {
+      // Not metered — the screen must SAY so rather than leave the reader to
+      // notice that Cost totals fewer budgets than Govern lists.
+      await expect(page.locator('#main-content')).toContainText(p.tag);
+      await expect(
+        page.getByText(/scopes? a group rather than a metered identity/i),
+      ).toBeVisible();
+    }
+  }
+});
+
+/* The Cost screen states token spend; the Observe screen states the same
+   figure in its Cost KPI tile. Two screens, one derivation.
+ *
+ * The meters tick on a 3s interval (state-rules startHits), so reading the two
+ * screens at two different instants would compare two different moments and
+ * fail for reasons that have nothing to do with agreement. The ticker is
+ * stopped first (CC.stopHits) and the crossing is made through the nav rather
+ * than page.goto, so the engine — and therefore the figure — is the same one
+ * on both screens. */
+test('AI Fabric states the same token spend on Cost and on Observe', async ({ page }) => {
+  await seedAuth(page);
+  await page.goto('/#/discover', { waitUntil: 'domcontentloaded' });
+
+  const metering = await page.evaluate(() => {
+    const CC = (window as unknown as {
+      CC: {
+        stopHits: () => boolean;
+        activateOnramp: (id: string) => void;
+        _: { tickTokens: (rng: () => number) => boolean };
+        tokenMeterList: () => { today: number }[];
+      };
+    }).CC;
+    CC.stopHits();
+    // Lighting nb2 makes shared-services meter. The rng is a constant, not
+    // Math.random, so the volume is the same on every run.
+    CC.activateOnramp('nb2');
+    CC._.tickTokens(() => 0.5);
+    return CC.tokenMeterList().some(m => m.today > 0);
+  });
+  expect(metering, 'the estate must actually be metering for this to mean anything').toBe(true);
+
+  const aiGroup = page.getByLabel('Main navigation').getByRole('group', { name: 'AI Fabric' });
+
+  await aiGroup.getByRole('link', { name: 'Cost', exact: true }).click();
+  const costTile = page.getByTestId('ai-cost-totals').filter({ hasText: 'Spend today' });
+  await expect(costTile).toBeVisible();
+  const onCostScreen = (await costTile.innerText()).match(/\$[\d.]+k?/)?.[0];
+  expect(onCostScreen, 'no spend figure on the Cost screen').toBeTruthy();
+  expect(onCostScreen).not.toBe('$0.00');
+
+  await aiGroup.getByRole('link', { name: 'Observe', exact: true }).click();
+  const kpi = page.getByTestId('kpi-tile').filter({ hasText: /^Cost/ }).first();
+  await expect(kpi).toBeVisible();
+  const onObserveScreen = (await kpi.innerText()).match(/\$[\d.]+k?/)?.[0];
+
+  expect(onObserveScreen).toBe(onCostScreen);
+});

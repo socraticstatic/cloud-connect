@@ -4,13 +4,13 @@ import AxeBuilder from '@axe-core/playwright';
 import { seedAuth } from '../tests/e2e/helpers';
 
 /**
- * The exquisite gate. For each of the six MVP screens this asserts, in one
+ * The exquisite gate. For each of the nine MVP screens this asserts, in one
  * pass: the screen renders real engine-backed content (mustSee), an axe scan
  * finds no serious/critical a11y violations, the console logs zero errors, and
  * a full-page screenshot lands in test-results/ for design review.
  *
  * Axe (and the mustSee query) are scoped to `#main-content` — the region every
- * one of our six screens renders into (see App.tsx). The inherited AT&T NetBond
+ * one of our screens renders into (see App.tsx). The inherited AT&T NetBond
  * top-nav / header chrome that wraps every route is out of this rebuild's scope;
  * scoping keeps the gate honest about OUR surface without weakening the ruleset
  * (no rules disabled, full serious+critical bar) and without letting pre-existing
@@ -30,20 +30,31 @@ async function prep(page: Page) {
   await page.addInitScript(() => sessionStorage.setItem('cc-discover-revealed', '1'));
 }
 
+/* Nine screens now, not six: Discover is unified above both domains, and NaaS
+   and the AI Fabric each carry their own Connect / Govern / Observe / Cost.
+   Every one has to render real engine-backed content — a domain-scoped route
+   that renders an empty shell is exactly the failure this loop catches, and
+   each AI screen's `mustSee` names the block that moved onto it. */
 const SCREENS = [
-  // Discover: the amber public-exposure finding strip (Task 5) — real estate rollup.
+  // Discover: the public-exposure finding strip (Task 5) — real estate rollup.
   { route: '/discover', mustSee: /workloads? reachable over the public internet/i },
-  // Connect: the cloud-fabric copy (section description) — the steerable Paths
-  // table moved to Observe.
-  { route: '/connect', mustSee: /AT&T fabric|on-ramps?/i },
-  // Govern: policy & segmentation surface.
-  { route: '/govern', mustSee: /polic(y|ies)|enforce|rules?/i },
-  // Observe: network observability KPIs (throughput / latency / egress series).
-  { route: '/observe', mustSee: /latency|egress|throughput/i },
-  // Cost: arbitrage hero — the two-bill savings band, verified real.
-  { route: '/cost', mustSee: /on the AT&T fabric/i },
-  // AI Fabric: token policies + model catalog.
-  { route: '/ai-fabric', mustSee: /token|model/i },
+  // NaaS Connect: the cloud-fabric copy (section description) — the steerable
+  // Paths table moved to Observe.
+  { route: '/naas/connect', mustSee: /AT&T fabric|on-ramps?/i },
+  // NaaS Govern: policy & segmentation surface.
+  { route: '/naas/govern', mustSee: /polic(y|ies)|enforce|rules?/i },
+  // NaaS Observe: network observability KPIs (throughput / latency / egress).
+  { route: '/naas/observe', mustSee: /latency|egress|throughput/i },
+  // NaaS Cost: arbitrage hero — the two-bill savings band, verified real.
+  { route: '/naas/cost', mustSee: /on the AT&T fabric/i },
+  // AI Connect: the model catalog — endpoints, and whether their path attached.
+  { route: '/ai/connect', mustSee: /Model catalog/i },
+  // AI Govern: token policies, and the agents those policies bind.
+  { route: '/ai/govern', mustSee: /Token policies/i },
+  // AI Observe: observability shell + prompt trace + decision log.
+  { route: '/ai/observe', mustSee: /Prompt trace/i },
+  // AI Cost: token budgets, metered against their ceilings.
+  { route: '/ai/cost', mustSee: /Token budgets/i },
 ];
 
 for (const s of SCREENS) {
@@ -73,16 +84,16 @@ for (const s of SCREENS) {
 }
 
 /**
- * The SCREENS loop above scans /connect with no region selected, so
+ * The SCREENS loop above scans /naas/connect with no region selected, so
  * `PathChoice` (the two-path-per-region cards under "How you connect") is
  * never in the DOM when axe runs — a serious/critical violation inside it
  * would pass the gate silently. Select a region first so the cards actually
  * render, then scan. Same axe invocation as the loop above: scoped to
  * `#main-content`, full serious+critical bar, no rules disabled.
  */
-test('/connect with a region selected is accessible (PathChoice included)', async ({ page }) => {
+test('/naas/connect with a region selected is accessible (PathChoice included)', async ({ page }) => {
   await prep(page);
-  await page.goto('/#/connect', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/naas/connect', { waitUntil: 'domcontentloaded' });
 
   await page.getByTestId('fabric-node-region-use1').click();
   await expect(page.getByTestId('path-managed-direct')).toBeVisible();
@@ -107,7 +118,7 @@ test('/connect with a region selected is accessible (PathChoice included)', asyn
  */
 test('cause-and-effect: steering on Observe moves the Cost savings headline', async ({ page }) => {
   await prep(page);
-  await page.goto('/#/cost', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/naas/cost', { waitUntil: 'domcontentloaded' });
 
   // The arbitrage hero's "save $X (Y%)" pill — moves as egress leaves public.
   const savingsValue = page.getByTestId('hero-savings');

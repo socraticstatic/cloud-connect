@@ -63,7 +63,7 @@ test('Govern recommends one rule to enforce, states its effect, and re-points on
     localStorage.setItem('e2e-skip-demo-modal', 'true');
   });
 
-  await page.goto('/#/govern', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/naas/govern', { waitUntil: 'domcontentloaded' });
 
   const band = page.locator(BAND);
   await expect(band).toBeVisible();
@@ -113,7 +113,7 @@ test('Govern gives the zero-clear state its own copy instead of "START HERE ... 
   page,
 }) => {
   await seedAuth(page);
-  await page.goto('/#/govern', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/naas/govern', { waitUntil: 'domcontentloaded' });
 
   const band = page.locator(BAND);
   await expect(band).toBeVisible();
@@ -161,7 +161,7 @@ test('Govern gives the zero-clear state its own copy instead of "START HERE ... 
 
 test('Govern shows a designed finished state once every rule is enforced', async ({ page }) => {
   await seedAuth(page);
-  await page.goto('/#/govern', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/naas/govern', { waitUntil: 'domcontentloaded' });
   await expect(page.locator(BAND)).toBeVisible();
 
   await page.evaluate(() => {

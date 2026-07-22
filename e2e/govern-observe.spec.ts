@@ -5,7 +5,7 @@ test('Govern rules enforce, and Observe telemetry + Applications sub-view render
   await seedAuth(page);
 
   // --- Govern: rules render, Enforce flips a status badge ---
-  await page.goto('/#/govern', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/naas/govern', { waitUntil: 'domcontentloaded' });
 
   const rows = page.locator('table tbody tr');
   await expect(rows.first()).toBeVisible();
@@ -27,7 +27,7 @@ test('Govern rules enforce, and Observe telemetry + Applications sub-view render
   void unenforcedBadge;
 
   // --- Observe: the observability shell renders telemetry + the records table ---
-  await page.goto('/#/observe', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/naas/observe', { waitUntil: 'domcontentloaded' });
 
   await expect(page.getByText(/Network Observability/i)).toBeVisible();
   // KPI tiles derive from live engine telemetry

@@ -32,33 +32,48 @@ async function firstVisit(page: Page) {
 
 test.use({ viewport: { width: 900, height: 800 } });
 
-test('AI Fabric is unreachable from the horizontal nav, but the hamburger drawer gets you there', async ({
+test('neither domain is reachable from the horizontal nav, but the hamburger drawer gets you to both', async ({
   page,
 }) => {
   await firstVisit(page);
 
   // At 900px the desktop nav block (`hidden min-[1280px]:flex`) never
-  // renders — confirm the specific claim this bug report makes: AI Fabric,
-  // the item most likely to be trimmed, is not an on-screen link.
-  await expect(page.getByRole('link', { name: /^AI Fabric$/ })).toHaveCount(0);
+  // renders — no section is an on-screen link, AI Fabric least of all.
+  await expect(page.getByRole('link', { name: 'Connect', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Discover', exact: true })).toHaveCount(0);
 
   // The drawer is mounted (MobileMenu is always in the tree) but closed.
   await expect(page.getByLabel('Close menu')).not.toBeVisible();
 
   await page.locator('[data-nav-toggle="true"]').click();
 
-  // The drawer opened with real navigation in it — not an empty panel.
-  const drawerAiFabric = page.getByRole('button', { name: /^AI Fabric/ });
-  await expect(drawerAiFabric).toBeVisible();
+  /* The drawer opened with real navigation in it — not an empty panel. Both
+     domains carry the SAME four verb labels, so the drawer has to keep them
+     apart: each is a named group, and "Govern" inside the AI Fabric group must
+     go somewhere different from "Govern" inside NaaS. A drawer that flattened
+     the two would send both to the same screen and pass a naive assertion. */
+  const naas = page.getByRole('group', { name: 'NaaS' });
+  const ai = page.getByRole('group', { name: 'AI Fabric' });
+  await expect(naas).toBeVisible();
+  await expect(ai).toBeVisible();
+  for (const verb of ['Connect', 'Govern', 'Observe', 'Cost']) {
+    await expect(naas.getByRole('button', { name: new RegExp(`^${verb}`) })).toBeVisible();
+    await expect(ai.getByRole('button', { name: new RegExp(`^${verb}`) })).toBeVisible();
+  }
 
-  await drawerAiFabric.click();
+  await ai.getByRole('button', { name: /^Govern/ }).click();
 
-  // The route changed.
-  await expect(page).toHaveURL(/#\/ai-fabric/);
-  await expect(page.getByRole('heading', { name: /AI Fabric/i })).toBeVisible();
+  // The route changed — to the AI Fabric's Govern, not NaaS's.
+  await expect(page).toHaveURL(/#\/ai\/govern/);
+  await expect(page.getByRole('heading', { name: /AI Fabric · Govern/i })).toBeVisible();
 
   // And the drawer closed itself after navigating.
   await expect(page.getByLabel('Close menu')).not.toBeVisible();
+
+  // The other domain's same-named verb is a different screen.
+  await page.locator('[data-nav-toggle="true"]').click();
+  await page.getByRole('group', { name: 'NaaS' }).getByRole('button', { name: /^Govern/ }).click();
+  await expect(page).toHaveURL(/#\/naas\/govern/);
 });
 
 test('the drawer panel and backdrop actually fill the viewport, not a clipped strip', async ({

@@ -14,7 +14,7 @@ async function firstVisit(page: Page) {
     localStorage.clear();
     sessionStorage.clear();
   });
-  await page.goto('/#/govern', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/naas/govern', { waitUntil: 'domcontentloaded' });
 
   // A genuine first visit may open the product tour / demo modal. Close
   // whichever is present rather than pre-seeding flags to hide them.

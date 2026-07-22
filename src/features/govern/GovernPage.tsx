@@ -59,7 +59,7 @@ export function GovernPage() {
         title="Govern"
         description="Govern · policy & segmentation — rules, enforcement, violations, and impact on the live engine."
       >
-        <FlowBar cta={{ label: 'Observe the impact', to: '/observe' }} />
+        <FlowBar cta={{ label: 'Observe the impact', to: '/naas/observe' }} />
 
         <TabGroup tabs={tabs} activeTab={activeTab} onChange={id => setActiveTab(id as GovernTab)} />
 

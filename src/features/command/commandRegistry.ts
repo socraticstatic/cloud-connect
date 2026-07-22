@@ -1,4 +1,5 @@
 import type { CloudControl } from '../../engine';
+import { NAV_DISCOVER, NAV_DOMAINS } from '../../components/navigation/navItems';
 
 export type CommandKind = 'nav' | 'attach' | 'enforce' | 'undo';
 
@@ -14,14 +15,23 @@ interface Section {
   label: string;
 }
 
-// The six top-level routes the app ships (curated nav — see navItems.ts).
+/**
+ * Every routed section of the curated nav, derived from NAV_DOMAINS so the
+ * palette cannot drift from the nav.
+ *
+ * NaaS and the AI Fabric carry the SAME four verb labels, so a bare "Go to
+ * Connect" would appear twice with two different destinations and no way to
+ * tell them apart in a flat list. Each verb command is therefore qualified by
+ * its domain; Discover, which belongs to neither, is not.
+ */
 const SECTIONS: Section[] = [
-  { path: '/discover', label: 'Discover' },
-  { path: '/connect', label: 'Connect' },
-  { path: '/govern', label: 'Govern' },
-  { path: '/observe', label: 'Observe' },
-  { path: '/cost', label: 'Cost' },
-  { path: '/ai-fabric', label: 'AI Fabric' },
+  { path: NAV_DISCOVER.to, label: NAV_DISCOVER.label },
+  ...NAV_DOMAINS.flatMap(domain =>
+    domain.items.map(item => ({
+      path: item.to,
+      label: `${domain.label} · ${item.label}`,
+    })),
+  ),
 ];
 
 interface Onramp {
@@ -36,8 +46,8 @@ interface Rule {
 }
 
 /**
- * Builds the ⌘K command list from live engine state: nav to each of the six
- * sections, "Attach ..." for every inactive on-ramp, "Enforce ..." for every
+ * Builds the ⌘K command list from live engine state: nav to every curated
+ * section, "Attach ..." for every inactive on-ramp, "Enforce ..." for every
  * unenforced rule, and "Undo" when the engine has something to undo. Called
  * fresh each time the palette opens/filters so it always reflects current
  * CC state (no stale commands after a mutation).

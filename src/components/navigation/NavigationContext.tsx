@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Settings, Bell, User, HelpCircle } from 'lucide-react';
 import { AttIcon } from '../icons/AttIcon';
-import { NAV_ITEMS } from './navItems';
+import { NAV_DISCOVER, NAV_DOMAINS, type CuratedNavItem } from './navItems';
 
 interface NavigationSection {
   id: string;
@@ -48,6 +48,8 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     const saved = localStorage.getItem('expandedNavSections');
     return saved ? JSON.parse(saved) : {
       main: true,
+      naas: true,
+      ai: true,
       settings: false,
       help: false,
     };
@@ -73,19 +75,32 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
     }));
   };
 
-  // Define navigation sections with their items
+  /* Item ids are derived from the path, not the label: NaaS and the AI Fabric
+     carry the same four verb labels, so a label-derived id would collide. The
+     path is what is unique. */
+  const toSectionItem = (navItem: CuratedNavItem) => ({
+    id: navItem.to.replace(/^\//, '').replace(/\//g, '-'),
+    label: navItem.label,
+    icon: <AttIcon name={navItem.icon} className="h-5 w-5" />,
+    path: navItem.to
+  });
+
+  // Define navigation sections with their items. Discover sits alone above
+  // both domains; each domain is its own collapsible section, mirroring
+  // NAV_DOMAINS rather than re-flattening it.
   const navigationSections: NavigationSection[] = [
     {
       id: 'main',
       title: 'Main Navigation',
       icon: <Settings className="h-5 w-5" />,
-      items: NAV_ITEMS.map(navItem => ({
-        id: navItem.to.slice(1),
-        label: navItem.label,
-        icon: <AttIcon name={navItem.icon} className="h-5 w-5" />,
-        path: navItem.to
-      }))
+      items: [toSectionItem(NAV_DISCOVER)]
     },
+    ...NAV_DOMAINS.map(domain => ({
+      id: domain.key,
+      title: domain.label,
+      icon: <AttIcon name={domain.items[0].icon} className="h-5 w-5" />,
+      items: domain.items.map(toSectionItem)
+    })),
     {
       id: 'settings',
       title: 'User Settings',

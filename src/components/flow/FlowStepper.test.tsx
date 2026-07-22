@@ -15,7 +15,7 @@ function renderAt(path: string) {
 
 describe('FlowStepper', () => {
   it('renders the five flow stages left to right, in spine order', () => {
-    renderAt('/connect');
+    renderAt('/naas/connect');
     const items = screen.getAllByRole('listitem');
     expect(items).toHaveLength(5);
     const labels = items.map(li => within(li).getByRole('link').textContent);
@@ -23,20 +23,20 @@ describe('FlowStepper', () => {
   });
 
   it('marks the active route stage as current with aria-current="step"', () => {
-    renderAt('/govern');
+    renderAt('/naas/govern');
     const current = screen.getByText('Govern').closest('li')!;
     expect(current).toHaveAttribute('aria-current', 'step');
   });
 
   it('shows a completion check on a done stage (Discover is always done)', () => {
-    renderAt('/connect');
+    renderAt('/naas/connect');
     const discover = screen.getByText('Discover').closest('li')!;
     expect(discover.querySelector('svg.lucide-check')).toBeInTheDocument();
   });
 
   it('links each stage to its route', () => {
     renderAt('/discover');
-    expect(screen.getByText('Cost').closest('a')).toHaveAttribute('href', '/cost');
+    expect(screen.getByText('Cost').closest('a')).toHaveAttribute('href', '/naas/cost');
   });
 });
 

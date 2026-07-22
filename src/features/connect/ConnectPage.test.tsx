@@ -63,7 +63,7 @@ describe('ConnectPage (Cloud Fabric)', () => {
     unmount();
 
     render(
-      <MemoryRouter initialEntries={['/connect']}>
+      <MemoryRouter initialEntries={['/naas/connect']}>
         <ConnectPage />
       </MemoryRouter>
     );
@@ -72,10 +72,10 @@ describe('ConnectPage (Cloud Fabric)', () => {
 
   it('renders a forward CTA to Govern', () => {
     render(
-      <MemoryRouter initialEntries={['/connect']}>
+      <MemoryRouter initialEntries={['/naas/connect']}>
         <ConnectPage />
       </MemoryRouter>
     );
-    expect(screen.getByRole('link', { name: /govern these paths/i })).toHaveAttribute('href', '/govern');
+    expect(screen.getByRole('link', { name: /govern these paths/i })).toHaveAttribute('href', '/naas/govern');
   });
 });

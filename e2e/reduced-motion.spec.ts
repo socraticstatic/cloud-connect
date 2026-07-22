@@ -26,7 +26,7 @@ import { seedAuth } from '../tests/e2e/helpers';
 
 async function loadApp(page: Page) {
   await seedAuth(page);
-  await page.goto('/#/govern', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/naas/govern', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('table tbody tr').first()).toBeVisible();
 }
 

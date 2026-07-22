@@ -68,7 +68,7 @@ export function ConnectPage() {
         title="Connect"
         description="Your cloud estate as one AT&T fabric — sites, the fabric, and cloud regions you can click and provision. On-ramps (NetBond / Direct Connect / ExpressRoute) ride the edges."
       >
-        <FlowBar cta={{ label: 'Govern these paths', to: '/govern' }} />
+        <FlowBar cta={{ label: 'Govern these paths', to: '/naas/govern' }} />
 
         {fromDiscover && (
           <div role="status" className="flex items-center gap-2 rounded-lg border border-[#cbd5e1] bg-[#f8fafc] px-3 py-2 text-figma-sm text-[#475569]">

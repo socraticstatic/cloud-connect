@@ -8,6 +8,7 @@ import type {
   Briefing,
   BriefingBlock,
 } from './ObservabilityBinding';
+import { TAG_MODEL, aiSpendTotals, fmtTokens, fmtUsd } from '../ai-fabric/aiSpend';
 
 // Shapes consumed from state-billing.ts / state-console.ts / state-telemetry.ts
 // (all // @ts-nocheck at the source) — mirrored here for the fields this
@@ -46,11 +47,9 @@ interface Decision {
 // tokenMeterList() and modelRoutes() are both built by iterating the same
 // TOKEN_BUDGETS-keyed object in the same order (rd-helion, classified-helion,
 // shared-services), so index i of one corresponds to index i of the other.
-const TAG_MODEL: Record<string, string> = {
-  'rd-helion': 'helion-70b',
-  'classified-helion': 'helion-cls-13b',
-  'shared-services': 'gpt-class',
-};
+// TAG_MODEL and the token-money maths now live in ai-fabric/aiSpend.ts —
+// imported rather than re-declared, so the Cost KPI here and the Cost screen
+// at /ai/cost state the same figure by construction.
 
 // decisionLog() records governance outcomes over time but carries no tag/app
 // field, so a per-identity request-rate can't be read off it directly. This
@@ -94,17 +93,6 @@ const GROUP_BY_OPTIONS: { id: string; label: string }[] = [
   { id: 'route', label: 'Route' },
   { id: 'status', label: 'Status' },
 ];
-
-function fmtTokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `${Math.round(n / 1_000)}k`;
-  return String(Math.round(n));
-}
-
-function fmtUsd(n: number): string {
-  if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`;
-  return `$${n.toFixed(2)}`;
-}
 
 function capitalize(s: string): string {
   return s.length ? s[0].toUpperCase() + s.slice(1) : s;
@@ -274,17 +262,12 @@ function buildKpis(cc: CloudControl): Kpi[] {
   const catalog = cc.modelCatalog() as ModelCatalogEntry[];
   const decisions = cc.decisionLog() as Decision[];
 
-  const totalTokens = rows.reduce((s, r) => s + r.today, 0);
-
-  const priceOf = (modelId: string) => catalog.find(m => m.id === modelId)?.price ?? 0;
-  const gptPrice = priceOf('gpt-class');
-  let costActual = 0;
-  let costIfGpt = 0;
-  rows.forEach(r => {
-    costActual += (r.today / 1_000_000) * priceOf(r.modelId);
-    costIfGpt += (r.today / 1_000_000) * gptPrice;
-  });
-  const savings = Math.max(0, costIfGpt - costActual);
+  // Tokens, cost and savings come from the one shared derivation the /ai/cost
+  // screen also reads — same meters, same catalog prices, same sum.
+  const spend = aiSpendTotals(cc);
+  const totalTokens = spend.tokensToday;
+  const costActual = spend.spendToday;
+  const savings = spend.savings;
 
   // TTFT: no selector exposes an aggregate "time to first token" metric.
   // Derive it the same way Task 2 derived P95 latency — from an already

@@ -4,10 +4,11 @@ import { seedAuth } from '../tests/e2e/helpers';
 test('AI Fabric prompt trace denies classified->external, NetOps live incident threads the loop and Act restores', async ({ page }) => {
   await seedAuth(page);
 
-  // --- AI Fabric: Trace tab, classified tag -> external model is DENIED at the token layer ---
-  await page.goto('/#/ai-fabric', { waitUntil: 'domcontentloaded' });
-
-  await page.getByRole('navigation', { name: 'Tabs' }).getByRole('button', { name: 'Trace' }).click();
+  // --- AI Fabric · Observe: classified tag -> external model is DENIED at the
+  // token layer. The prompt trace used to sit behind a "Trace" tab on the one
+  // AI Fabric page; the domain split put it on the AI Fabric's own Observe
+  // screen, rendered directly with no tab in front of it. ---
+  await page.goto('/#/ai/observe', { waitUntil: 'domcontentloaded' });
 
   // component defaults to classified-helion tag + gpt-class (external) model —
   // just run the trace with the defaults.

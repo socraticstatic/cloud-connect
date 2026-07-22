@@ -100,7 +100,7 @@ export function NetOpsPage() {
               </span>
               <button
                 type="button"
-                onClick={() => navigate('/govern')}
+                onClick={() => navigate('/naas/govern')}
                 className="text-fw-link hover:text-fw-linkHover font-medium"
               >
                 Open Posture →

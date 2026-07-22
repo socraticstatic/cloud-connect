@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '../../contexts/AuthContext';
 import { MainNav } from './MainNav';
-import { NAV_ITEMS } from './navItems';
+import { NAV_DISCOVER, NAV_DOMAINS } from './navItems';
 
 // Mock framer-motion. MobileMenu's nav item list only renders once its
 // panel's onAnimationComplete callback fires (see MobileMenu.test.tsx for
@@ -59,13 +59,32 @@ describe('MainNav', () => {
     fireEvent.click(screen.getByLabelText('Open navigation menu'));
 
     expect(screen.getByLabelText('Close menu')).toBeInTheDocument();
-    // Every curated nav item (including AI Fabric, which is the one most
-    // likely to be hidden by the truncated horizontal bar) must be reachable
-    // from the drawer. Matched by role="button" specifically — the desktop
-    // bar renders the same labels as <Link> (role="link"), so this proves
-    // the drawer itself has the item, not just the always-mounted top bar.
-    for (const item of NAV_ITEMS) {
-      expect(screen.getByRole('button', { name: new RegExp(`^${item.label}`) })).toBeInTheDocument();
+    // Every curated nav item must be reachable from the drawer — below
+    // 1280px it is the ONLY way to reach any of them. Matched by
+    // role="button" specifically: the desktop bar renders the same labels as
+    // <Link> (role="link"), so this proves the drawer itself has the item,
+    // not just the always-mounted top bar.
+    //
+    // The two domains repeat the same four verb labels, so a flat
+    // getByRole('button', {name: /^Connect/}) would now match twice. Scope
+    // each lookup to its domain group — which is also the assertion that the
+    // drawer keeps the domains apart at all.
+    expect(
+      screen.getByRole('button', { name: new RegExp(`^${NAV_DISCOVER.label}`) }),
+    ).toBeInTheDocument();
+
+    // Scope to the drawer panel itself: the desktop bar renders the same two
+    // named groups, and this test is about the drawer.
+    const drawer = screen.getByLabelText('Close menu').closest('.fixed') as HTMLElement;
+    expect(drawer).toBeTruthy();
+
+    for (const domain of NAV_DOMAINS) {
+      const group = within(drawer).getByRole('group', { name: domain.label });
+      for (const item of domain.items) {
+        expect(
+          within(group).getByRole('button', { name: new RegExp(`^${item.label}`) }),
+        ).toBeInTheDocument();
+      }
     }
   });
 

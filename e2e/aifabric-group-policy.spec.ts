@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { seedAuth } from '../tests/e2e/helpers';
 
-/* The group vocabulary reaching the AI Fabric: /ai-fabric renders the
-   west-workloads token policy with a resolution count that AGREES with the
-   engine at that moment — never a pinned number. */
-test('AI Fabric shows the group-scoped token policy resolving live', async ({ page }) => {
+/* The group vocabulary reaching the AI Fabric: the AI Fabric's own Govern
+   screen renders the west-workloads token policy with a resolution count that
+   AGREES with the engine at that moment — never a pinned number. */
+test('AI Fabric · Govern shows the group-scoped token policy resolving live', async ({ page }) => {
   await seedAuth(page);
-  await page.goto('/#/ai-fabric', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/ai/govern', { waitUntil: 'domcontentloaded' });
 
   const row = page.getByRole('row').filter({ hasText: 'West workloads' });
   await expect(row).toBeVisible();

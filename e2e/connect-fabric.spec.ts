@@ -3,7 +3,7 @@ import { seedAuth } from '../tests/e2e/helpers';
 
 test('Connect is one cloud fabric: select a region, provision it, it joins the fabric', async ({ page }) => {
   await seedAuth(page);
-  await page.goto('/#/connect', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/naas/connect', { waitUntil: 'domcontentloaded' });
 
   // The fabric hero renders with region nodes.
   const hero = page.getByTestId('fabric-hero');
@@ -38,13 +38,13 @@ test('Connect is one cloud fabric: select a region, provision it, it joins the f
 
 test('the steerable Paths table lives on Observe, not Connect', async ({ page }) => {
   await seedAuth(page);
-  await page.goto('/#/observe', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/naas/observe', { waitUntil: 'domcontentloaded' });
   await expect(page.getByText('Flows & paths')).toBeVisible();
 });
 
 test('a selected region shows both connectivity paths with engine-derived latency', async ({ page }) => {
   await seedAuth(page);
-  await page.goto('/#/connect', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/naas/connect', { waitUntil: 'domcontentloaded' });
 
   await page.getByTestId('fabric-node-region-use1').click();
 
@@ -70,7 +70,7 @@ test('a selected region shows both connectivity paths with engine-derived latenc
 
 test('the path cards state availability honestly: live only where an on-ramp is active', async ({ page }) => {
   await seedAuth(page);
-  await page.goto('/#/connect', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/naas/connect', { waitUntil: 'domcontentloaded' });
 
   // us-east-1 is carried by the one active on-ramp (NetBond), and by nothing else.
   await page.getByTestId('fabric-node-region-use1').click();

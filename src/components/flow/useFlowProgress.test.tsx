@@ -82,6 +82,6 @@ describe('useFlowProgress — Connect/Observe/Cost boundaries + current-wins', (
     CC.fixes.isolateFinance = true;
     // Off-route it would be "done"; on its own route it must be "current".
     expect(statusOn('govern')).toBe('done');
-    expect(statusOn('govern', '/govern')).toBe('current');
+    expect(statusOn('govern', '/naas/govern')).toBe('current');
   });
 });

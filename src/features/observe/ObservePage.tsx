@@ -14,7 +14,7 @@ export function ObservePage() {
   return (
     <div className="max-w-7xl mx-auto pb-8 space-y-4">
       <div className="px-6 pt-6">
-        <FlowBar cta={{ label: 'See the savings', to: '/cost' }} />
+        <FlowBar cta={{ label: 'See the savings', to: '/naas/cost' }} />
       </div>
       <ObservabilityShell binding={binding} />
       {/* Paths — the steerable flow table (routeFlows / steerFlow / routingFailover),

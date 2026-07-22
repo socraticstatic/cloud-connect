@@ -23,7 +23,7 @@ async function firstMove(page: Page) {
     localStorage.setItem('product-tour-completed', 'true');
     localStorage.setItem('e2e-skip-demo-modal', 'true');
   });
-  await page.goto('/#/govern', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/naas/govern', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('table tbody tr').first()).toBeVisible();
 }
 
