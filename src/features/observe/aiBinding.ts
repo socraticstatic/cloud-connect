@@ -288,24 +288,53 @@ function buildKpis(cc: CloudControl): Kpi[] {
 
 function buildBriefing(cc: CloudControl): Briefing {
   const rows = buildAiRows(cc);
-  const totalTokens = rows.reduce((s, r) => s + r.today, 0) || 1;
+  const meteredTokens = rows.reduce((s, r) => s + r.today, 0);
+  const totalTokens = meteredTokens || 1; // divisor guard only
   const top = rows.slice().sort((a, b) => b.today - a.today)[0];
-  const publicTokens = rows.filter(r => r.path === 'public').reduce((s, r) => s + r.today, 0);
+  const publicRows = rows.filter(r => r.path === 'public');
+  const publicTokens = publicRows.reduce((s, r) => s + r.today, 0);
   const pctPublic = Math.round((publicTokens / totalTokens) * 100);
   const externalRow = rows.find(r => r.modelId === 'gpt-class');
 
+  /* Three states, not two.
+   *
+   * On a seeded estate nothing has attached yet, so every identity meters
+   * zero — and a share-of-traffic reading of that is 0% public, which used to
+   * print "No AI Fabric traffic currently crosses the public internet — every
+   * identity rides a private or governed path" directly beside a Records table
+   * listing all three identities on Public internet. Two statements, one
+   * screen, flatly contradicting each other. (Latent before the domain split,
+   * on the old AI Fabric page's Observability tab; the split gave that block
+   * its own screen, so it is fixed here rather than carried across.)
+   *
+   * Zero traffic is its own state and says so: nothing is metered YET, and the
+   * routes those identities will use the moment they start are public. The
+   * "every identity rides a private or governed path" claim is reserved for
+   * when it is true of the routes, which is what the reader can see. */
+  const nothingMetered = meteredTokens === 0;
+  const publicCount = publicRows.length;
+
+  const exposure = nothingMetered
+    ? publicCount > 0
+      ? `No tokens are metered yet, so nothing has crossed a path today — but ${publicCount} of ${rows.length} identities are still routed over the public internet, which is the path they take the moment they start.`
+      : 'No tokens are metered yet. Every identity is already on a private or governed route, so the first request will not cross the public internet.'
+    : pctPublic > 0
+      ? `${pctPublic}% of AI Fabric tokens (${fmtTokens(publicTokens)}) still cross the public internet${externalRow ? ` via ${externalRow.app} on ${externalRow.model}` : ''}, unguardrailed and exposed to external providers.`
+      : 'No AI Fabric traffic currently crosses the public internet — every identity rides a private or governed path.';
+
+  /* With every meter at zero, sorting by consumption picks an arbitrary row —
+     so a "largest" claim in that state has to be sorted by the thing it
+     actually names. */
+  const topByBudget = rows.slice().sort((a, b) => b.budget - a.budget)[0];
+
   const narrative: BriefingBlock[] = [
     {
-      text: `${top.app} is the top token consumer at ${fmtTokens(top.today)} tokens today (${top.pct}% of its ${fmtTokens(top.budget)} budget), routed to ${top.model} over ${routeLabel(top.path)}.`,
+      text: nothingMetered
+        ? `No identity is metering yet. ${topByBudget.app} carries the largest ceiling at ${fmtTokens(topByBudget.budget)} tokens, routed to ${topByBudget.model} over ${routeLabel(topByBudget.path)}.`
+        : `${top.app} is the top token consumer at ${fmtTokens(top.today)} tokens today (${top.pct}% of its ${fmtTokens(top.budget)} budget), routed to ${top.model} over ${routeLabel(top.path)}.`,
       emphasis: 'strong',
     },
-    {
-      text:
-        pctPublic > 0
-          ? `${pctPublic}% of AI Fabric tokens (${fmtTokens(publicTokens)}) still cross the public internet${externalRow ? ` via ${externalRow.app} on ${externalRow.model}` : ''}, unguardrailed and exposed to external providers.`
-          : 'No AI Fabric traffic currently crosses the public internet — every identity rides a private or governed path.',
-      emphasis: 'risk',
-    },
+    { text: exposure, emphasis: 'risk' },
   ];
 
   return {
