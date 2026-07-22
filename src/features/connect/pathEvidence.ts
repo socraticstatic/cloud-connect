@@ -8,11 +8,13 @@ import type { CloudControl } from '../../engine/types';
  * follows from it.
  *
  * Every field on PathEvidence is read from the engine — `cc.fabricModel()`
- * for the shaped region (latency, reliability, which on-ramps reach it) and
- * the on-ramp seeds for the facility evidence (`site`, `sub`, `planned`).
- * Nothing here is asserted by copy alone, and nothing is asserted that the
- * engine does not carry: the whole point of the surface is that the decision
- * is driven by portal data.
+ * for the shaped region (latency, which on-ramps reach it) and the on-ramp
+ * seeds for the facility evidence (`site`, `sub`, `planned`). Nothing here is
+ * asserted by copy alone, and nothing is asserted that the engine does not
+ * carry: the whole point of the surface is that the decision is driven by
+ * portal data. What is constant per path rather than derived per region —
+ * the isolation posture — lives on `ConnectivityPath`, not on `PathEvidence`,
+ * so the evidence list contains only figures that move with the estate.
  *
  * Named `pathEvidence.ts` (not `pathChoice.ts`) for the same reason
  * `attachCatalog.ts` is: data files are named after their content, and a
@@ -26,8 +28,18 @@ export interface ConnectivityPath {
   label: string;
   /** The one-line promise. Names control, security, observability or cost. */
   promise: string;
-  /** What actually carries it, stated plainly. */
-  underlay: string;
+  /**
+   * How the path is isolated. Constant per path — it is what the two options
+   * ARE, not something the engine measures per region, so it belongs here as
+   * part of the path's description and NOT in the evidence list beside
+   * latency and hand-off, all of which move with the estate.
+   *
+   * Deliberately says nothing about what physically carries the path. The
+   * engine carries no underlay field, and the hand-off the evidence displays
+   * ("Equinix DC2 · Ashburn", from an on-ramp named "Direct Connect · Equinix
+   * DC2") would contradict any specific claim made here.
+   */
+  isolation: string;
 }
 
 export const CONNECTIVITY_PATHS: ConnectivityPath[] = [
@@ -35,13 +47,13 @@ export const CONNECTIVITY_PATHS: ConnectivityPath[] = [
     id: 'managed-direct',
     label: 'Direct cloud connect',
     promise: 'Attach your VPCs in-region. AT&T carries and observes everything past the hand-off.',
-    underlay: 'Shared high-capacity mid-mile into an AT&T-managed VPC.',
+    isolation: 'Shared — capacity is pooled across customers, not reserved for you.',
   },
   {
     id: 'tenanted',
     label: 'Dedicated tenant',
     promise: 'A private, tenanted path with committed performance and a reliability floor you control.',
-    underlay: 'NetBond / NetBond Adv over AT&T MPLS, isolated per tenant.',
+    isolation: 'Per tenant — your own isolated path, never pooled with another customer.',
   },
 ];
 
@@ -62,13 +74,29 @@ export const AVAILABILITY_LABEL: Record<PathAvailability, string> = {
 export interface PathEvidence {
   pathId: ConnectivityPathId;
   availability: PathAvailability;
-  isolation: 'shared' | 'per-tenant';
-  /** `fabricModel()` latency for this region, in ms — the figure the panel's Performance tile shows. */
-  latencyMs: number;
+  /**
+   * `fabricModel()` latency for this region, in ms — the figure the panel's
+   * Performance tile shows.
+   *
+   * `null` when `availability === 'none'`. `_regionShape` derives the region's
+   * latency from the nearest CAPTURING on-ramp site, which is a region-level
+   * fact: it is blind to which of the two paths you are reading. On a region
+   * where only one path has an on-ramp, that figure belongs to the OTHER
+   * card, and rendering it here would put a latency on a card that has just
+   * said the path does not exist. Each seeded region has exactly one
+   * capturing on-ramp (the four on-ramps have zero target overlap), so
+   * wherever a path IS available the region figure is that path's own
+   * on-ramp's figure and stands.
+   */
+  latencyMs: number | null;
   onrampName: string | null;
   /** Where traffic physically hands off — the on-ramp's `site.name`. */
   handoffSite: string | null;
-  /** The on-ramp's own capacity/state line (`sub`), verbatim. Never parsed. */
+  /**
+   * The on-ramp's own capacity/state line (`sub`), minus the facility name
+   * when `handoffSite` already states it. Nothing is parsed out of the
+   * remainder and nothing is added — see `withoutFacilityPrefix`.
+   */
   capacityNote: string | null;
   /** Everything true about this path here that a buyer must read before choosing. */
   caveats: string[];
@@ -84,6 +112,25 @@ interface SeedOnramp {
 type ModelOnramp = ReturnType<CloudControl['fabricModel']>['onramps'][number];
 
 const isTenanted = (type: string) => /netbond/i.test(type);
+
+/**
+ * The on-ramp's own `sub` line with its leading facility segment dropped when
+ * the Hand-off row directly above already carries that facility name — so the
+ * pair reads "Equinix DC2 · Ashburn" / "10Gbps · unused capacity" rather than
+ * saying "Equinix DC2" twice, 40px apart.
+ *
+ * Splits only on the seeds' own ' · ' separator (the same thing
+ * `RegionPanel.tsx` does to on-ramp names) and only ever REMOVES a segment
+ * that is already on screen. No number is parsed out, no word is substituted,
+ * and a `sub` that does not start with the facility — `nb2`'s "not yet
+ * provisioned", or the "provisioned this session" that `activateOnramp`
+ * writes — passes through untouched.
+ */
+function withoutFacilityPrefix(sub: string, site: string): string {
+  const facility = site.split(' · ')[0];
+  const parts = sub.split(' · ');
+  return parts.length > 1 && parts[0] === facility ? parts.slice(1).join(' · ') : sub;
+}
 
 /**
  * Evidence for both paths into one region, in catalog order.
@@ -104,26 +151,23 @@ export function pathEvidence(cc: CloudControl, cloudId: string, regionId: string
     .map(id => model.onramps.find(o => o.id === id))
     .filter((o): o is ModelOnramp => Boolean(o));
 
-  // Reliability is the model's, so this caveat and RegionPanel's pill can
-  // never disagree — the pill reads `region.reliability` off the same shape.
-  const shared: string[] = [];
-  if (region.reliability !== 'dual') {
-    shared.push('No dual-path posture here today — a second on-ramp is what makes this region path-diverse.');
-  }
+  // NOTE: there is deliberately no reliability caveat here. `RegionPanel.tsx`
+  // already renders the region's reliability as a pill directly above these
+  // cards, off the same `fabricModel()` shape. A caveat repeating it would be
+  // unconditional boilerplate — no seeded region can reach `'dual'`, since
+  // that needs two ACTIVE on-ramps capturing one region and the four seeded
+  // on-ramps have zero overlapping targets — so it printed on 18 of 18 cards
+  // and no action in the app could clear it. Caveats are reserved for what
+  // actually differentiates the two paths in THIS region.
 
-  const row = (
-    pathId: ConnectivityPathId,
-    isolation: PathEvidence['isolation'],
-    mine: ModelOnramp[],
-    whyNone: string,
-  ): PathEvidence => {
+  const row = (pathId: ConnectivityPathId, mine: ModelOnramp[], whyNone: string): PathEvidence => {
     // A live on-ramp wins; otherwise the first one that reaches this region
     // is the one a customer would provision.
     const chosen = mine.find(o => o.active) ?? mine[0] ?? null;
     const availability: PathAvailability = !chosen ? 'none' : chosen.active ? 'live' : 'provisionable';
     const seed = chosen ? seedById.get(chosen.id) : undefined;
 
-    const caveats = [...shared];
+    const caveats: string[] = [];
     if (availability === 'none') {
       caveats.push(whyNone);
     } else if (availability === 'provisionable') {
@@ -134,14 +178,18 @@ export function pathEvidence(cc: CloudControl, cloudId: string, regionId: string
       );
     }
 
+    const handoffSite = chosen?.site ?? null;
+    const sub = seed?.sub ?? null;
+
     return {
       pathId,
       availability,
-      isolation,
-      latencyMs: region.latencyMs,
+      // A path that does not reach this region has no latency to report; the
+      // region figure belongs to the on-ramp serving the OTHER card.
+      latencyMs: availability === 'none' ? null : region.latencyMs,
       onrampName: chosen?.name ?? null,
-      handoffSite: chosen?.site ?? null,
-      capacityNote: seed?.sub ?? null,
+      handoffSite,
+      capacityNote: sub === null ? null : handoffSite ? withoutFacilityPrefix(sub, handoffSite) : sub,
       caveats,
     };
   };
@@ -149,14 +197,17 @@ export function pathEvidence(cc: CloudControl, cloudId: string, regionId: string
   return [
     row(
       'managed-direct',
-      'shared',
       ramps.filter(o => !isTenanted(o.type)),
-      'No Direct Connect or ExpressRoute on-ramp reaches this region — order one, or take the dedicated tenant path.',
+      // Names no on-ramp product: which types exist is a seed fact that grows
+      // (RegionPanel already anticipates a third), and this sentence must stay
+      // true when it does.
+      'No direct on-ramp reaches this region — order one, or take the dedicated tenant path.',
     ),
     row(
       'tenanted',
-      'per-tenant',
       ramps.filter(o => isTenanted(o.type)),
+      // "NetBond" here is definitional, not a seed enumeration: `isTenanted`
+      // IS `/netbond/i`, so a tenanted on-ramp is a NetBond one by construction.
       'No NetBond on-ramp targets this region — order one, or take the direct path.',
     ),
   ];

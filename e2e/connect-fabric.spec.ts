@@ -51,15 +51,21 @@ test('a selected region shows both connectivity paths with engine-derived latenc
   await expect(page.getByTestId('path-managed-direct')).toBeVisible();
   await expect(page.getByTestId('path-tenanted')).toBeVisible();
 
-  // The latency on the cards is fabricModel()'s — the same figure the panel's
-  // Performance tile shows a few lines above — never the raw `region.lat` seed.
+  // The latency on the card is fabricModel()'s — the same figure, in the same
+  // format, as the panel's Performance tile a few lines above — never the raw
+  // `region.lat` seed.
   const shape = await page.evaluate(() =>
     (window as never as {
       CC: { fabricModel(): { regions: { cloudId: string; regionId: string; latencyMs: number }[] } };
     }).CC.fabricModel().regions.find(r => r.cloudId === 'aws' && r.regionId === 'use1')!,
   );
-  await expect(page.getByTestId('path-managed-direct')).toContainText(`${shape.latencyMs} ms`);
-  await expect(page.getByTestId('path-tenanted')).toContainText(`${shape.latencyMs} ms`);
+  // us-east-1 is reached only by the tenanted on-ramp, and the region's figure
+  // is that on-ramp's RTT. It renders on the card that carries the path…
+  await expect(page.getByTestId('path-tenanted')).toContainText(`${shape.latencyMs}ms`);
+  // …and NOT on the card that has just said the path does not reach this region.
+  await expect(page.getByTestId('path-managed-direct')).toHaveAttribute('data-availability', 'none');
+  await expect(page.getByTestId('path-managed-direct')).not.toContainText(`${shape.latencyMs}ms`);
+  await expect(page.getByTestId('path-managed-direct')).not.toContainText('Latency');
 });
 
 test('the path cards state availability honestly: live only where an on-ramp is active', async ({ page }) => {

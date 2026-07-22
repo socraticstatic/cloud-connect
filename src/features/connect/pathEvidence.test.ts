@@ -15,6 +15,10 @@ const shaped = (cloudId: string, regionId: string) =>
   (CC as never as { fabricModel(): { regions: { cloudId: string; regionId: string; latencyMs: number; reliability: string }[] } })
     .fabricModel().regions.find(r => r.cloudId === cloudId && r.regionId === regionId)!;
 
+/** Every shaped region in the model, so assertions can walk the whole estate. */
+const allRegions = () =>
+  (CC as never as { fabricModel(): { regions: { cloudId: string; regionId: string }[] } }).fabricModel().regions;
+
 /** The raw on-ramp seed, for asserting evidence is carried through verbatim. */
 const seedOnramp = (id: string) =>
   (CC as never as { onramps: { id: string; sub: string; site: { name: string } }[] }).onramps.find(o => o.id === id)!;
@@ -25,9 +29,30 @@ describe('CONNECTIVITY_PATHS', () => {
   });
 
   it('claims nothing about partner fabric or L3 — the engine carries neither', () => {
-    const copy = CONNECTIVITY_PATHS.map(p => `${p.promise} ${p.underlay}`).join(' ');
+    const copy = CONNECTIVITY_PATHS.map(p => `${p.promise} ${p.isolation}`).join(' ');
     expect(copy).not.toMatch(/Equinix Fabric/i);
     expect(copy).not.toMatch(/\bL3\b/);
+  });
+
+  it('carries the isolation posture, so it is not evidence on the derived row', () => {
+    // Isolation is constant per path — it belongs to the catalog entry, beside
+    // the promise, not in the <dl> of figures the engine derives per region.
+    expect(CONNECTIVITY_PATHS.find(p => p.id === 'managed-direct')!.isolation).toMatch(/shared/i);
+    expect(CONNECTIVITY_PATHS.find(p => p.id === 'tenanted')!.isolation).toMatch(/per tenant/i);
+    for (const row of pathEvidence(CC as never, 'aws', 'use1')) {
+      expect(row).not.toHaveProperty('isolation');
+    }
+  });
+
+  it('asserts no underlay the hand-off evidence could contradict', () => {
+    // us-east-1's direct-path hand-off is a colo cage ("Equinix DC2 · Ashburn"
+    // on other regions); copy promising a "shared mid-mile into an AT&T-managed
+    // VPC" rendered 40px above that. The catalog must not name a carrier
+    // technology or a facility kind at all.
+    const copy = CONNECTIVITY_PATHS.map(p => `${p.promise} ${p.isolation}`).join(' ');
+    expect(copy).not.toMatch(/mid-mile/i);
+    expect(copy).not.toMatch(/MPLS/i);
+    expect(copy).not.toMatch(/managed VPC/i);
   });
 });
 
@@ -37,25 +62,58 @@ describe('pathEvidence', () => {
     expect(rows.map(r => r.pathId)).toEqual(['managed-direct', 'tenanted']);
   });
 
-  it("latency is fabricModel()'s, the same figure the region panel shows", () => {
+  it("an available path's latency is fabricModel()'s, the same figure the region panel shows", () => {
     for (const [cloudId, regionId] of [['aws', 'use1'], ['aws', 'euw1'], ['azure', 'uks'], ['cw', 'cwe']] as const) {
       const expected = shaped(cloudId, regionId).latencyMs;
-      const { direct, tenanted } = ev(cloudId, regionId);
-      expect(direct.latencyMs).toBe(expected);
-      expect(tenanted.latencyMs).toBe(expected);
+      for (const row of pathEvidence(CC as never, cloudId, regionId)) {
+        if (row.availability === 'none') continue;
+        expect(row.latencyMs).toBe(expected);
+      }
     }
+  });
+
+  it('a path that does not reach the region reports NO latency, on every region in the estate', () => {
+    // `_regionShape` derives latencyMs from the nearest CAPTURING on-ramp site,
+    // which is region-level and blind to which path is being read. On a region
+    // where only one path has an on-ramp, that figure is the OTHER card's — so
+    // an unavailable row must carry null, not a number contradicting the
+    // "None in this region" it states one line above.
+    let checked = 0;
+    for (const r of allRegions()) {
+      for (const row of pathEvidence(CC as never, r.cloudId, r.regionId)) {
+        if (row.availability !== 'none') continue;
+        expect(row.latencyMs).toBeNull();
+        checked++;
+      }
+    }
+    // Guard the guard: if the seeds ever stop producing unavailable rows this
+    // test would pass vacuously.
+    expect(checked).toBeGreaterThan(0);
   });
 
   it('us-east-1: the tenanted path is live on an active on-ramp; the direct path has none', () => {
     const { direct, tenanted } = ev('aws', 'use1');
     expect(tenanted.availability).toBe('live');
-    expect(tenanted.isolation).toBe('per-tenant');
     expect(tenanted.onrampName).toMatch(/NetBond/);
-    // Nothing derives an available direct path here — no non-NetBond on-ramp reaches use1.
+    expect(tenanted.latencyMs).toBe(shaped('aws', 'use1').latencyMs);
+    // Nothing derives an available direct path here — no non-NetBond on-ramp
+    // reaches use1 — so the card carries no on-ramp AND no latency. The 3ms the
+    // region shape reports is the RTT from nb1's Equinix IAD site: the NetBond
+    // on-ramp serving the card beside it.
     expect(direct.availability).toBe('none');
-    expect(direct.isolation).toBe('shared');
     expect(direct.onrampName).toBeNull();
-    expect(direct.caveats.join(' ')).toMatch(/No Direct Connect or ExpressRoute on-ramp reaches this region/i);
+    expect(direct.latencyMs).toBeNull();
+    expect(direct.caveats.join(' ')).toMatch(/No direct on-ramp reaches this region/i);
+  });
+
+  it('the "no on-ramp" caveat does not enumerate the on-ramp products the seeds happen to hold', () => {
+    // A third product (RegionPanel already matches /interconnect/) must not
+    // turn this sentence into a lie. Only the tenanted path may name NetBond,
+    // because `isTenanted` IS /netbond/i — that one is definitional.
+    const direct = ev('aws', 'use1').direct.caveats.join(' ');
+    expect(direct).not.toMatch(/Direct Connect/i);
+    expect(direct).not.toMatch(/ExpressRoute/i);
+    expect(direct).not.toMatch(/Interconnect/i);
   });
 
   it('availability never claims "live" for an on-ramp the engine has not activated', () => {
@@ -77,6 +135,7 @@ describe('pathEvidence', () => {
     const { tenanted } = ev('cw', 'cwe');
     const nb2 = seedOnramp('nb2');
     expect(tenanted.availability).toBe('provisionable');
+    // nb2's sub does not begin with its facility name, so it passes through whole.
     expect(tenanted.capacityNote).toBe(nb2.sub);
     expect(tenanted.handoffSite).toBe(nb2.site.name);
     expect(tenanted.caveats.join(' ')).toMatch(/planned for this region/i);
@@ -86,10 +145,32 @@ describe('pathEvidence', () => {
     const { direct } = ev('aws', 'usw2');
     const dx1 = seedOnramp('dx1');
     expect(direct.availability).toBe('provisionable');
-    expect(direct.capacityNote).toBe(dx1.sub);
     expect(direct.handoffSite).toBe(dx1.site.name);
     expect(direct.caveats.join(' ')).toMatch(/facility is in place/i);
     expect(direct.caveats.join(' ')).not.toMatch(/planned/i);
+  });
+
+  it('the capacity line does not repeat the facility the hand-off line above it already names', () => {
+    // "Equinix DC2 · Ashburn" then "Equinix DC2 · 10Gbps · unused capacity"
+    // stuttered on 8 of 9 regions. The duplicated segment is dropped; nothing
+    // is parsed out of what remains and nothing is invented.
+    let checked = 0;
+    for (const r of allRegions()) {
+      for (const row of pathEvidence(CC as never, r.cloudId, r.regionId)) {
+        if (!row.capacityNote || !row.handoffSite) continue;
+        const facility = row.handoffSite.split(' · ')[0];
+        expect(row.capacityNote).not.toContain(facility);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it('the capacity line is still the seed\'s own text — a suffix of it, never a rewrite', () => {
+    const dx1 = seedOnramp('dx1');
+    const { direct } = ev('aws', 'usw2');
+    expect(dx1.sub.endsWith(direct.capacityNote!)).toBe(true);
+    expect(direct.capacityNote!.length).toBeGreaterThan(0);
   });
 
   it('a path no on-ramp of its kind reaches reads "none", with nothing invented to fill it', () => {
@@ -98,17 +179,35 @@ describe('pathEvidence', () => {
     expect(tenanted.onrampName).toBeNull();
     expect(tenanted.handoffSite).toBeNull();
     expect(tenanted.capacityNote).toBeNull();
+    // The 92ms the region shape reports is the Chicago→London RTT via er1, the
+    // ExpressRoute on-ramp on the OTHER card. It is not this path's figure.
+    expect(tenanted.latencyMs).toBeNull();
+    expect(shaped('azure', 'uks').latencyMs).toBeGreaterThan(0);
     expect(tenanted.caveats.join(' ')).toMatch(/No NetBond on-ramp targets this region/i);
   });
 
-  it('the reliability caveat tracks fabricModel().reliability, not the raw spof seed', () => {
-    for (const [cloudId, regionId] of [['aws', 'use1'], ['azure', 'uks'], ['cw', 'cwe']] as const) {
-      const dual = shaped(cloudId, regionId).reliability === 'dual';
-      const { direct, tenanted } = ev(cloudId, regionId);
-      for (const row of [direct, tenanted]) {
-        expect(row.caveats.some(c => /dual-path posture/i.test(c))).toBe(!dual);
-      }
+  it('does not repeat the reliability pill the panel renders above these cards', () => {
+    // The caveat this replaces was unconditional in practice: `reliability`
+    // can only be 'dual' with two ACTIVE on-ramps capturing one region, and the
+    // four seeded on-ramps have zero overlapping targets. It printed on 18 of
+    // 18 cards, no action could clear it, and RegionPanel already shows the
+    // same fact as a pill 40px above. Caveats are for what differentiates.
+    for (const r of allRegions()) {
+      const copy = pathEvidence(CC as never, r.cloudId, r.regionId).flatMap(row => row.caveats).join(' ');
+      expect(copy).not.toMatch(/dual-path/i);
+      expect(copy).not.toMatch(/path-diverse/i);
     }
+  });
+
+  it('every caveat is one a customer action can clear — none is permanent boilerplate', () => {
+    // A caveat that appears on all 18 cards is not evidence, it is decoration.
+    const perCard = allRegions().flatMap(r =>
+      pathEvidence(CC as never, r.cloudId, r.regionId).map(row => row.caveats),
+    );
+    const counts = new Map<string, number>();
+    for (const caveats of perCard) for (const c of caveats) counts.set(c, (counts.get(c) ?? 0) + 1);
+    const onEveryCard = [...counts].filter(([, n]) => n === perCard.length).map(([text]) => text);
+    expect(onEveryCard).toEqual([]);
   });
 
   it('never mentions Equinix Fabric or an L3 hand-off — the engine carries neither', () => {
@@ -139,7 +238,13 @@ describe('pathEvidence', () => {
     const after = ev('aws', 'usw2').direct;
     expect(after.availability).toBe('live');
     expect(after.caveats.join(' ')).not.toMatch(/Not live here yet/i);
+    // The path now exists here, so it now reports the region's latency.
+    expect(after.latencyMs).toBe(shaped('aws', 'usw2').latencyMs);
     // …and the sibling region the same on-ramp reaches moves with it.
     expect(ev('aws', 'euw1').direct.availability).toBe('live');
+    // The tenanted card in the same region still reaches nothing, so it still
+    // reports no latency — activating dx1 does not lend it dx1's figure.
+    expect(ev('aws', 'usw2').tenanted.availability).toBe('none');
+    expect(ev('aws', 'usw2').tenanted.latencyMs).toBeNull();
   });
 });

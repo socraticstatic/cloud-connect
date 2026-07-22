@@ -7,8 +7,14 @@ import type { PathAvailability } from './pathEvidence';
  * How a customer chooses between the two connectivity options, using portal
  * data rather than a slide. Every figure and every state comes from
  * `pathEvidence`, which reads `cc.fabricModel()` — so the card moves when the
- * estate moves, and its latency is the same figure the Performance tile four
- * lines above it shows.
+ * estate moves, and where a latency renders it is the same figure, in the
+ * same format, as the Performance tile four lines above it.
+ *
+ * Two kinds of line live on a card and they are kept apart on purpose: the
+ * path's own description (`promise`, `isolation`) is constant everywhere and
+ * sits above the rule; the <dl> below holds only what the engine derived for
+ * THIS region, and a row is omitted rather than placeholdered when the engine
+ * has nothing to put in it.
  */
 
 /* Badge treatments reuse RegionPanel's own pills so the two read as one panel:
@@ -20,15 +26,25 @@ const BADGE: Record<PathAvailability, string> = {
   none: 'bg-fw-neutral text-fw-bodyLight',
 };
 
+/* The card treatment is neutral and identical for every state a customer can
+   actually take. Cobalt border + cobalt tint is this codebase's SELECTED
+   affordance (RegionPanel's attach cards, both wizards); these cards are not
+   selectable, so borrowing it read as "we picked this one for you" and, on a
+   `live` card, disagreed with its own green badge. Availability is the
+   badge's job — one signal, one place. `none` keeps a de-emphasis, which says
+   "there is nothing here", not "this is selected". */
 const CARD: Record<PathAvailability, string> = {
-  live: 'border-[#0057b8]/30 bg-[#0057b8]/[0.04]',
+  live: 'border-fw-secondary bg-fw-base',
   provisionable: 'border-fw-secondary bg-fw-base',
   none: 'border-fw-secondary bg-fw-neutral/40',
 };
 
 export function PathChoice({ cloudId, regionId }: { cloudId: string; regionId: string }) {
   const cc = useCloudControlActions();
-  // Re-derive when an on-ramp is activated or a region is provisioned.
+  // Re-derive when an on-ramp is activated or a region is provisioned. Removing
+  // this line is what `PathChoice.test.tsx`'s last test exists to catch: without
+  // it the mounted card keeps rendering a stale estate until something else
+  // re-renders the panel.
   useCloudControl(() => 0);
 
   const rows = pathEvidence(cc, cloudId, regionId);
@@ -37,8 +53,12 @@ export function PathChoice({ cloudId, regionId }: { cloudId: string; regionId: s
   return (
     <section className="rounded-xl border border-fw-secondary bg-fw-wash p-4">
       <h3 className="text-figma-sm font-semibold text-fw-heading">How you connect</h3>
+      {/* Not "two ways onto the fabric for this region": on nine of the
+          eighteen cards one of the two does not reach the region at all, and
+          the sub-head must not promise what the card below it denies. */}
       <p className="mt-1 text-figma-xs text-fw-bodyLight">
-        Two ways onto the fabric for this region. The numbers below are this estate&apos;s, not a brochure&apos;s.
+        The two options AT&amp;T sells, and which of them reaches this region today. The figures are this
+        estate&apos;s, not a brochure&apos;s.
       </p>
 
       <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -60,38 +80,39 @@ export function PathChoice({ cloudId, regionId }: { cloudId: string; regionId: s
                 </span>
               </div>
 
+              {/* The path's own description: what it is, constant everywhere.
+                  Kept out of the <dl> below, which holds only what the engine
+                  derives for THIS region. */}
               <p className="mt-1.5 text-figma-xs text-fw-body">{path.promise}</p>
+              <p className="mt-1 text-figma-xs text-fw-bodyLight">{path.isolation}</p>
 
-              <dl className="mt-3 grid grid-cols-2 gap-2 text-figma-xs">
+              <dl className="mt-3 space-y-2 text-figma-xs">
+                {/* Omitted, not placeholdered, when the path does not reach this
+                    region — the region's latency is the other card's on-ramp's.
+                    Formatted `3ms` to match the panel's Performance tile. */}
+                {e.latencyMs !== null && (
+                  <div>
+                    <dt className="text-fw-bodyLight">Latency</dt>
+                    <dd className="font-semibold text-fw-heading tabular-nums">{e.latencyMs}ms</dd>
+                  </div>
+                )}
                 <div>
-                  <dt className="text-fw-bodyLight">Latency</dt>
-                  <dd className="font-semibold text-fw-heading">{e.latencyMs} ms</dd>
-                </div>
-                <div>
-                  <dt className="text-fw-bodyLight">Isolation</dt>
-                  <dd className="font-semibold text-fw-heading">
-                    {e.isolation === 'per-tenant' ? 'Per tenant' : 'Shared mid-mile'}
-                  </dd>
-                </div>
-                <div className="col-span-2">
                   <dt className="text-fw-bodyLight">On-ramp</dt>
                   <dd className="font-semibold text-fw-heading">{e.onrampName ?? 'None in this region'}</dd>
                 </div>
                 {e.handoffSite && (
-                  <div className="col-span-2">
+                  <div>
                     <dt className="text-fw-bodyLight">Hand-off</dt>
                     <dd className="font-semibold text-fw-heading">{e.handoffSite}</dd>
                   </div>
                 )}
                 {e.capacityNote && (
-                  <div className="col-span-2">
+                  <div>
                     <dt className="text-fw-bodyLight">Capacity / state</dt>
                     <dd className="font-semibold text-fw-heading">{e.capacityNote}</dd>
                   </div>
                 )}
               </dl>
-
-              <p className="mt-3 text-figma-xs text-fw-bodyLight">{path.underlay}</p>
 
               {e.caveats.map(c => (
                 <p key={c} className="mt-2 flex gap-1.5 text-figma-xs text-fw-body">

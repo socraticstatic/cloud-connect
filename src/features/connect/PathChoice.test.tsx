@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import { CC } from '../../engine';
 import { pathEvidence } from './pathEvidence';
 import { PathChoice } from './PathChoice';
@@ -11,22 +11,59 @@ describe('PathChoice', () => {
     expect(screen.getByText('Dedicated tenant')).toBeInTheDocument();
   });
 
-  it('shows the engine latency on BOTH cards, exactly once each', () => {
+  it('shows the engine latency on the card whose path exists, once', () => {
     render(<PathChoice cloudId="aws" regionId="euw1" />);
     const rows = pathEvidence(CC as never, 'aws', 'euw1');
-    // Same figure on both cards by construction — assert the exact count, so a
-    // card that loses its figure cannot pass.
-    expect(rows[0].latencyMs).toBe(rows[1].latencyMs);
-    expect(screen.getAllByText(`${rows[0].latencyMs} ms`)).toHaveLength(2);
+    const available = rows.filter(r => r.availability !== 'none');
+    expect(available.length).toBeGreaterThan(0);
+    const card = screen.getByTestId(`path-${available[0].pathId}`);
+    expect(within(card).getByText(`${available[0].latencyMs}ms`)).toBeInTheDocument();
+    // Exactly as many figures on screen as there are paths that exist here —
+    // a card that loses its figure, or one that grows a figure it should not
+    // have, both fail.
+    expect(screen.getAllByText(new RegExp(`^${available[0].latencyMs}ms$`))).toHaveLength(available.length);
   });
 
-  it('agrees with the panel: the latency shown is fabricModel()\'s, not the raw region seed', () => {
+  it('shows NO latency on a card that says the path does not reach this region', () => {
+    // us-east-1's region latency (3ms) is the RTT from nb1's Equinix IAD site —
+    // the NetBond on-ramp serving the card beside it. Rendering it here would
+    // put a figure under "Not available here" / "None in this region".
+    render(<PathChoice cloudId="aws" regionId="use1" />);
+    const shown = (CC as never as {
+      fabricModel(): { regions: { cloudId: string; regionId: string; latencyMs: number }[] };
+    }).fabricModel().regions.find(r => r.cloudId === 'aws' && r.regionId === 'use1')!.latencyMs;
+
+    const direct = screen.getByTestId('path-managed-direct');
+    expect(direct).toHaveAttribute('data-availability', 'none');
+    expect(within(direct).queryByText('Latency')).toBeNull();
+    expect(direct.textContent).not.toContain(`${shown}ms`);
+    // …while the card that DOES carry the path still shows it.
+    const tenanted = screen.getByTestId('path-tenanted');
+    expect(within(tenanted).getByText(`${shown}ms`)).toBeInTheDocument();
+  });
+
+  it('agrees with the panel: the latency shown is fabricModel()\'s, in the panel\'s own format', () => {
     render(<PathChoice cloudId="azure" regionId="uks" />);
     const model = (CC as never as {
       fabricModel(): { regions: { cloudId: string; regionId: string; latencyMs: number }[] };
     }).fabricModel();
     const shown = model.regions.find(r => r.cloudId === 'azure' && r.regionId === 'uks')!.latencyMs;
-    expect(screen.getAllByText(`${shown} ms`)).toHaveLength(2);
+    // `3ms`, not `3 ms` — RegionPanel's Performance tile renders it unspaced
+    // 40px above, and the same figure must not be formatted two ways.
+    const card = screen.getByTestId('path-managed-direct');
+    expect(within(card).getByText(`${shown}ms`)).toBeInTheDocument();
+    expect(card.textContent).not.toContain(`${shown} ms`);
+  });
+
+  it('keeps the isolation posture out of the derived-evidence list', () => {
+    // Constant per path, not something the engine measures here — so it reads
+    // as description beside the promise, not as a row in the <dl> of figures
+    // that move with the estate.
+    const { container } = render(<PathChoice cloudId="aws" regionId="use1" />);
+    expect(container.textContent).toMatch(/Per tenant/i);
+    expect(within(screen.getByTestId('path-tenanted')).queryByText('Isolation')).toBeNull();
+    const terms = [...container.querySelectorAll('dt')].map(d => d.textContent);
+    expect(terms).not.toContain('Isolation');
   });
 
   it('marks the unavailable path: the label says so and the card carries the unavailable treatment', () => {
@@ -40,10 +77,29 @@ describe('PathChoice', () => {
     expect(within(card).getByText('Not available here')).toBeInTheDocument();
     expect(within(card).getByText('None in this region')).toBeInTheDocument();
     expect(within(card).getByText(/No NetBond on-ramp targets this region/i)).toBeInTheDocument();
+    // Nothing is invented to fill the rows the engine cannot answer.
+    expect(within(card).queryByText('Latency')).toBeNull();
+    expect(within(card).queryByText('Hand-off')).toBeNull();
+    expect(within(card).queryByText('Capacity / state')).toBeNull();
     // Neutral, not green, and visibly de-emphasised.
     expect(card.className).toContain('bg-fw-neutral');
     expect(card.className).toContain('opacity-70');
     expect(card.className).not.toContain('fw-successLight');
+  });
+
+  it('no card borrows the cobalt "selected" treatment — these are not selectable', () => {
+    // `border-[#0057b8] bg-[#0057b8]/[0.04]` means SELECTED everywhere else in
+    // this codebase (RegionPanel's attach cards, both wizards). A live card
+    // wearing it also disagreed with its own green badge. The badge carries
+    // availability; the card stays neutral.
+    for (const [cloudId, regionId] of [['aws', 'use1'], ['azure', 'uks'], ['cw', 'cwe']] as const) {
+      const { unmount } = render(<PathChoice cloudId={cloudId} regionId={regionId} />);
+      for (const id of ['path-managed-direct', 'path-tenanted']) {
+        expect(screen.getByTestId(id).className).not.toContain('bg-[#0057b8]');
+        expect(screen.getByTestId(id).className).not.toContain('border-[#0057b8]');
+      }
+      unmount();
+    }
   });
 
   it('does not badge an unprovisioned path green: it reads provisionable, in cobalt', () => {
@@ -75,6 +131,29 @@ describe('PathChoice', () => {
     expect(within(card).getByText(tenanted.capacityNote!)).toBeInTheDocument();
   });
 
+  it('does not say the facility name twice in the hand-off / capacity pair', () => {
+    // "Equinix CH1 · Chicago" followed by "Equinix CH1 · 10Gbps · unused
+    // capacity" stuttered on 8 of 9 regions.
+    render(<PathChoice cloudId="azure" regionId="uks" />);
+    const card = screen.getByTestId('path-managed-direct');
+    const handoff = within(card).getByText('Hand-off').parentElement!.textContent!;
+    const facility = handoff.replace('Hand-off', '').split(' · ')[0];
+    expect(facility.length).toBeGreaterThan(0);
+    const capacity = within(card).getByText('Capacity / state').parentElement!.textContent!;
+    expect(capacity).not.toContain(facility);
+  });
+
+  it('makes no underlay claim the hand-off evidence beneath it can contradict', () => {
+    // The old copy promised a "shared high-capacity mid-mile into an
+    // AT&T-managed VPC" directly above "Hand-off: Equinix DC2 · Ashburn",
+    // derived from an on-ramp named "Direct Connect · Equinix DC2".
+    const { container } = render(<PathChoice cloudId="aws" regionId="usw2" />);
+    expect(container.textContent).toMatch(/Hand-off/);
+    expect(container.textContent).not.toMatch(/mid-mile/i);
+    expect(container.textContent).not.toMatch(/MPLS/i);
+    expect(container.textContent).not.toMatch(/managed VPC/i);
+  });
+
   it('makes no partner-fabric or L3 claim on a neocloud region', () => {
     const { container } = render(<PathChoice cloudId="cw" regionId="cwe" />);
     expect(container.textContent).not.toMatch(/Equinix Fabric/i);
@@ -93,16 +172,26 @@ describe('PathChoice', () => {
 
   /* The engine is a shared singleton — this mutation persists for the rest of
      the file, so it runs last. */
-  it('re-derives after a mutation: activating the on-ramp flips the card to Live here', () => {
-    const first = render(<PathChoice cloudId="aws" regionId="usw2" />);
-    expect(screen.getByTestId('path-managed-direct')).toHaveAttribute('data-availability', 'provisionable');
-    first.unmount();
-
-    (CC as never as { activateOnramp(id: string): boolean }).activateOnramp('dx1');
-
+  it('re-renders in place when the estate moves: the MOUNTED card flips to Live here', () => {
+    // Deliberately does NOT unmount and re-render. Unmounting only proves the
+    // derivation re-runs on a fresh mount, which it would even with no
+    // subscription at all — delete `useCloudControl(() => 0)` from
+    // PathChoice.tsx and this test must fail.
     render(<PathChoice cloudId="aws" regionId="usw2" />);
     const card = screen.getByTestId('path-managed-direct');
+    expect(card).toHaveAttribute('data-availability', 'provisionable');
+    expect(within(card).getByText('Provisionable here')).toBeInTheDocument();
+    expect(within(card).getByText(/Not live here yet/i)).toBeInTheDocument();
+
+    act(() => {
+      (CC as never as { activateOnramp(id: string): boolean }).activateOnramp('dx1');
+    });
+
+    // Same DOM node, no re-render call, no remount — the subscription did it.
+    expect(screen.getByTestId('path-managed-direct')).toBe(card);
     expect(card).toHaveAttribute('data-availability', 'live');
     expect(within(card).getByText('Live here')).toBeInTheDocument();
+    expect(within(card).queryByText('Provisionable here')).toBeNull();
+    expect(within(card).queryByText(/Not live here yet/i)).toBeNull();
   });
 });
