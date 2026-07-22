@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ProviderLogo } from '../../components/brand/ProviderLogo';
 import { useCloudControlActions } from '../../engine/react/useCloudControl';
 import { ATTACH_TYPES } from './attachCatalog';
-import { PathChoice } from './PathChoice.tsx';
+import { PathChoice } from './PathChoice';
 import type { FabricModel } from './FabricHero';
 import type { FabricRegion } from '../../engine/types';
 

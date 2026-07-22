@@ -51,9 +51,35 @@ test('a selected region shows both connectivity paths with engine-derived latenc
   await expect(page.getByTestId('path-managed-direct')).toBeVisible();
   await expect(page.getByTestId('path-tenanted')).toBeVisible();
 
-  const lat = await page.evaluate(() =>
-    (window as never as { CC: { regions: Record<string, { id: string; lat: number }[]> } })
-      .CC.regions.aws.find(r => r.id === 'use1')!.lat,
+  // The latency on the cards is fabricModel()'s — the same figure the panel's
+  // Performance tile shows a few lines above — never the raw `region.lat` seed.
+  const shape = await page.evaluate(() =>
+    (window as never as {
+      CC: { fabricModel(): { regions: { cloudId: string; regionId: string; latencyMs: number }[] } };
+    }).CC.fabricModel().regions.find(r => r.cloudId === 'aws' && r.regionId === 'use1')!,
   );
-  await expect(page.getByTestId('path-managed-direct')).toContainText(`${lat} ms`);
+  await expect(page.getByTestId('path-managed-direct')).toContainText(`${shape.latencyMs} ms`);
+  await expect(page.getByTestId('path-tenanted')).toContainText(`${shape.latencyMs} ms`);
+});
+
+test('the path cards state availability honestly: live only where an on-ramp is active', async ({ page }) => {
+  await seedAuth(page);
+  await page.goto('/#/connect', { waitUntil: 'domcontentloaded' });
+
+  // us-east-1 is carried by the one active on-ramp (NetBond), and by nothing else.
+  await page.getByTestId('fabric-node-region-use1').click();
+  await expect(page.getByTestId('path-tenanted')).toHaveAttribute('data-availability', 'live');
+  await expect(page.getByTestId('path-tenanted')).toContainText('Live here');
+  await expect(page.getByTestId('path-managed-direct')).toHaveAttribute('data-availability', 'none');
+  await expect(page.getByTestId('path-managed-direct')).toContainText('Not available here');
+
+  // UK South's only on-ramp is inactive — provisionable, not green "Available".
+  await page.getByTestId('fabric-node-region-uks').click();
+  await expect(page.getByTestId('path-managed-direct')).toHaveAttribute('data-availability', 'provisionable');
+  await expect(page.getByTestId('path-managed-direct')).toContainText('Provisionable here');
+  await expect(page.getByTestId('path-tenanted')).toContainText('Not available here');
+
+  // Nothing on this surface claims a partner fabric or an L3 hand-off.
+  await expect(page.getByTestId('path-managed-direct')).not.toContainText(/Equinix Fabric/i);
+  await expect(page.getByTestId('path-managed-direct')).not.toContainText(/\bL3\b/);
 });

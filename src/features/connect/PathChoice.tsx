@@ -1,12 +1,31 @@
 import { Info } from 'lucide-react';
 import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
-import { CONNECTIVITY_PATHS, pathEvidence } from './pathChoice';
+import { AVAILABILITY_LABEL, CONNECTIVITY_PATHS, pathEvidence } from './pathEvidence';
+import type { PathAvailability } from './pathEvidence';
 
 /**
  * How a customer chooses between the two connectivity options, using portal
- * data rather than a slide. Every figure comes from `pathEvidence`, which
- * reads the engine seeds — so the choice moves when the estate moves.
+ * data rather than a slide. Every figure and every state comes from
+ * `pathEvidence`, which reads `cc.fabricModel()` — so the card moves when the
+ * estate moves, and its latency is the same figure the Performance tile four
+ * lines above it shows.
  */
+
+/* Badge treatments reuse RegionPanel's own pills so the two read as one panel:
+   green for what is live, cobalt for what the customer can turn on, neutral
+   for what does not exist here. No amber; nothing here is a policy violation. */
+const BADGE: Record<PathAvailability, string> = {
+  live: 'bg-fw-successLight text-fw-success',
+  provisionable: 'bg-[#0057b8]/[0.08] text-[#0057b8]',
+  none: 'bg-fw-neutral text-fw-bodyLight',
+};
+
+const CARD: Record<PathAvailability, string> = {
+  live: 'border-[#0057b8]/30 bg-[#0057b8]/[0.04]',
+  provisionable: 'border-fw-secondary bg-fw-base',
+  none: 'border-fw-secondary bg-fw-neutral/40',
+};
+
 export function PathChoice({ cloudId, regionId }: { cloudId: string; regionId: string }) {
   const cc = useCloudControlActions();
   // Re-derive when an on-ramp is activated or a region is provisioned.
@@ -29,18 +48,15 @@ export function PathChoice({ cloudId, regionId }: { cloudId: string; regionId: s
             <div
               key={path.id}
               data-testid={`path-${path.id}`}
-              className={`rounded-lg border p-3 ${
-                e.available ? 'border-[#0057b8]/30 bg-[#0057b8]/[0.04]' : 'border-fw-secondary bg-fw-neutral/40'
-              }`}
+              data-availability={e.availability}
+              className={`rounded-lg border p-3 ${CARD[e.availability]} ${e.availability === 'none' ? 'opacity-70' : ''}`}
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-figma-sm font-semibold text-fw-heading">{path.label}</span>
                 <span
-                  className={`inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium ${
-                    e.available ? 'bg-fw-successLight text-fw-success' : 'bg-fw-neutral text-fw-bodyLight'
-                  }`}
+                  className={`inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium ${BADGE[e.availability]}`}
                 >
-                  {e.available ? 'Available here' : 'Not available here'}
+                  {AVAILABILITY_LABEL[e.availability]}
                 </span>
               </div>
 
@@ -61,6 +77,18 @@ export function PathChoice({ cloudId, regionId }: { cloudId: string; regionId: s
                   <dt className="text-fw-bodyLight">On-ramp</dt>
                   <dd className="font-semibold text-fw-heading">{e.onrampName ?? 'None in this region'}</dd>
                 </div>
+                {e.handoffSite && (
+                  <div className="col-span-2">
+                    <dt className="text-fw-bodyLight">Hand-off</dt>
+                    <dd className="font-semibold text-fw-heading">{e.handoffSite}</dd>
+                  </div>
+                )}
+                {e.capacityNote && (
+                  <div className="col-span-2">
+                    <dt className="text-fw-bodyLight">Capacity / state</dt>
+                    <dd className="font-semibold text-fw-heading">{e.capacityNote}</dd>
+                  </div>
+                )}
               </dl>
 
               <p className="mt-3 text-figma-xs text-fw-bodyLight">{path.underlay}</p>
