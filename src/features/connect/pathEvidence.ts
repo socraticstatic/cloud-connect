@@ -47,13 +47,13 @@ export const CONNECTIVITY_PATHS: ConnectivityPath[] = [
     id: 'managed-direct',
     label: 'Direct cloud connect',
     promise: 'Attach your VPCs in-region. AT&T carries and observes everything past the hand-off.',
-    isolation: 'Shared — capacity is pooled across customers, not reserved for you.',
+    isolation: 'Shared — this path also carries traffic from other customers.',
   },
   {
     id: 'tenanted',
     label: 'Dedicated tenant',
     promise: 'A private, tenanted path with committed performance and a reliability floor you control.',
-    isolation: 'Per tenant — your own isolated path, never pooled with another customer.',
+    isolation: 'Per tenant — this path carries only your traffic.',
   },
 ];
 
@@ -111,7 +111,9 @@ interface SeedOnramp {
 
 type ModelOnramp = ReturnType<CloudControl['fabricModel']>['onramps'][number];
 
-const isTenanted = (type: string) => /netbond/i.test(type);
+/** Exported so tests can group on-ramps by path family without duplicating
+ * the regex — the tenanted/direct split IS this predicate, nothing more. */
+export const isTenanted = (type: string) => /netbond/i.test(type);
 
 /**
  * The on-ramp's own `sub` line with its leading facility segment dropped when

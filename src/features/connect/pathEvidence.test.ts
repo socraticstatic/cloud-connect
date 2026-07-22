@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { CC } from '../../engine';
-import { CONNECTIVITY_PATHS, pathEvidence } from './pathEvidence';
+import { CONNECTIVITY_PATHS, isTenanted, pathEvidence } from './pathEvidence';
 
 const ev = (cloudId: string, regionId: string) => {
   const rows = pathEvidence(CC as never, cloudId, regionId);
@@ -217,6 +217,45 @@ describe('pathEvidence', () => {
       expect(copy).not.toMatch(/Equinix Fabric/i);
       expect(copy).not.toMatch(/\bL3\b/);
     }
+  });
+
+  it('invariant: a region is captured by at most one on-ramp, in either path family', () => {
+    // `row()`'s `latencyMs` is `region.latencyMs` — the ONE region-level figure
+    // `fabricModel()` derives (from whichever on-ramp(s) target the region),
+    // blind to which of the two path cards is asking for it (see the
+    // `latencyMs` doc comment above). That figure is only ever correct because
+    // "the four on-ramps have zero target overlap": no region is targeted by
+    // more than one on-ramp, tenanted or direct. If a SECOND on-ramp — of
+    // either family — ever targeted a region that already has one, that
+    // second path would go from "none" to live/provisionable and render
+    // *its own* hand-off next to a latency figure that is still the FIRST
+    // on-ramp's (whichever the region shape's active/nearest pick resolves
+    // to), because `_regionShape` picks one figure per region with no
+    // knowledge of path family at all. Checking each family's count stays
+    // <=1 independently is not enough to catch this — a region can go from
+    // (0 direct, 1 tenanted) to (1 direct, 1 tenanted) without either
+    // per-family count ever exceeding 1. The premise is the TOTAL: at most
+    // one on-ramp of any kind per region.
+    const model = (CC as never as {
+      fabricModel(): {
+        regions: { cloudId: string; regionId: string; onrampIds: string[] }[];
+        onramps: { id: string; type: string }[];
+      };
+    }).fabricModel();
+    const typeById = new Map(model.onramps.map(o => [o.id, o.type]));
+
+    let checked = 0;
+    for (const r of model.regions) {
+      const families = r.onrampIds.map(id => (isTenanted(typeById.get(id) ?? '') ? 'tenanted' : 'direct'));
+      expect(
+        r.onrampIds.length,
+        `${r.cloudId}/${r.regionId} is targeted by ${r.onrampIds.length} on-ramps (${families.join(', ') || 'none'}) — expected at most 1`,
+      ).toBeLessThanOrEqual(1);
+      checked++;
+    }
+    // Guard the guard: if the seeds ever stop producing any regions this
+    // test would pass vacuously.
+    expect(checked).toBeGreaterThan(0);
   });
 
   it('an unknown region yields no rows rather than throwing', () => {

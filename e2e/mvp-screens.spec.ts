@@ -73,6 +73,32 @@ for (const s of SCREENS) {
 }
 
 /**
+ * The SCREENS loop above scans /connect with no region selected, so
+ * `PathChoice` (the two-path-per-region cards under "How you connect") is
+ * never in the DOM when axe runs — a serious/critical violation inside it
+ * would pass the gate silently. Select a region first so the cards actually
+ * render, then scan. Same axe invocation as the loop above: scoped to
+ * `#main-content`, full serious+critical bar, no rules disabled.
+ */
+test('/connect with a region selected is accessible (PathChoice included)', async ({ page }) => {
+  await prep(page);
+  await page.goto('/#/connect', { waitUntil: 'domcontentloaded' });
+
+  await page.getByTestId('fabric-node-region-use1').click();
+  await expect(page.getByTestId('path-managed-direct')).toBeVisible();
+  await expect(page.getByTestId('path-tenanted')).toBeVisible();
+  // Let any one-shot entrance transitions settle before scan, same as the loop above.
+  await page.waitForTimeout(500);
+
+  const axe = await new AxeBuilder({ page }).include('#main-content').analyze();
+  const serious = axe.violations.filter(v => v.impact === 'serious' || v.impact === 'critical');
+  expect(
+    serious,
+    JSON.stringify(serious.map(v => ({ id: v.id, impact: v.impact, nodes: v.nodes.length })), null, 2),
+  ).toEqual([]);
+});
+
+/**
  * Cause-and-effect across screens — the demo's core proof. Read the Cost hero
  * savings figure, cross to Observe (where the Paths table now lives), steer a
  * flow onto an AT&T path (which pulls egress off the public internet), cross back

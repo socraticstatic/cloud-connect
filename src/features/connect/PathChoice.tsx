@@ -69,12 +69,12 @@ export function PathChoice({ cloudId, regionId }: { cloudId: string; regionId: s
               key={path.id}
               data-testid={`path-${path.id}`}
               data-availability={e.availability}
-              className={`rounded-lg border p-3 ${CARD[e.availability]} ${e.availability === 'none' ? 'opacity-70' : ''}`}
+              className={`rounded-lg border p-3 ${CARD[e.availability]}`}
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-figma-sm font-semibold text-fw-heading">{path.label}</span>
                 <span
-                  className={`inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium ${BADGE[e.availability]}`}
+                  className={`inline-flex items-center justify-center min-h-6 px-2.5 py-1 rounded-full text-center text-figma-xs font-medium leading-tight ${BADGE[e.availability]}`}
                 >
                   {AVAILABILITY_LABEL[e.availability]}
                 </span>

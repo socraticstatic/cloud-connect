@@ -81,9 +81,12 @@ describe('PathChoice', () => {
     expect(within(card).queryByText('Latency')).toBeNull();
     expect(within(card).queryByText('Hand-off')).toBeNull();
     expect(within(card).queryByText('Capacity / state')).toBeNull();
-    // Neutral, not green, and visibly de-emphasised.
+    // Neutral, not green — de-emphasis comes from the neutral fill and badge,
+    // not from a card-level opacity that would also wash out its own text
+    // (see pathEvidence's WCAG AA note: opacity-70 undoes the darkened
+    // fw-bodyLight that keeps this text at 4.5:1 on bg-fw-neutral/40).
     expect(card.className).toContain('bg-fw-neutral');
-    expect(card.className).toContain('opacity-70');
+    expect(card.className).not.toContain('opacity-70');
     expect(card.className).not.toContain('fw-successLight');
   });
 
