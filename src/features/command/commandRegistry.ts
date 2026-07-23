@@ -1,7 +1,16 @@
 import type { CloudControl } from '../../engine';
 import { NAV_DISCOVER, NAV_LAYERS } from '../../components/navigation/navItems';
+import { attachOpportunities, steerOpportunities } from '../discover/stackFigures';
+import { fmtTokens } from '../ai-fabric/aiSpend';
 
-export type CommandKind = 'nav' | 'attach' | 'enforce' | 'undo';
+export type CommandKind =
+  | 'nav'
+  | 'attach'
+  | 'enforce'
+  | 'undo'
+  | 'attach-region'
+  | 'steer'
+  | 'cap';
 
 export interface Command {
   id: string;
@@ -99,5 +108,66 @@ export function commandRegistry(
     });
   }
 
+  // Priced intents. Every figure below comes from stackFigures — the same
+  // arithmetic the cross-section and /naas/cost state — never restated here.
+  for (const opp of attachOpportunities(cc)) {
+    const price =
+      opp.bucketSavingMo !== null
+        ? ` · $${opp.bucketSavingMo.toLocaleString()}/mo`
+        : '';
+    commands.push({
+      id: `attach-region:${opp.regionId}`,
+      label: `Attach ${opp.label} · ${opp.publicMs}→${opp.privateMs} ms on the fabric${price}`,
+      kind: 'attach-region',
+      run: () => cc.provisionRegion(opp.regionId),
+    });
+  }
+
+  for (const opp of steerOpportunities(cc)) {
+    const price =
+      opp.egressSavingMo !== null
+        ? ` · $${opp.egressSavingMo.toLocaleString()}/mo`
+        : '';
+    commands.push({
+      id: `steer:${opp.flowId}`,
+      label: `Steer ${opp.label} onto the fabric${price}`,
+      kind: 'steer',
+      run: () => cc.steerFlow(opp.flowId, opp.pathId),
+    });
+  }
+
   return commands;
+}
+
+/** `cap <tag> [at] <n>[k|m] [tokens][/day]` — nothing else parses. */
+const CAP_GRAMMAR =
+  /^cap\s+(\S+)\s+(?:at\s+)?([\d.]+)\s*([km])?\s*(?:tokens?)?\s*(?:\/?\s*day)?$/i;
+
+/**
+ * Typed intent parser for the palette. A query that names an engine-known
+ * policy tag and a positive budget yields exactly one runnable command;
+ * anything else yields none, so free text cannot mutate the engine.
+ */
+export function parseIntent(query: string, cc: CloudControl): Command[] {
+  const match = query.trim().match(CAP_GRAMMAR);
+  if (!match) return [];
+
+  const rows: { tag: string }[] =
+    typeof cc.tokenPolicyList === 'function' ? cc.tokenPolicyList() : [];
+  const row = rows.find(r => r.tag.toLowerCase() === match[1].toLowerCase());
+  if (!row) return [];
+
+  const unit = match[3] ? (match[3].toLowerCase() === 'k' ? 1e3 : 1e6) : 1;
+  const budget = parseFloat(match[2]) * unit;
+  if (!(budget > 0)) return [];
+
+  const tag = row.tag;
+  return [
+    {
+      id: `cap:${tag}:${budget}`,
+      label: `Cap ${tag} at ${fmtTokens(budget)} tokens/day · token policy`,
+      kind: 'cap',
+      run: () => cc.setTokenPolicy(tag, { budget }),
+    },
+  ];
 }
