@@ -115,3 +115,127 @@ test('the drawer panel and backdrop actually fill the viewport, not a clipped st
   expect(backdropBox!.width).toBeGreaterThan(viewport.width * 0.9);
   expect(backdropBox!.height).toBeGreaterThan(viewport.height * 0.9);
 });
+
+/* ─────────────────────────────────────────────────────────────────────────
+   THE FOLD.
+
+   Below 1280px this drawer is the only route to any of the nine
+   destinations, and the NaaS/AI Fabric split doubled what it has to carry.
+   Reachable-by-scrolling is not the same as legible: at 900x800 the nav
+   scroller measured 525px holding 745px, so the AI Fabric group opened with
+   its label and one verb visible and the other three below the fold, on the
+   one surface that can reach them.
+
+   These assert geometry, not markup — scrollHeight against clientHeight and
+   each destination's own bottom edge against the scroller's. A layout that
+   merely LOOKS denser in the source fails them; a layout that fits passes
+   whatever shape it takes.
+
+   The companion assertion is the one that stops the cheap fix. Both domains
+   carry the identical four verb labels, so "Connect" and "Connect" are two
+   different screens with one name. Deleting the per-verb descriptions would
+   fit the fold instantly and leave the drawer lying about where each link
+   goes, so every verb button must still say something the other domain's
+   same-named button does not.
+   ───────────────────────────────────────────────────────────────────────── */
+
+interface FoldReading {
+  clientHeight: number;
+  scrollHeight: number;
+  overflow: number;
+  scrollerBottom: number;
+  groups: { label: string; bottom: number; aboveFold: boolean }[];
+  items: { label: string; group: string; text: string; bottom: number; aboveFold: boolean }[];
+}
+
+async function readFold(page: Page): Promise<FoldReading> {
+  await page.locator('[data-nav-toggle="true"]').click();
+  await expect(page.getByLabel('Close menu')).toBeVisible();
+  // The drawer springs in; measure after it has settled.
+  await page.waitForTimeout(600);
+
+  return page.evaluate(() => {
+    const scroller = document.querySelector<HTMLElement>('[data-testid="drawer-nav-scroller"]');
+    if (!scroller) throw new Error('drawer nav scroller not found');
+    const sb = scroller.getBoundingClientRect().bottom;
+
+    const groups = [...scroller.querySelectorAll<HTMLElement>('[role="group"]')].map(g => ({
+      label: g.getAttribute('aria-label') ?? '',
+      bottom: Math.round(g.getBoundingClientRect().bottom),
+      aboveFold: g.getBoundingClientRect().bottom <= sb + 0.5,
+    }));
+
+    const items = [...scroller.querySelectorAll<HTMLElement>('button[data-nav-to]')].map(b => {
+      const g = b.closest('[role="group"]');
+      return {
+        label: b.getAttribute('data-nav-label') ?? '',
+        group: g?.getAttribute('aria-label') ?? '',
+        text: (b.innerText ?? '').replace(/\s+/g, ' ').trim(),
+        bottom: Math.round(b.getBoundingClientRect().bottom),
+        aboveFold: b.getBoundingClientRect().bottom <= sb + 0.5,
+      };
+    });
+
+    return {
+      clientHeight: scroller.clientHeight,
+      scrollHeight: scroller.scrollHeight,
+      overflow: scroller.scrollHeight - scroller.clientHeight,
+      scrollerBottom: Math.round(sb),
+      groups,
+      items,
+    };
+  });
+}
+
+for (const vp of [
+  { width: 375, height: 812 },
+  { width: 768, height: 1024 },
+  { width: 900, height: 800 },
+]) {
+  test.describe(`drawer fold at ${vp.width}x${vp.height}`, () => {
+    test.use({ viewport: vp });
+
+    test('every destination in both domains sits above the fold', async ({ page }) => {
+      await firstVisit(page);
+      const fold = await readFold(page);
+
+      // Nine destinations: Discover, plus four verbs in each domain.
+      expect(fold.items).toHaveLength(9);
+
+      expect(
+        fold.overflow,
+        `nav scroller is ${fold.clientHeight}px holding ${fold.scrollHeight}px — ${fold.overflow}px below the fold`,
+      ).toBeLessThanOrEqual(0);
+
+      const below = fold.items.filter(i => !i.aboveFold);
+      expect(
+        below.map(i => `${i.group || 'Discover'} · ${i.label}`),
+        'destinations reachable only by scrolling',
+      ).toEqual([]);
+
+      for (const g of fold.groups) {
+        expect(g.aboveFold, `the ${g.label} group runs past the fold`).toBe(true);
+      }
+    });
+
+    test('the two identically-labelled links still say which is which', async ({ page }) => {
+      await firstVisit(page);
+      const fold = await readFold(page);
+
+      for (const verb of ['Connect', 'Govern', 'Observe', 'Cost']) {
+        const pair = fold.items.filter(i => i.label === verb);
+        expect(pair, `expected ${verb} in both domains`).toHaveLength(2);
+
+        // Each carries copy beyond the bare label...
+        for (const item of pair) {
+          expect(
+            item.text.replace(verb, '').trim().length,
+            `${item.group} · ${verb} shows nothing but its label`,
+          ).toBeGreaterThan(0);
+        }
+        // ...and it is not the same copy in both domains.
+        expect(pair[0].text, `both ${verb} links read identically`).not.toBe(pair[1].text);
+      }
+    });
+  });
+}

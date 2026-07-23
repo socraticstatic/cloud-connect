@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '../../contexts/AuthContext';
 import { MobileMenu } from './MobileMenu';
+import { NAV_DOMAINS } from './navItems';
 
 // Mock framer-motion. The nav item list only renders once the panel's
 // onAnimationComplete callback fires, so the mocked motion.div calls it on
@@ -110,5 +111,47 @@ describe('MobileMenu', () => {
     renderMobileMenu();
 
     expect(screen.queryByPlaceholderText('Search...')).not.toBeInTheDocument();
+  });
+
+  /* The drawer's verbs were packed two-up to get both domains above the fold
+     (e2e/mobile-nav.spec.ts measures that part — jsdom has no layout). What
+     jsdom CAN see is the thing the density pass must not have cost: both
+     domains carry the identical four labels, so every verb still has to say
+     where it goes, and no two same-named verbs may say the same thing.
+     Deleting the descriptions is the cheap way to fit the fold and it is the
+     one fix that breaks the drawer, so it is asserted here as well as in the
+     browser. */
+  it('every verb still says which domain it belongs to', () => {
+    renderMobileMenu();
+
+    const seen = new Map<string, string[]>();
+
+    for (const domain of NAV_DOMAINS) {
+      const group = screen.getByRole('group', { name: domain.label });
+      const buttons = within(group).getAllByRole('button');
+      expect(buttons.map(b => b.getAttribute('data-nav-label'))).toEqual(
+        domain.items.map(i => i.label)
+      );
+
+      for (const item of domain.items) {
+        const button = within(group).getByRole('button', {
+          name: new RegExp(`^${item.label}`),
+        });
+        // The destination, and the copy that tells it from its twin.
+        expect(button).toHaveAttribute('data-nav-to', item.to);
+        expect(button).toHaveTextContent(item.description);
+
+        const copy = (button.textContent ?? '').replace(item.label, '').trim();
+        expect(copy.length, `${domain.label} · ${item.label} shows only its label`).toBeGreaterThan(0);
+
+        const prior = seen.get(item.label) ?? [];
+        expect(prior, `${item.label} reads identically in both domains`).not.toContain(copy);
+        seen.set(item.label, [...prior, copy]);
+      }
+    }
+
+    // All four labels really do appear in both domains — otherwise the loop
+    // above proves nothing about ambiguity.
+    for (const [, copies] of seen) expect(copies).toHaveLength(2);
   });
 });
