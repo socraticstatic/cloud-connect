@@ -164,18 +164,29 @@ export function aiPublicFlowGbps(cc: CloudControl): number {
 }
 
 /**
- * Region id -> latency in ms, from `fabricModel()` — the ONE region-latency
- * derivation this estate has (nearest capturing on-ramp site to the region's
- * geo). Connect's Performance tile and the new PathChoice cards already render
- * it; Discover used to render the raw seed `r.lat` instead, so Nebius read
- * 44ms on Discover and 120ms on Connect, and all nine regions disagreed.
+ * Region id -> the latency it states, and the PATH that figure measures.
  *
- * Discover now reads this map, so the two surfaces agree by construction
- * rather than by anyone remembering to keep them in step.
+ * From `fabricModel()` — the ONE region-latency derivation this estate has.
+ * Discover used to render the raw seed `r.lat`, so Nebius read 44ms here and
+ * 120ms on Connect and all nine regions disagreed; that was fixed by reading
+ * `latencyMs`. It then rendered the FABRIC figure for regions still riding
+ * public transit, under a bare "LATENCY" label, while /naas/observe stated the
+ * public figure for the same regions — a second disagreement in the same tile.
+ *
+ * `latencyMs` is now the figure for the path the region is on today and this
+ * map carries the path with it, so the tile can say which of the two it is
+ * showing rather than leaving a viewer to guess between two screens.
  */
 export function regionLatencyMap(cc: CloudControl): Record<string, number> {
   const map: Record<string, number> = {};
   for (const r of cc.fabricModel().regions) map[r.regionId] = r.latencyMs;
+  return map;
+}
+
+/** Region id -> which path its `regionLatencyMap` figure measures. */
+export function regionLatencyPathMap(cc: CloudControl): Record<string, 'private' | 'public'> {
+  const map: Record<string, 'private' | 'public'> = {};
+  for (const r of cc.fabricModel().regions) map[r.regionId] = r.path;
   return map;
 }
 
@@ -264,7 +275,15 @@ export function estateDomains(cc: CloudControl): EstateDomain[] {
         ? 'GPU regions, models, and the agents calling them — with the AI endpoints still riding public internet, the security gap in this domain.'
         : aiFlowPublic > 0
           ? `GPU regions, models, and the agents calling them — every AI endpoint is on a private path, and ${aiFlowPublic} Gbps of traffic still reaches them from source regions that are not: the rest of the security gap, itemised in NaaS · Observe.`
-          : 'GPU regions, models, and the agents calling them — every AI endpoint on a private path and every flow reaching them under AT&T control, the security gap in this domain closed.',
+          /* Scoped, deliberately. This branch measures two BYTES-layer facts —
+             endpoints attached, and Gbps of flow reaching them under control —
+             and neither is a statement about token spend. An identity can meter
+             ungoverned tokens over the public internet in exactly this estate
+             (AI Fabric · Cost states that figure from its own engine bucket),
+             so a bare "the security gap in this domain closed" would be denied
+             one screen away. It names the layer it measured and points at the
+             one it did not. */
+          : 'GPU regions, models, and the agents calling them — every AI endpoint on a private path and every flow reaching them under AT&T control, the network-layer security gap in this domain closed. Token-layer governance is metered separately in AI Fabric · Observe.',
       stats: [
         { key: 'aiRegions', label: 'AI regions', value: allRegions.filter(r => r.ai).length },
         { key: 'models', label: 'Models', value: models.length },

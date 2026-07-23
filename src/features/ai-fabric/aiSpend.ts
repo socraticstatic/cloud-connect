@@ -13,13 +13,22 @@ import type { CloudControl } from '../../engine/types';
  * identity actually invokes, `modelCatalog()` for that model's name and price.
  * No literals, no clock, no random.
  *
- * ## Three different facts, never conflated
+ * ## Four different facts, never conflated
  *
  * The engine meters an identity's tokens from `promptTrace()` whether or not
  * its endpoint is ready — agents keep issuing requests either way — so
  * `tokenMeterList()` reports a `today` that can be non-zero while `ready` is
- * false. And `ready` is NOT the path. Three facts, not one:
+ * false. And `ready` is NOT the path. Four facts, not one:
  *
+ * - `ungovernedToday` — of today's tokens, how many were metered while this
+ *                     identity's route was public. The engine books this at
+ *                     meter time (`state-billing.ts`), because it is the only
+ *                     moment the fact is knowable: attaching an endpoint does
+ *                     not retroactively govern spend that already left.
+ *                     **This, and only this, is what token spend "crossed the
+ *                     public internet" means.** A count of identities on a
+ *                     public route right now is a different sentence, about a
+ *                     different tense.
  * - `metering`      — this identity has accrued token spend today.
  * - `endpointReady` — `tokenMeterList().ready`, i.e. `endpointReadyFor()`: the
  *                     endpoint's prerequisites are met, meaning its region is
@@ -46,9 +55,11 @@ import type { CloudControl } from '../../engine/types';
  * "0 exposed endpoints" — with the remediation link pointing at the screen
  * that denied it.
  *
- * So: every sentence about the PATH reads `routePath` / `onPublicPath`; every
- * count about spend accrual reads `metering`; `endpointReady` is carried for
- * callers that genuinely mean the engine's readiness gate, and is never a path.
+ * So: every sentence about where the NEXT request goes reads `routePath` /
+ * `onPublicPath`; every sentence about where today's tokens WENT reads
+ * `ungovernedToday` / `governedToday`; every count about spend accrual reads
+ * `metering`; `endpointReady` is carried for callers that genuinely mean the
+ * engine's readiness gate, and is never a path.
  */
 
 /** The external, third-party model. Its price is the comparison rate: what the
@@ -62,6 +73,10 @@ interface TokenMeter {
   tag: string;
   ready: boolean;
   today: number;
+  /** Tokens metered against an AT&T-controlled path. */
+  governed: number;
+  /** Tokens metered while this identity's route was the public internet. */
+  ungoverned: number;
   budget: number;
   pct: number;
 }
@@ -83,6 +98,7 @@ interface Agent {
 export type ModelRoutePath = 'private' | 'governed egress' | 'public';
 
 interface ModelRoute {
+  tag: string;
   app: string;
   path: ModelRoutePath;
 }
@@ -115,9 +131,14 @@ export interface AiSpendRow {
   endpointReady: boolean;
   /** `modelRoutes().path` — where this identity's requests actually go. */
   routePath: ModelRoutePath;
-  /** True when `routePath === 'public'`, i.e. requests leave over the internet. */
+  /** True when `routePath === 'public'`, i.e. the NEXT request leaves over the
+   *  internet. Says nothing about the tokens already metered. */
   onPublicPath: boolean;
   tokensToday: number;
+  /** Of `tokensToday`, the tokens that rode an AT&T-controlled path. */
+  governedToday: number;
+  /** Of `tokensToday`, the tokens that rode the public internet. */
+  ungovernedToday: number;
   budgetTokens: number;
   /** Percent of budget consumed — taken from the engine's own meter. */
   pct: number;
@@ -132,6 +153,12 @@ export interface AiSpendRow {
 export interface AiSpendTotals {
   rows: AiSpendRow[];
   tokensToday: number;
+  /** Of `tokensToday`, the tokens that rode an AT&T-controlled path. */
+  governedTokensToday: number;
+  /** Of `tokensToday`, the tokens that rode the public internet. */
+  ungovernedTokensToday: number;
+  /** How many identities metered at least one ungoverned token today. */
+  ungovernedCount: number;
   budgetTokens: number;
   spendToday: number;
   spendIfExternal: number;
@@ -199,23 +226,22 @@ export function aiSpendRows(cc: CloudControl): AiSpendRow[] {
   const routes = cc.modelRoutes() as ModelRoute[];
   const externalPrice = priceOf(catalog, EXTERNAL_MODEL_ID);
 
-  /* `tokenMeterList()` and `modelRoutes()` are both built by iterating the same
-     TOKEN_BUDGETS-keyed set in the same order (state-billing.ts), so index i of
-     one is index i of the other — the contract `aiBinding` already relies on.
-     If that ever stops holding, every path sentence on /ai/cost silently
-     describes the wrong identity, so say so loudly instead. */
-  if (routes.length !== meters.length) {
-    throw new Error(
-      `aiSpend: CC.modelRoutes() returned ${routes.length} routes for ` +
-        `${meters.length} token meters. The engine's routes and meters are no ` +
-        `longer index-aligned, so no identity's path can be stated.`,
-    );
-  }
-
-  return meters.map((m, i) => {
+  /* Paired by TAG, not by array index. `modelRoutes()` now names the tag each
+     route belongs to, so a route and its meter are matched on the identity
+     rather than on both lists happening to iterate the same keys in the same
+     order. A miss is not survivable — every path sentence on /ai/cost would
+     silently describe the wrong identity — so it throws rather than defaults. */
+  return meters.map(m => {
+    const route = routes.find(r => r.tag === m.tag);
+    if (!route) {
+      throw new Error(
+        `aiSpend: CC.tokenMeterList() meters "${m.tag}" but CC.modelRoutes() ` +
+          `carries no route for it, so that identity's path cannot be stated.`,
+      );
+    }
     const modelId = modelForTag(cc, m.tag);
     const price = priceOf(catalog, modelId);
-    const routePath = routes[i].path;
+    const routePath = route.path;
     return {
       tag: m.tag,
       metering: m.today > 0,
@@ -223,6 +249,8 @@ export function aiSpendRows(cc: CloudControl): AiSpendRow[] {
       routePath,
       onPublicPath: routePath === 'public',
       tokensToday: m.today,
+      governedToday: m.governed,
+      ungovernedToday: m.ungoverned,
       budgetTokens: m.budget,
       pct: m.pct,
       modelId,
@@ -246,6 +274,9 @@ export function aiSpendTotals(cc: CloudControl): AiSpendTotals {
     unmeteredPolicyTags,
     rows,
     tokensToday: rows.reduce((s, r) => s + r.tokensToday, 0),
+    governedTokensToday: rows.reduce((s, r) => s + r.governedToday, 0),
+    ungovernedTokensToday: rows.reduce((s, r) => s + r.ungovernedToday, 0),
+    ungovernedCount: rows.filter(r => r.ungovernedToday > 0).length,
     budgetTokens: rows.reduce((s, r) => s + r.budgetTokens, 0),
     spendToday,
     spendIfExternal,

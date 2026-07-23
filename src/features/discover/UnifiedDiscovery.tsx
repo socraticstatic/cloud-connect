@@ -19,6 +19,7 @@ import {
   estateDomains,
   openSummary,
   regionLatencyMap,
+  regionLatencyPathMap,
   regionsOf,
   vpcsOf,
   tagHex,
@@ -363,10 +364,15 @@ export function UnifiedDiscovery() {
   const tags = cc.TAGS as Record<string, Tag>;
   const domains = estateDomains(cc);
   /* Latency comes from `fabricModel()`, the one region-latency derivation this
-     estate has — the same figure the Connect panel's Performance tile and the
-     PathChoice cards render. Rendering the raw seed `r.lat` here is what put
-     Nebius at 44ms on this screen and 120ms on the next. */
+     estate has. Rendering the raw seed `r.lat` here is what put Nebius at 44ms
+     on this screen and 120ms on the next.
+
+     The tile states the figure for the path the region is on and LABELS it,
+     because a region has two figures and this tile has room for one: a bare
+     "LATENCY 54ms" on a region riding public transit read as the same claim as
+     /naas/observe's "92ms · Public internet" for that region. */
   const latencyOf = regionLatencyMap(cc);
+  const latencyPathOf = regionLatencyPathMap(cc);
   const publicWorkloads = clouds.filter(c => !c.attached).reduce((s, c) => s + c.workloads, 0);
 
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set(['aws']));
@@ -607,7 +613,16 @@ export function UnifiedDiscovery() {
                               items={[
                                 { v: vpcsOf(cc, r.id).length, l: 'VPC/VNet' },
                                 { v: r.subnets, l: 'Subnets' },
-                                { v: `${latencyOf[r.id] ?? r.lat}ms`, l: 'Latency' },
+                                {
+                                  v: `${latencyOf[r.id] ?? r.lat}ms`,
+                                  // No path claim for a region the fabric model
+                                  // does not carry — that figure is the raw seed.
+                                  l: !latencyPathOf[r.id]
+                                    ? 'Latency'
+                                    : latencyPathOf[r.id] === 'private'
+                                      ? 'Latency · fabric'
+                                      : 'Latency · public',
+                                },
                               ]}
                             />
                             <ConnIndicator cc={cc} cloudId={c.id} regionId={r.id} />

@@ -89,10 +89,15 @@ export function PathChoice({ cloudId, regionId }: { cloudId: string; regionId: s
               <dl className="mt-3 space-y-2 text-figma-xs">
                 {/* Omitted, not placeholdered, when the path does not reach this
                     region — the region's latency is the other card's on-ramp's.
-                    Formatted `3ms` to match the panel's Performance tile. */}
+                    Formatted `3ms` to match the panel's Performance tile.
+
+                    The label names the path, because this figure is the RTT
+                    over THIS card's on-ramp and the region may still be riding
+                    public transit today — the Performance tile above states
+                    that other figure, and the two must not read as one claim. */}
                 {e.latencyMs !== null && (
                   <div>
-                    <dt className="text-fw-bodyLight">Latency</dt>
+                    <dt className="text-fw-bodyLight">Latency on this path</dt>
                     <dd className="font-semibold text-fw-heading tabular-nums">{e.latencyMs}ms</dd>
                   </div>
                 )}

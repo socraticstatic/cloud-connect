@@ -254,15 +254,39 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
             </div>
           </div>
 
-          {/* Right Side: Actions */}
+          {/* Right Side: Actions.
+
+              TourLauncher sits OUTSIDE the width gate on purpose, and its
+              slot in this child list is fixed so React reconciles it to the
+              same element instance whichever way `isMobile` flips.
+
+              It used to live inside the `!isMobile` branch, which cost two
+              separate things. The launcher button was simply absent below
+              1024px — the guided tour, the one artifact built to demo this
+              product, could not be started at any width where the drawer is
+              the only navigation. And because `isMobile` is state driven by a
+              resize listener, narrowing the window MID-TOUR unmounted
+              <ProductTour /> with it: `currentStep` lives in ProductTour's own
+              useState, so the tour did not pause, it stopped existing —
+              spotlight, progress bar and place in the sequence all gone, and
+              the next launch began again at step 1.
+
+              Keeping it mounted at every width fixes both. The button is 36px
+              and it is the only thing in this cluster below 1024px, so it
+              costs nothing the narrow header was using. */}
           <div className="flex items-center gap-1 xl:gap-1.5 flex-shrink-0 pr-2">
             {!isMenuOpen && !isMobile && (
               <>
                 <SearchBar onSearch={onSearch} />
                 <div className="h-5 w-px bg-fw-secondary hidden xl:block mx-0.5" />
-                {/* demo controls, grouped */}
                 <UndoControl />
-                <TourLauncher />
+              </>
+            )}
+
+            <TourLauncher />
+
+            {!isMenuOpen && !isMobile && (
+              <>
                 <div className="h-5 w-px bg-fw-secondary hidden xl:block mx-0.5" />
                 <NotificationsButton count={notifications} />
                 <TenantSelector />

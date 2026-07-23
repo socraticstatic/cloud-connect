@@ -188,7 +188,14 @@ export function pathEvidence(cc: CloudControl, cloudId: string, regionId: string
       availability,
       // A path that does not reach this region has no latency to report; the
       // region figure belongs to the on-ramp serving the OTHER card.
-      latencyMs: availability === 'none' ? null : region.latencyMs,
+      //
+      // Both cards describe an AT&T path, so both state `privateMs` — the RTT
+      // to the on-ramp serving this region — whether or not the region is
+      // attached yet. `region.latencyMs` is the figure for the path the region
+      // is on TODAY, which for an unattached region is the public one: stating
+      // it on a card whose own `promise` is the private path would relabel the
+      // public internet as managed connectivity.
+      latencyMs: availability === 'none' ? null : region.privateMs,
       onrampName: chosen?.name ?? null,
       handoffSite,
       capacityNote: sub === null ? null : handoffSite ? withoutFacilityPrefix(sub, handoffSite) : sub,

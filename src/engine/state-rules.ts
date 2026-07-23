@@ -36,10 +36,16 @@ const REQUIREMENTS={
     evaluate:(matched)=>matched.filter(m=>!m.v.attached).map(m=>({vpc:m.v.id,name:m.v.name,msg:'riding public internet'}))},
   'latency-slo':{label:'Latency SLO',chain:'path selection',param:{key:'ms',label:'P95 under (ms)',def:30},
     action:'matched workloads must sit behind a path meeting the SLO - violations clear as faster (private) paths attach',
+    /* Measured with the ruler every screen reads: CC.regionLatency(region) —
+       `privateMs` for a workload already on the fabric, `publicMs` for one
+       still on public transit. It used to compare a flat `12` against the raw
+       seed `region.lat`, so a violation could quote a latency no other surface
+       in the product showed for that region. */
     evaluate:(matched,enforced,param)=>{
       const slo=+param||30;
-      return matched.filter(m=>(m.v.attached?12:m.region.lat)>slo)
-        .map(m=>({vpc:m.v.id,name:m.v.name,msg:`${m.v.attached?12:m.region.lat}ms exceeds ${slo}ms SLO`}));
+      const ms=m=>{const L=CC.regionLatency(m.region.id);return m.v.attached?L.privateMs:L.publicMs;};
+      return matched.filter(m=>ms(m)>slo)
+        .map(m=>({vpc:m.v.id,name:m.v.name,msg:`${ms(m)}ms exceeds ${slo}ms SLO`}));
     }},
 };
 const customPolicies=[];

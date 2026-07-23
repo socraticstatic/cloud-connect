@@ -73,9 +73,29 @@ export function RegionPanel({ region, model, onProvision, onProvisioned }: Regio
               className="mt-2 text-figma-xs font-medium text-[#0057b8] hover:underline">Make dual →</button>
           )}
         </div>
+        {/* Performance states the figure for the path this region is ON, and
+            says which path that is. The headline used to be the fabric RTT
+            regardless — 40ms under a "Public" pill 60px above it, beside a
+            "View in Observe" link landing on a flow row reading 68ms for the
+            same region. An unattached region now leads with what it costs
+            today and names what the fabric would cost, which is the sentence
+            the attach CTA below is arguing for. */}
         <div className="rounded-xl border border-fw-secondary bg-fw-wash p-3">
           <div className="flex items-center gap-1.5 text-figma-xs text-fw-bodyLight"><Gauge size={13} /> Performance</div>
-          <div className="mt-1.5 text-figma-lg font-semibold text-fw-heading tabular-nums">{region.latencyMs}<span className="text-figma-sm font-normal text-fw-bodyLight">ms</span></div>
+          <div data-testid="region-latency" className="mt-1.5 text-figma-lg font-semibold text-fw-heading tabular-nums">{region.latencyMs}<span className="text-figma-sm font-normal text-fw-bodyLight">ms</span></div>
+          <div className="text-figma-xs text-fw-bodyLight">
+            {region.path === 'private'
+              ? 'on the AT&T fabric'
+              : 'on the public internet today'}
+          </div>
+          {/* The figure is cobalt (the private/on-fabric encoding this screen
+              uses everywhere); the words stay body colour so the line does not
+              read as a second link above the real one. */}
+          {region.path === 'public' && (
+            <div data-testid="region-latency-fabric" className="text-figma-xs text-fw-bodyLight">
+              <span className="font-semibold text-[#0057b8]">{region.privateMs}ms</span> on the fabric
+            </div>
+          )}
           <Link to="/naas/observe" className="mt-1 inline-flex items-center gap-0.5 text-figma-xs font-medium text-[#0057b8] hover:underline">View in Observe <ArrowRight size={12} /></Link>
         </div>
         <div className="rounded-xl border border-fw-secondary bg-fw-wash p-3">

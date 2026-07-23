@@ -1,5 +1,7 @@
+import { Link } from 'react-router-dom';
 import { AttIcon } from '../../components/icons/AttIcon';
-import { useCloudControl } from '../../engine/react/useCloudControl';
+import { useCloudControl, useCloudControlLive } from '../../engine/react/useCloudControl';
+import { aiSpendTotals, fmtTokens } from './aiSpend';
 
 interface ModelInfo {
   id: string;
@@ -12,8 +14,23 @@ interface ModelInfo {
   ready: boolean;
 }
 
+/**
+ * The model catalog, and the one thing its badge cannot say on its own.
+ *
+ * "3 / 3 governed & ready" is a claim about ENDPOINTS: every model's path is
+ * attached, so every request from here on is governed. It is true, and it is
+ * not the whole of the word "governed" — an agent metering before the attach
+ * sent real tokens out over the public internet, and the engine keeps that in
+ * its own bucket precisely so it cannot be laundered by a later attach.
+ *
+ * Unqualified, this badge reads as an all-clear beside an `/ai/cost` screen
+ * one click away stating a non-zero ungoverned figure. So it names that figure
+ * itself, from the same derivation `/ai/cost` and `/ai/observe` read, and only
+ * when there is one to name.
+ */
 export function ModelCatalog() {
   const models = useCloudControl(cc => cc.modelCatalog()) as ModelInfo[];
+  const ungoverned = useCloudControlLive(cc => aiSpendTotals(cc).ungovernedTokensToday);
 
   return (
     <div className="rounded-2xl border border-fw-secondary bg-fw-base overflow-hidden">
@@ -24,6 +41,17 @@ export function ModelCatalog() {
           {models.filter(m => m.ready).length} / {models.length} governed &amp; ready
         </span>
       </div>
+
+      {ungoverned > 0 && (
+        <p className="px-5 py-3 border-b border-fw-secondary text-figma-sm text-fw-bodyLight">
+          Attaching governs what comes next, not what already went:{' '}
+          {fmtTokens(ungoverned)} tokens have been metered over the public internet today.{' '}
+          <Link to="/ai/cost" className="font-medium text-[#0057b8] hover:underline">
+            See the split in AI Fabric · Cost
+          </Link>
+          .
+        </p>
+      )}
 
       <table className="w-full text-figma-sm">
         <thead>

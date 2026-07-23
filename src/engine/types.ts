@@ -54,6 +54,16 @@ export interface FabricRegion {
   attached: boolean;
   reliability: 'dual' | 'single' | 'none';
   path: 'private' | 'public';
+  /** RTT to the on-ramp serving this region — what it costs ON the fabric,
+   *  whether or not it is attached yet. */
+  privateMs: number;
+  /** The same region over public transit — what it costs today while `path`
+   *  is `'public'`, and the counterfactual once it is `'private'`. */
+  publicMs: number;
+  /** The figure for the path the region is on RIGHT NOW (`privateMs` when
+   *  `path === 'private'`, `publicMs` otherwise). A surface rendering this
+   *  bare must name the path beside it; a surface naming a SPECIFIC path
+   *  must render that path's own figure instead. */
   latencyMs: number;
   onrampIds: string[];
 }
@@ -129,6 +139,18 @@ export interface CloudControl {
     c2c: { id: string; label: string; gbps: number; viaPublic: boolean; controlled: boolean }[];
   };
   provisionRegion(regionId: string, opts?: { attachType?: string; onrampId?: string; resilient?: boolean }): FabricRegion | null;
+
+  /**
+   * THE region-latency derivation. `privateMs` is the region's RTT to the
+   * on-ramp serving it — the figure /discover, Connect's Performance tile and
+   * both PathChoice cards render, and the figure every AT&T flow row on
+   * /naas/observe states. `publicMs` is the same region over public transit
+   * (`privateMs * PUBLIC_TRANSIT_FACTOR`). Nothing outside the engine derives
+   * a latency of its own; null for a region the engine does not carry.
+   */
+  regionLatency(regionId: string): { privateMs: number; publicMs: number } | null;
+  /** What the public internet costs over the AT&T path between the same ends. */
+  PUBLIC_TRANSIT_FACTOR: number;
 
   // --- console (state-console.js) ---
   setTokenPolicy(tag: string, patch: Record<string, unknown>): void;

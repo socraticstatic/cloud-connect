@@ -42,17 +42,25 @@ describe('PathChoice', () => {
     expect(within(tenanted).getByText(`${shown}ms`)).toBeInTheDocument();
   });
 
-  it('agrees with the panel: the latency shown is fabricModel()\'s, in the panel\'s own format', () => {
+  it('states the FABRIC figure, labelled as this path\'s, in the panel\'s own format', () => {
     render(<PathChoice cloudId="azure" regionId="uks" />);
     const model = (CC as never as {
-      fabricModel(): { regions: { cloudId: string; regionId: string; latencyMs: number }[] };
+      fabricModel(): { regions: { cloudId: string; regionId: string; latencyMs: number; privateMs: number }[] };
     }).fabricModel();
-    const shown = model.regions.find(r => r.cloudId === 'azure' && r.regionId === 'uks')!.latencyMs;
-    // `3ms`, not `3 ms` — RegionPanel's Performance tile renders it unspaced
+    const region = model.regions.find(r => r.cloudId === 'azure' && r.regionId === 'uks')!;
+    // UK South is unattached, so its two figures differ — the card must show
+    // the on-ramp RTT, not the public figure the Performance tile above it
+    // states for the path the region rides today.
+    expect(region.privateMs).not.toBe(region.latencyMs);
+    // `92ms`, not `92 ms` — RegionPanel's Performance tile renders it unspaced
     // 40px above, and the same figure must not be formatted two ways.
     const card = screen.getByTestId('path-managed-direct');
-    expect(within(card).getByText(`${shown}ms`)).toBeInTheDocument();
-    expect(card.textContent).not.toContain(`${shown} ms`);
+    expect(within(card).getByText(`${region.privateMs}ms`)).toBeInTheDocument();
+    expect(card.textContent).not.toContain(`${region.privateMs} ms`);
+    // …and the label names the path, so the two figures on this screen cannot
+    // be read as one claim.
+    expect(within(card).getByText(/Latency on this path/i)).toBeInTheDocument();
+    expect(card.textContent).not.toContain(`${region.latencyMs}ms`);
   });
 
   it('keeps the isolation posture out of the derived-evidence list', () => {

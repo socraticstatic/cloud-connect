@@ -39,6 +39,8 @@ interface Meter {
   tag: string;
   ready: boolean;
   today: number;
+  governed: number;
+  ungoverned: number;
   budget: number;
   pct: number;
 }
@@ -54,6 +56,7 @@ interface Agent {
   scopes: string[];
 }
 interface Route {
+  tag: string;
   app: string;
   path: 'private' | 'governed egress' | 'public';
 }
@@ -109,10 +112,33 @@ describe('aiSpend — spend and endpoint attachment are two different facts', ()
     expect(t.meteringCount).toBeGreaterThan(t.endpointReadyCount);
   });
 
-  it('states the path from modelRoutes(), which in this state is all public', () => {
-    const rows = aiSpendRows(CC);
-    rows.forEach((r, i) => expect(r.routePath).toBe(routes()[i].path));
+  it('states the path from modelRoutes(), matched on the tag rather than the index', () => {
+    for (const r of aiSpendRows(CC)) {
+      expect(r.routePath).toBe(routes().find(x => x.tag === r.tag)!.path);
+    }
     expect(aiSpendTotals(CC).publicPathCount).toBe(routes().filter(r => r.path === 'public').length);
+  });
+
+  /* The bucket, pinned to the engine rather than to this module. In this state
+     every route is public, so every token metered here is ungoverned — and
+     that is a fact the engine recorded at meter time, not one aiSpend derives
+     from the route it can see now. */
+  it('carries the governed / ungoverned split the engine booked, untouched', () => {
+    const rows = aiSpendRows(CC);
+    for (const m of meters()) {
+      const row = rows.find(r => r.tag === m.tag)!;
+      expect(row.governedToday).toBe(m.governed);
+      expect(row.ungovernedToday).toBe(m.ungoverned);
+      expect(row.governedToday + row.ungovernedToday).toBe(row.tokensToday);
+    }
+    const t = aiSpendTotals(CC);
+    expect(t.ungovernedTokensToday).toBe(meters().reduce((s, m) => s + m.ungoverned, 0));
+    expect(t.governedTokensToday).toBe(meters().reduce((s, m) => s + m.governed, 0));
+    expect(t.ungovernedCount).toBe(rows.filter(r => r.ungovernedToday > 0).length);
+    expect(t.ungovernedTokensToday, 'nothing is attached, so it all rode public').toBe(
+      t.tokensToday,
+    );
+    expect(t.governedTokensToday).toBe(0);
   });
 });
 
@@ -207,10 +233,24 @@ describe('aiSpend — pinned to the engine, not to itself', () => {
       expect(row.endpointReady).toBe(m.ready);
       expect(row.metering).toBe(m.today > 0);
     }
-    aiSpendRows(CC).forEach((row, i) => {
-      expect(row.routePath).toBe(routes()[i].path);
-      expect(row.onPublicPath).toBe(routes()[i].path === 'public');
-    });
+    for (const row of aiSpendRows(CC)) {
+      const route = routes().find(r => r.tag === row.tag)!;
+      expect(row.routePath).toBe(route.path);
+      expect(row.onPublicPath).toBe(route.path === 'public');
+    }
+  });
+
+  /* Attaching governs what comes next. It does not reach back and re-book the
+     tokens that already left — which is exactly the inference /ai/cost and the
+     Observe briefing used to make from `publicPathCount`, and exactly the state
+     this describe is in: nothing routes public, and the ungoverned bucket from
+     the resting describe above is still standing. */
+  it('keeps the ungoverned history after every route has been governed', () => {
+    const t = aiSpendTotals(CC);
+    expect(t.publicPathCount, 'nothing routes public here').toBe(0);
+    expect(t.ungovernedTokensToday, 'and the earlier public spend survives').toBeGreaterThan(0);
+    expect(t.governedTokensToday, 'alongside real governed spend').toBeGreaterThan(0);
+    expect(t.governedTokensToday + t.ungovernedTokensToday).toBe(t.tokensToday);
   });
 
   it('prices each identity with the catalog price of the model its agent invokes', () => {

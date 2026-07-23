@@ -99,14 +99,22 @@ CC.setTokenPolicy=function(tag,patch){
 };
 CC.tokenBudgetOf=function(tag){return tokenPolicies[tag]?tokenPolicies[tag].budget:1000000;};
 
-/* ---------- model catalog: latency + price derive from the model ---------- */
+/* ---------- model catalog: latency + price derive from the model ----------
+   A self-hosted model's P50 is compute + the network it sits behind. COMPUTE_MS
+   is a per-model seed (what the GPU takes; no path changes it); the network term
+   is CC.regionLatency for the endpoint's region — `privateMs` once that region
+   is on the fabric, `publicMs` while it is not. This used to read a flat `14`
+   when attached and the raw seed `region.lat` when not, so the P50 column
+   quoted a CoreWeave latency no other screen in the product showed. */
+const COMPUTE_MS={'helion-70b':11,'helion-cls-13b':13};
 CC.modelCatalog=function(){
   const cw=CC.regions.cw.find(r=>r.id==='cwe'), nb=CC.regions.neb.find(r=>r.id==='nbe');
+  const net=(rid,attached)=>{const L=CC.regionLatency(rid);return attached?L.privateMs:L.publicMs;};
   return [
     {id:'helion-70b',name:'helion-70b',kind:'self-hosted · H100',endpoint:'CoreWeave',cloud:'cw',
-      p50:cw.attached?14:cw.lat,price:0.9,ready:cw.attached},
+      p50:COMPUTE_MS['helion-70b']+net('cwe',cw.attached),price:0.9,ready:cw.attached},
     {id:'helion-cls-13b',name:'helion-cls-13b',kind:'air-gapped · L40S',endpoint:'Nebius',cloud:'neb',
-      p50:nb.attached?16:nb.lat,price:0.4,ready:nb.attached},
+      p50:COMPUTE_MS['helion-cls-13b']+net('nbe',nb.attached),price:0.4,ready:nb.attached},
     {id:'gpt-class',name:'GPT-class (external)',kind:'managed API',endpoint:'OpenAI',cloud:null,
       p50:38,price:5.0,ready:CC.onramps.find(o=>o.id==='nb2').active},
   ];
@@ -178,8 +186,11 @@ CC.promptTrace=function(tag,modelId,prompt){
   // guardrail
   if(pol&&pol.guardrail)steps.push({hop:'Guardrail',detail:'ai-guardrail inline · prompt + completion scanned',ok:true});
   steps.push({hop:'Completion',detail:`${tokens.toLocaleString()} tokens · $${(tokens/1e6*model.price).toFixed(4)} @ $${model.price}/1M · ~${model.p50}ms P50`,ok:true});
-  // meter the spend
-  CC.meterTokens&&CC.meterTokens(tag,tokens);
+  /* Meter the spend into the bucket THIS trace just walked. `priv` is the
+     same value the Network path hop above prints, so the trace a viewer
+     reads and the meter a viewer reads can never describe one request as
+     both governed and public. */
+  CC.meterTokens&&CC.meterTokens(tag,tokens,priv);
   recordDecision(true,pol&&pol.guardrail);
   return {blocked:false,steps,tokens};
 };

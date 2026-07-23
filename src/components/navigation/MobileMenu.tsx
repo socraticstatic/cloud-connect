@@ -58,29 +58,72 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
     }, 100);
   };
 
-  const renderDrawerItem = (item: CuratedNavItem) => {
-    // Same rule the desktop bar uses (navItems.ts) — exact or parent. This
-    // used to be `location.pathname === item.to`, so a deep link under a
-    // section highlighted nothing here while the bar highlighted its parent.
-    const active = isNavRouteActive(location.pathname, item.to);
+  // Same rule the desktop bar uses (navItems.ts) — exact or parent. This used
+  // to be `location.pathname === item.to`, so a deep link under a section
+  // highlighted nothing here while the bar highlighted its parent.
+  const isActive = (item: CuratedNavItem) => isNavRouteActive(location.pathname, item.to);
+
+  /** Discover: alone above both domains, so it keeps the icon and the full
+   *  row. Nothing shares its label, and nothing sits beside it to pair with. */
+  const renderDiscoverItem = (item: CuratedNavItem) => {
+    const active = isActive(item);
     return (
       <button
-        key={item.to}
         onClick={() => handleNavigation(item.to)}
         aria-current={active ? 'page' : undefined}
+        data-nav-to={item.to}
+        data-nav-label={item.label}
         className={`
-          w-full flex items-center px-4 py-3 text-figma-base rounded-xl transition-colors
+          w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors
           ${active ? 'bg-fw-accent text-fw-link font-medium' : 'text-fw-body hover:bg-fw-neutral'}
         `}
       >
         <AttIcon
           name={item.icon}
-          className={`h-6 w-6 mr-3 ${active ? 'text-fw-link' : 'text-fw-bodyLight'}`}
+          className={`h-5 w-5 shrink-0 ${active ? 'text-fw-link' : 'text-fw-bodyLight'}`}
         />
-        <div className="text-left">
-          <div>{item.label}</div>
-          <div className="text-figma-sm text-fw-bodyLight">{item.description}</div>
-        </div>
+        <span className="min-w-0">
+          <span className="block text-figma-base font-medium">{item.label}</span>
+          <span className="block text-figma-xs leading-4 text-fw-bodyLight">{item.description}</span>
+        </span>
+      </button>
+    );
+  };
+
+  /** A domain verb, in the two-up grid.
+   *
+   *  Two changes from the full-width row this used to be, both of them height:
+   *
+   *  1. No icon. The same icons repeat across both domains — `check-shield` is
+   *     Govern in NaaS and Govern in the AI Fabric — so here they disambiguate
+   *     nothing while claiming the horizontal room the description needs. The
+   *     desktop bar already dropped them from its in-group links for exactly
+   *     this reason (MainNav.tsx, `renderNavLink(item, compact)`).
+   *
+   *  2. Two per row instead of one. Four verbs become two rows, so the eight
+   *     verbs cost four rows rather than eight.
+   *
+   *  What did NOT change is the description. Both domains carry the identical
+   *  four labels, so "Connect" and "Connect" are two different screens with
+   *  one name, and below 1280px this drawer is the only place either can be
+   *  reached. The description is what tells them apart; deleting it would have
+   *  fit the fold in one line of diff and made the drawer unreadable. */
+  const renderVerbItem = (item: CuratedNavItem) => {
+    const active = isActive(item);
+    return (
+      <button
+        key={item.to}
+        onClick={() => handleNavigation(item.to)}
+        aria-current={active ? 'page' : undefined}
+        data-nav-to={item.to}
+        data-nav-label={item.label}
+        className={`
+          h-full flex flex-col items-start px-2.5 py-1.5 rounded-lg text-left transition-colors
+          ${active ? 'bg-fw-accent text-fw-link font-medium' : 'text-fw-body hover:bg-fw-neutral'}
+        `}
+      >
+        <span className="text-figma-sm font-semibold">{item.label}</span>
+        <span className="text-figma-xs leading-4 text-fw-bodyLight">{item.description}</span>
       </button>
     );
   };
@@ -171,7 +214,7 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
                 without it, on the surface that is the ONLY way there. Nothing
                 was deleted; the navigation simply leads in a navigation
                 drawer, and the two supporting blocks follow it. */}
-            <div className="flex-1 overflow-y-auto py-2">
+            <div data-testid="drawer-nav-scroller" className="flex-1 overflow-y-auto py-2">
               <AnimatePresence>
                 {animationComplete && (
                   <div className="space-y-2 px-2">
@@ -180,7 +223,7 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.05, duration: 0.2 }}
                     >
-                      {renderDrawerItem(NAV_DISCOVER)}
+                      {renderDiscoverItem(NAV_DISCOVER)}
                     </motion.div>
 
                     {NAV_DOMAINS.map((domain, domainIndex) => (
@@ -203,13 +246,13 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
                             drawer that is the ONLY way to reach these screens
                             below 1280px. NAV_DOMAINS still carries `blurb` —
                             nothing was deleted from the model. */}
-                        <div className="px-4 pb-1">
+                        <div className="px-2.5 pb-1">
                           <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-fw-bodyLight">
                             {domain.label}
                           </div>
                         </div>
-                        <div className="space-y-1">
-                          {domain.items.map(renderDrawerItem)}
+                        <div className="grid grid-cols-2 gap-1">
+                          {domain.items.map(renderVerbItem)}
                         </div>
                       </motion.div>
                     ))}
@@ -228,26 +271,36 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
                 made in this file for Sign Out and the profile chevron; the
                 real search lives in the top bar (SearchBar). */}
 
-            {/* User Profile */}
-            <div className="p-4 border-b border-fw-secondary bg-fw-wash">
+            {/* User Profile.
+                Chrome, not navigation. It and the footer below it took 202 of
+                667px on an iPhone SE / 8 viewport — the scroller got 392px for
+                409px of destinations, so `/ai/observe` and `/ai/cost` sat 17px
+                below the fold on the ONE surface that can reach them under
+                1280px. The recovery comes out of these two blocks rather than
+                out of the verb rows: shrinking a touch target or deleting the
+                descriptions that tell "Connect" from "Connect" would pay for
+                the fold with the thing the fold exists to show.
+                Nothing here was removed — the avatar, all three identity lines
+                and the whole footer sentence still render. */}
+            <div className="px-4 py-3 border-b border-fw-secondary bg-fw-wash">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
                   {userInfo.avatar ? (
                     <img
                       src={userInfo.avatar}
                       alt={userInfo.name}
-                      className="h-12 w-12 rounded-full object-cover border-2 border-fw-base shadow-sm"
+                      className="h-10 w-10 rounded-full object-cover border-2 border-fw-base shadow-sm"
                     />
                   ) : (
-                    <div className="h-12 w-12 rounded-full bg-fw-cobalt-600 flex items-center justify-center text-white text-figma-lg font-semibold">
+                    <div className="h-10 w-10 rounded-full bg-fw-cobalt-600 flex items-center justify-center text-white text-figma-base font-semibold">
                       {userInfo.name.charAt(0)}
                     </div>
                   )}
                 </div>
                 <div className="ml-3">
-                  <p className="text-figma-base font-medium text-fw-heading">{userInfo.name}</p>
-                  <p className="text-figma-sm font-medium text-fw-bodyLight">{userInfo.role}</p>
-                  <p className="text-figma-sm text-fw-bodyLight">{userInfo.account}</p>
+                  <p className="text-figma-sm font-medium text-fw-heading">{userInfo.name}</p>
+                  <p className="text-figma-xs font-medium text-fw-bodyLight">{userInfo.role}</p>
+                  <p className="text-figma-xs text-fw-bodyLight">{userInfo.account}</p>
                 </div>
                 {/* A chevron here used to navigate to /profile, which is a
                     Navigate to /discover — a no-op that only closed the
@@ -263,10 +316,10 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
                 navigating to /login, which itself redirects to /discover.
                 Removed as a dead affordance rather than left pointing at a
                 feature that no longer exists. */}
-            <div className="p-4 border-t border-fw-secondary">
-              <div className="text-center text-figma-sm text-fw-bodyLight">
+            <div className="px-4 py-3 border-t border-fw-secondary">
+              <div className="text-center text-figma-xs text-fw-bodyLight">
                 <p className="font-semibold text-fw-heading">AT&T Cloud Connect • v2.0.1</p>
-                <p className="mt-1">© 2025 AT&T Intellectual Property. All rights reserved.</p>
+                <p>© 2025 AT&T Intellectual Property. All rights reserved.</p>
               </div>
             </div>
           </motion.div>

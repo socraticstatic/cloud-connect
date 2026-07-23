@@ -12,7 +12,7 @@ const ev = (cloudId: string, regionId: string) => {
 
 /** The shaped region the rest of Connect renders from. */
 const shaped = (cloudId: string, regionId: string) =>
-  (CC as never as { fabricModel(): { regions: { cloudId: string; regionId: string; latencyMs: number; reliability: string }[] } })
+  (CC as never as { fabricModel(): { regions: { cloudId: string; regionId: string; latencyMs: number; privateMs: number; publicMs: number; path: string; reliability: string }[] } })
     .fabricModel().regions.find(r => r.cloudId === cloudId && r.regionId === regionId)!;
 
 /** Every shaped region in the model, so assertions can walk the whole estate. */
@@ -62,14 +62,33 @@ describe('pathEvidence', () => {
     expect(rows.map(r => r.pathId)).toEqual(['managed-direct', 'tenanted']);
   });
 
-  it("an available path's latency is fabricModel()'s, the same figure the region panel shows", () => {
+  /* `privateMs`, not `latencyMs`.
+   *
+   * Both cards describe an AT&T path. `latencyMs` is the figure for the path
+   * the region is on TODAY, which for an unattached region is the public one —
+   * stating it under a card headed "Managed direct" whose own promise is the
+   * private path would relabel the public internet as managed connectivity.
+   * The card's label says "Latency on this path" for the same reason. */
+  it("an available path's latency is the region's FABRIC figure, not the path it rides today", () => {
     for (const [cloudId, regionId] of [['aws', 'use1'], ['aws', 'euw1'], ['azure', 'uks'], ['cw', 'cwe']] as const) {
-      const expected = shaped(cloudId, regionId).latencyMs;
+      const region = shaped(cloudId, regionId);
       for (const row of pathEvidence(CC as never, cloudId, regionId)) {
         if (row.availability === 'none') continue;
-        expect(row.latencyMs).toBe(expected);
+        expect(row.latencyMs, `${regionId} card states the wrong path's figure`).toBe(region.privateMs);
       }
     }
+  });
+
+  /* The bite: on an unattached region the two figures differ, so a card reading
+     the current-path figure would state the public number under a private-path
+     promise. At least one of the regions walked above must be in that state, or
+     the assertion above proves nothing. */
+  it('walks at least one region where the two figures differ', () => {
+    const differing = allRegions()
+      .map(r => shaped(r.cloudId, r.regionId))
+      .filter(r => r.privateMs !== r.latencyMs);
+    expect(differing.length, 'no unattached region in the estate to distinguish the two figures').toBeGreaterThan(0);
+    for (const r of differing) expect(r.path).toBe('public');
   });
 
   it('a path that does not reach the region reports NO latency, on every region in the estate', () => {

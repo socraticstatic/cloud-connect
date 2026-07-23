@@ -99,7 +99,9 @@ describe('AI Fabric · Observe', () => {
   it('carries the observability shell, the prompt trace and the decision log', () => {
     at(<AiObservePage />);
 
-    expect(screen.getAllByTestId('kpi-tile')).toHaveLength(5);
+    // Derived, not pinned: the shell renders one tile per binding KPI, so a
+    // KPI added or removed moves both sides of this together.
+    expect(screen.getAllByTestId('kpi-tile')).toHaveLength(aiBinding(CC).kpis().length);
     expect(screen.getByText(/Fabric briefing/i)).toBeInTheDocument();
     expect(screen.getByText('Prompt trace')).toBeInTheDocument();
     expect(screen.getByText('Governance decisions')).toBeInTheDocument();
