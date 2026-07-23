@@ -18,6 +18,7 @@ import {
   vpcKey,
   estateDomains,
   openSummary,
+  regionLatencyMap,
   regionsOf,
   vpcsOf,
   tagHex,
@@ -361,6 +362,11 @@ export function UnifiedDiscovery() {
   const clouds = cc.clouds as Cloud[];
   const tags = cc.TAGS as Record<string, Tag>;
   const domains = estateDomains(cc);
+  /* Latency comes from `fabricModel()`, the one region-latency derivation this
+     estate has — the same figure the Connect panel's Performance tile and the
+     PathChoice cards render. Rendering the raw seed `r.lat` here is what put
+     Nebius at 44ms on this screen and 120ms on the next. */
+  const latencyOf = regionLatencyMap(cc);
   const publicWorkloads = clouds.filter(c => !c.attached).reduce((s, c) => s + c.workloads, 0);
 
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set(['aws']));
@@ -441,6 +447,19 @@ export function UnifiedDiscovery() {
             <div>
               <h2 className="text-figma-sm font-semibold text-fw-heading">{d.label}</h2>
               <p className="text-figma-xs text-fw-bodyLight">{d.blurb}</p>
+              {/* The route out of the domain. Before this, every link in
+                  Discover's body went to /naas/*: the AI section named a
+                  security gap and the screens that close it had no way in. It
+                  is also where the taxonomy becomes legible — Network and
+                  Cloud are NaaS, AI workflows are the AI Fabric. */}
+              <Link
+                to={d.cta.to}
+                data-testid={`estate-cta-${d.key}`}
+                className="mt-1 inline-flex items-center gap-0.5 text-figma-xs font-medium text-[#0057b8] hover:underline"
+              >
+                {d.cta.label}
+                <ChevronRight size={12} aria-hidden="true" />
+              </Link>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
               {d.stats.map(s => (
@@ -588,7 +607,7 @@ export function UnifiedDiscovery() {
                               items={[
                                 { v: vpcsOf(cc, r.id).length, l: 'VPC/VNet' },
                                 { v: r.subnets, l: 'Subnets' },
-                                { v: `${r.lat}ms`, l: 'Latency' },
+                                { v: `${latencyOf[r.id] ?? r.lat}ms`, l: 'Latency' },
                               ]}
                             />
                             <ConnIndicator cc={cc} cloudId={c.id} regionId={r.id} />

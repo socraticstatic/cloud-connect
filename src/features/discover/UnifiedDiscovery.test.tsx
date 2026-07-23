@@ -99,6 +99,60 @@ describe('UnifiedDiscovery drill-down tree', () => {
     expect(screen.getAllByText('public internet').length).toBeGreaterThan(0);
   });
 
+  /* IMPORTANT: the Latency tile rendered the raw seed `r.lat` while Connect's
+     Performance tile and the PathChoice cards render `fabricModel().latencyMs`
+     for the same region. Every one of the nine regions disagreed across one
+     click — Nebius read 44ms here and 120ms there. Asserted against the shaped
+     model directly, per region, and against every region at once so a single
+     coincidental match cannot carry the test. */
+  it('states every region latency as the same figure Connect renders', () => {
+    renderUD();
+    fireEvent.click(screen.getByRole('button', { name: /expand all/i }));
+
+    const shaped = CC.fabricModel().regions;
+    expect(shaped.length).toBeGreaterThan(1);
+    // Not all one number, or "they agree" would be trivially satisfiable.
+    expect(new Set(shaped.map(r => r.latencyMs)).size).toBeGreaterThan(1);
+
+    for (const region of shaped) {
+      const row = screen.getByRole('button', { name: region.name });
+      expect(row, `${region.regionId} latency`).toHaveTextContent(`${region.latencyMs}ms`);
+    }
+  });
+
+  it('does not render the seeded region latency where the fabric shapes a different one', () => {
+    renderUD();
+    fireEvent.click(screen.getByRole('button', { name: /expand all/i }));
+
+    const shaped = CC.fabricModel().regions;
+    const seedById = new Map<string, number>(
+      Object.values(CC.regions as Record<string, { id: string; lat: number }[]>)
+        .flat()
+        .map(r => [r.id, r.lat]),
+    );
+    // At least one region where the two genuinely differ, or reverting the
+    // component to `r.lat` would still pass the assertion above.
+    const diverging = shaped.filter(r => seedById.get(r.regionId) !== r.latencyMs);
+    expect(diverging.length, 'no region distinguishes the two sources').toBeGreaterThan(0);
+
+    for (const region of diverging) {
+      const row = screen.getByRole('button', { name: region.name });
+      expect(row).not.toHaveTextContent(`${seedById.get(region.regionId)}ms`);
+    }
+  });
+
+  /* Minor: Discover's AI section named a security gap and every link in the
+     page body went to /naas/*, so the screens that close it had no route in. */
+  it('routes each domain to the console that owns it, AI included', () => {
+    renderUD();
+    for (const d of estateDomains(CC)) {
+      const link = within(screen.getByTestId(`estate-${d.key}`)).getByTestId(`estate-cta-${d.key}`);
+      expect(link).toHaveAttribute('href', d.cta.to);
+    }
+    expect(screen.getByTestId('estate-cta-ai')).toHaveAttribute('href', '/ai/connect');
+    expect(screen.getByTestId('estate-cta-network')).toHaveAttribute('href', '/naas/connect');
+  });
+
   it('"+ Connect a cloud" opens the discovery wizard', () => {
     renderUD();
     fireEvent.click(screen.getByRole('button', { name: /connect a cloud/i }));

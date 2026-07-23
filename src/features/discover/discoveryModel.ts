@@ -130,6 +130,53 @@ export interface EstateDomain {
   /** One line on what this domain is, and what you control here. */
   blurb: string;
   stats: EstateStat[];
+  /**
+   * Where this domain is acted on.
+   *
+   * Discover names a security gap in the AI domain and every other link on the
+   * screen goes to `/naas/*`, so the screens that close that gap had no route
+   * in from the screen that raises it. The CTA is also the only place the
+   * taxonomy is stated in the page body rather than in a drawer tooltip:
+   * Network and Cloud are NaaS, AI workflows are the AI Fabric.
+   */
+  cta: { label: string; to: string };
+}
+
+/**
+ * Gbps of app traffic bound for AI endpoints that is NOT on an AT&T-controlled
+ * path — read off `routeFlows()`, the same derivation `/naas/observe` renders
+ * in its flow table, so a claim made here can be checked against that table.
+ *
+ * `aiExposed()` counts VPCs, and `activateOnramp('nb2')` drives it to 0 in one
+ * action. The flows to those endpoints are rooted in their SOURCE regions,
+ * which nb2 does not touch, so `rd-helion → AI endpoints` (12.8 Gbps) and
+ * `shared-services → AI endpoints` (7.2 Gbps) stay public and no in-app action
+ * clears them. A "gap closed" claim keyed on endpoints alone is denied by that
+ * table one click away.
+ */
+export function aiPublicFlowGbps(cc: CloudControl): number {
+  const rows = (cc as unknown as { routeFlows?(): { dst?: string; gbps: number; current: { attControlled: boolean } }[] })
+    .routeFlows?.() ?? [];
+  const total = rows
+    .filter(r => r.dst === 'ai-endpoints' && !r.current.attControlled)
+    .reduce((s, r) => s + r.gbps, 0);
+  return Math.round(total * 10) / 10;
+}
+
+/**
+ * Region id -> latency in ms, from `fabricModel()` — the ONE region-latency
+ * derivation this estate has (nearest capturing on-ramp site to the region's
+ * geo). Connect's Performance tile and the new PathChoice cards already render
+ * it; Discover used to render the raw seed `r.lat` instead, so Nebius read
+ * 44ms on Discover and 120ms on Connect, and all nine regions disagreed.
+ *
+ * Discover now reads this map, so the two surfaces agree by construction
+ * rather than by anyone remembering to keep them in step.
+ */
+export function regionLatencyMap(cc: CloudControl): Record<string, number> {
+  const map: Record<string, number> = {};
+  for (const r of cc.fabricModel().regions) map[r.regionId] = r.latencyMs;
+  return map;
 }
 
 /**
@@ -160,6 +207,10 @@ export function estateDomains(cc: CloudControl): EstateDomain[] {
      inventory count — and the one that lets the AI blurb name a thesis
      word its own tiles can back. */
   const aiExposed = (cc as unknown as { aiExposed?(): number }).aiExposed?.() ?? 0;
+  /* The second half of the AI posture, and the reason the zero-branch below
+     needs two predicates: endpoints attached is not the same fact as traffic
+     to them controlled. */
+  const aiFlowPublic = aiPublicFlowGbps(cc);
 
   return [
     {
@@ -176,6 +227,7 @@ export function estateDomains(cc: CloudControl): EstateDomain[] {
         { key: 'routes', label: 'Routes', value: c.routes },
         { key: 'gateways', label: 'Gateways', value: c.gateways },
       ],
+      cta: { label: 'Order and attach circuits in NaaS · Connect', to: '/naas/connect' },
     },
     {
       key: 'cloud',
@@ -189,6 +241,7 @@ export function estateDomains(cc: CloudControl): EstateDomain[] {
         { key: 'workloads', label: 'Workloads', value: c.workloads },
         { key: 'attached', label: 'Attached', value: c.attached },
       ],
+      cta: { label: 'Attach these VPCs in NaaS · Connect', to: '/naas/connect' },
     },
     {
       key: 'ai',
@@ -196,26 +249,31 @@ export function estateDomains(cc: CloudControl): EstateDomain[] {
       /* A static sentence here would drift the moment `aiExposed()` reaches 0 —
          through the tour's own beat (`cloudConnectTour.ts:160`) or either
          Observe/Govern action card (`state-actions.ts:36,65`), all three call
-         `CC.activateOnramp('nb2')`. Both branches name security, so the
-         sentence stays true — and the thesis-word guard keeps passing — in
-         either state, precedent `state-actions.ts:44`. */
+         `CC.activateOnramp('nb2')`.
+
+         Three branches, because "closed" needs two predicates, not one.
+         `aiExposed()` counts VPCs; a single `activateOnramp('nb2')` zeroes it
+         while `/naas/observe` still lists `rd-helion → AI endpoints` at 12.8
+         Gbps and `shared-services → AI endpoints` at 7.2 Gbps on Public
+         internet / Uncontrolled — rooted in SOURCE regions nb2 does not
+         attach, and clearable by no action in the app. The middle branch is
+         that state, stated with the same figure that table sums to. All three
+         name security, so the thesis-word guard keeps passing in every
+         reachable state, precedent `state-actions.ts:44`. */
       blurb: aiExposed
         ? 'GPU regions, models, and the agents calling them — with the AI endpoints still riding public internet, the security gap in this domain.'
-        : 'GPU regions, models, and the agents calling them — every AI endpoint on a private path, the security gap in this domain closed.',
+        : aiFlowPublic > 0
+          ? `GPU regions, models, and the agents calling them — every AI endpoint is on a private path, and ${aiFlowPublic} Gbps of traffic still reaches them from source regions that are not: the rest of the security gap, itemised in NaaS · Observe.`
+          : 'GPU regions, models, and the agents calling them — every AI endpoint on a private path and every flow reaching them under AT&T control, the security gap in this domain closed.',
       stats: [
         { key: 'aiRegions', label: 'AI regions', value: allRegions.filter(r => r.ai).length },
         { key: 'models', label: 'Models', value: models.length },
         { key: 'agents', label: 'Agents', value: agents.length },
         { key: 'aiExposed', label: 'Exposed endpoints', value: aiExposed },
       ],
+      cta: { label: 'Attach and govern these in AI Fabric · Connect', to: '/ai/connect' },
     },
   ];
-}
-
-/** Every figure at once — the flattening of all three domains, kept for
- *  callers that want the whole estate as one list (e.g. the tour). */
-export function estateStats(cc: CloudControl): EstateStat[] {
-  return estateDomains(cc).flatMap(d => d.stats);
 }
 
 /** Every expandable key in the tree — used by Expand-all. */

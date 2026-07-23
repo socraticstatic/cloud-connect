@@ -117,7 +117,9 @@ export interface CloudControl {
     events: { title: string; detail: string }[];
   };
   steerFlow(rowId: string, pathId: string): boolean;
-  routeFlows(): { id: string; label: string; gbps: number; current: { attControlled: boolean; egressPerGb?: number; latencyMs?: number; label: string }; paths: { id: string; label: string; attControlled: boolean; available: boolean; egressPerGb?: number }[] }[];
+  /** `dst` is present on app rows only (`kind: 'app'`); cloud-to-cloud rows
+   *  carry no destination bucket. */
+  routeFlows(): { id: string; label: string; kind?: string; dst?: string; gbps: number; current: { attControlled: boolean; egressPerGb?: number; latencyMs?: number; label: string }; paths: { id: string; label: string; attControlled: boolean; available: boolean; egressPerGb?: number }[] }[];
 
   // --- fabric model (Cloud Fabric redesign C1, state-routing.js) ---
   fabricModel(): {

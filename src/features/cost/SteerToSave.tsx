@@ -33,8 +33,14 @@ export function SteerToSave() {
         </p>
       )}
       <ul className="mt-2 space-y-2">
+        {/* Not "nothing left on the table": the arbitrage hero above states
+            "$Xk/mo more on the table — attach the paths below" whenever an
+            unattached bucket remains, and the two are different questions.
+            This list is about STEERING flows that already have a path; the
+            hero is about ATTACHING paths that do not exist yet. One screen
+            cannot use the same idiom for both and mean either. */}
         {steers.length === 0 && (
-          <li className="text-sm text-slate-500">Every flow is on its optimal path. Nothing left on the table.</li>
+          <li className="text-sm text-slate-500">Every flow is already on its optimal path — there is nothing left to steer.</li>
         )}
         {steers.map(r => (
           <li key={r.id} className="rounded-lg border border-slate-200 bg-white p-3">

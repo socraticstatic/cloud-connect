@@ -258,3 +258,111 @@ test('the AI money screens track the meters instead of freezing at mount', async
 
   expect(onCostScreen, 'Cost must state what Observe was showing a moment ago').toBe(after);
 });
+
+/* ------------------------------------------------------------------ *
+ * The seams a per-screen review cannot see.
+ *
+ * Both of these were shipped green: every unit test on /ai/cost passed
+ * against /ai/cost, and every unit test on /discover passed against
+ * /discover. The defect only existed BETWEEN them — a sentence on one
+ * screen denied by the screen its own link points at.
+ *
+ * Walked as a viewer walks it: apply the tour's Connect and Govern beats,
+ * read Cost, follow its link, read what is actually there.
+ * ------------------------------------------------------------------ */
+
+/** The tour's Connect + Govern beats, plus both estate tickers stopped so a
+ *  timer cannot fire between two assertions about one estate. */
+async function afterConnectAndGovernBeats(page: import('@playwright/test').Page) {
+  await seedAuth(page);
+  await page.goto('/#/discover', { waitUntil: 'domcontentloaded' });
+  return page.evaluate(() => {
+    const CC = (window as unknown as {
+      CC: {
+        stopHits: () => boolean;
+        activateOnramp: (id: string) => boolean;
+        enforceAny: (id: string) => boolean;
+        agentList: () => { id: string; enabled: boolean }[];
+        toggleAgent: (id: string) => boolean;
+        modelCatalog: () => { ready: boolean }[];
+        tokenMeterList: () => { ready: boolean }[];
+      };
+    }).CC;
+    CC.stopHits();
+    CC.agentList().filter(a => a.enabled).forEach(a => CC.toggleAgent(a.id));
+    CC.activateOnramp('nb2');   // cloudConnectTour.ts:162 — the Connect beat
+    CC.enforceAny('pol-insp');  // cloudConnectTour.ts:175 — the Govern beat
+    return {
+      catalogReady: CC.modelCatalog().filter(m => m.ready).length,
+      catalogTotal: CC.modelCatalog().length,
+      meterReady: CC.tokenMeterList().filter(m => m.ready).length,
+      identities: CC.tokenMeterList().length,
+    };
+  });
+}
+
+test('AI Cost never sends a viewer to a Connect screen with nothing to attach', async ({ page }) => {
+  const state = await afterConnectAndGovernBeats(page);
+
+  // The fixture has to BE the disagreement state: every model attached, and
+  // readiness still lagging behind it. Otherwise this proves nothing.
+  expect(state.catalogReady, 'every model endpoint is attached').toBe(state.catalogTotal);
+  expect(state.meterReady, 'while meter-readiness still lags').toBeLessThan(state.identities);
+
+  const aiGroup = page.getByLabel('Main navigation').getByRole('group', { name: 'AI Fabric' });
+  await aiGroup.getByRole('link', { name: 'Cost', exact: true }).click();
+
+  const summary = page.getByText(/route to a model endpoint/);
+  await expect(summary).toBeVisible();
+  await expect(summary).toContainText(`All ${state.identities} route to a model endpoint`);
+  // The claim, and the link that used to lead to the screen denying it.
+  await expect(page.getByText(/leave over the public internet/)).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /Attach them in AI Fabric/ })).toHaveCount(0);
+
+  // And the screen it would have sent them to says there is nothing to do.
+  await aiGroup.getByRole('link', { name: 'Connect', exact: true }).click();
+  await expect(
+    page.getByText(`${state.catalogReady} / ${state.catalogTotal} governed & ready`),
+  ).toBeVisible();
+});
+
+test('Discover does not call the AI security gap closed while NaaS Observe still lists public AI flows', async ({ page }) => {
+  await afterConnectAndGovernBeats(page);
+
+  const flows = await page.evaluate(() => {
+    const CC = (window as unknown as {
+      CC: {
+        aiExposed: () => number;
+        routeFlows: () => { label: string; gbps: number; dst?: string; current: { attControlled: boolean } }[];
+      };
+    }).CC;
+    const publicAi = CC.routeFlows().filter(r => r.dst === 'ai-endpoints' && !r.current.attControlled);
+    return {
+      aiExposed: CC.aiExposed(),
+      labels: publicAi.map(r => r.label),
+      gbps: Math.round(publicAi.reduce((s, r) => s + r.gbps, 0) * 10) / 10,
+    };
+  });
+
+  // The endpoint count is zero — which is exactly what made the old sentence
+  // claim the gap was closed — while the flow table is not empty.
+  expect(flows.aiExposed).toBe(0);
+  expect(flows.labels.length, 'public AI flows must remain, or this proves nothing').toBeGreaterThan(0);
+
+  await page.goto('/#/discover', { waitUntil: 'domcontentloaded' });
+  const ai = page.getByTestId('estate-ai');
+  await expect(ai).toBeVisible();
+  await expect(ai).not.toContainText('closed');
+  await expect(ai, 'the blurb states the figure the flow table sums to').toContainText(
+    `${flows.gbps} Gbps`,
+  );
+
+  // Follow the taxonomy link Discover's AI section now carries.
+  await expect(page.getByTestId('estate-cta-ai')).toHaveAttribute('href', /#\/ai\/connect$/);
+
+  // And the flows the sentence points at are on NaaS · Observe, by name.
+  await page.goto('/#/naas/observe', { waitUntil: 'domcontentloaded' });
+  for (const label of flows.labels) {
+    await expect(page.getByText(label).first()).toBeVisible();
+  }
+});

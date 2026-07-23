@@ -8,7 +8,7 @@ import type {
   Briefing,
   BriefingBlock,
 } from './ObservabilityBinding';
-import { aiSpendTotals, fmtTokens, fmtUsd, tagModelMap } from '../ai-fabric/aiSpend';
+import { aiSpendTotals, fmtTokens, fmtUsd, routeLabel, tagModelMap } from '../ai-fabric/aiSpend';
 
 // Shapes consumed from state-billing.ts / state-console.ts / state-telemetry.ts
 // (all // @ts-nocheck at the source) — mirrored here for the fields this
@@ -134,16 +134,10 @@ function buildAiRows(cc: CloudControl): AiRow[] {
   });
 }
 
-function routeLabel(path: AiRow['path']): string {
-  switch (path) {
-    case 'private':
-      return 'AT&T private fabric';
-    case 'governed egress':
-      return 'Governed egress';
-    default:
-      return 'Public internet';
-  }
-}
+/* `routeLabel` is imported from `ai-fabric/aiSpend`, not restated here: the
+   /ai/cost table renders the same engine value in its State column, and two
+   copies of this switch is how the two tables would come to describe one
+   identity's path in two different phrases. */
 
 function providerOf(row: AiRow): string {
   if (row.cloud === 'cw') return 'CoreWeave';
@@ -298,7 +292,6 @@ function buildBriefing(cc: CloudControl): Briefing {
   const publicRows = rows.filter(r => r.path === 'public');
   const publicTokens = publicRows.reduce((s, r) => s + r.today, 0);
   const pctPublic = Math.round((publicTokens / totalTokens) * 100);
-  const externalRow = rows.find(r => r.modelId === 'gpt-class');
 
   /* Three states, not two.
    *
@@ -318,12 +311,29 @@ function buildBriefing(cc: CloudControl): Briefing {
   const nothingMetered = meteredTokens === 0;
   const publicCount = publicRows.length;
 
+  /* Name what is actually public, not what is external.
+   *
+   * `externalRow` is the gpt-class row and nothing more. With all three
+   * identities metering and all three public, "via Shared Platform Services on
+   * GPT-class" attributed 100% of the tokens to the row carrying about a third
+   * of them — beside a Records table that shows the split. The public rows are
+   * the ones the sentence is about, so it names them: the single one when
+   * there is one, otherwise the largest with the rest counted. Sorted by the
+   * quantity being claimed (tokens), and only reached when tokens are non-zero,
+   * so the ordering is never arbitrary. */
+  const topPublic = publicRows.slice().sort((a, b) => b.today - a.today)[0];
+  const publicAttribution = !topPublic
+    ? ''
+    : publicCount === 1
+      ? ` via ${topPublic.app} on ${topPublic.model}`
+      : ` across ${publicCount} identities, led by ${topPublic.app} on ${topPublic.model} at ${fmtTokens(topPublic.today)}`;
+
   const exposure = nothingMetered
     ? publicCount > 0
       ? `No tokens are metered yet, so nothing has crossed a path today — but ${publicCount} of ${rows.length} identities are still routed over the public internet, which is the path they take the moment they start.`
       : 'No tokens are metered yet. Every identity is already on a private or governed route, so the first request will not cross the public internet.'
     : pctPublic > 0
-      ? `${pctPublic}% of AI Fabric tokens (${fmtTokens(publicTokens)}) still cross the public internet${externalRow ? ` via ${externalRow.app} on ${externalRow.model}` : ''}, unguardrailed and exposed to external providers.`
+      ? `${pctPublic}% of AI Fabric tokens (${fmtTokens(publicTokens)}) still cross the public internet${publicAttribution}, unguardrailed and exposed to external providers.`
       : 'No AI Fabric traffic currently crosses the public internet — every identity rides a private or governed path.';
 
   /* With every meter at zero, sorting by consumption picks an arbitrary row —
@@ -356,12 +366,34 @@ function buildBriefing(cc: CloudControl): Briefing {
   };
 }
 
+/**
+ * What the flow panel says when its series is flat zero.
+ *
+ * It cannot be a constant. `tokenSeries()` returns all zeros for any identity
+ * whose endpoint is not meter-ready, while the TOKENS tile 40px above reads
+ * `aiSpendTotals().tokensToday`, which counts the live agent requests
+ * `promptTrace()` meters regardless of readiness. On a cold load of a permanent
+ * route that printed "No token flow yet" directly under `TOKENS 1.4k` with a
+ * Records table listing the same 1.4k beside it.
+ *
+ * The engine's readiness split is deliberate and is not touched here; the HINT
+ * is made to read the same derivation as the tile, so the two cannot disagree.
+ * When tokens really are zero the original sentence is the true one and is
+ * kept verbatim.
+ */
+function buildEmptyHint(cc: CloudControl): string {
+  const tokensToday = aiSpendTotals(cc).tokensToday;
+  if (tokensToday === 0)
+    return 'No token flow yet — attach a GPU substrate in Connect to light up the fabric.';
+  return `No charted flow in this window yet — today's ${fmtTokens(tokensToday)} tokens are live agent requests, and the fabric charts them as a trend once a GPU substrate is attached in Connect.`;
+}
+
 export function aiBinding(cc: CloudControl): ObservabilityBinding {
   return {
     layer: 'ai',
     title: 'AI Fabric Observability',
     columns: ['Identity', 'Tokens', 'Model', 'Route', 'Status'],
-    emptyHint: 'No token flow yet — attach a GPU substrate in Connect to light up the fabric.',
+    emptyHint: buildEmptyHint(cc),
     kpis: () => buildKpis(cc),
     flowTabs: () => FLOW_TABS,
     flowSeries: (tabId: string) => buildFlowSeries(cc, tabId),

@@ -113,7 +113,10 @@ function routeFlows(){
       // default follows the representative region's actual attachment (consistent
       // with Discovery: attached region => already on the AT&T private path).
       const viaPublic=!regionAttached(a.cid,a.rid);
-      const row={id:'r-'+a.tag+'-'+a.dst,kind:'app',
+      // `dst` is projected, not just folded into the id/label: callers that
+      // need "which flows go to AI endpoints" must not have to parse a string.
+      // Discover's AI blurb reads it to check its own claim against this table.
+      const row={id:'r-'+a.tag+'-'+a.dst,kind:'app',dst:a.dst,
         label:tagName(a.tag)+' → '+(DST_LABEL[a.dst]||a.dst),
         srcCloud:a.cid,srcRid:a.rid,gbps:Math.round(a.gbps*10)/10,viaPublic,paths};
       row.defaultPathId=defaultPathId(viaPublic,paths);
@@ -290,7 +293,15 @@ function _findRegion(rid){
 function _regionShape(cid,cloud,r){
   const ramps=rampsFor(cid,r.id);
   const active=ramps.filter(o=>o.active);
-  const reliability = active.length>=2 ? 'dual' : (active.length===1||r.spof) ? 'single' : 'none';
+  /* Reliability counts ACTIVE on-ramps and nothing else. `||r.spof` used to
+     force 'single' on an unattached region, so UK South rendered a "Single
+     path" pill 40px above two cards reading "Provisionable here" / "Not
+     available here" and a Reach line reading "On the public internet - not yet
+     attached": a pill asserting a path everything under it denied. `spof` is
+     seeded true only on uks and cleared by activateOnramp, so it never added
+     information to an ATTACHED region - use1 is 'single' from active.length
+     either way. The type already carries 'none' for exactly this state. */
+  const reliability = active.length>=2 ? 'dual' : active.length===1 ? 'single' : 'none';
   const path = active.length>=1 ? 'private' : 'public';
   // latency: nearest active on-ramp site -> region.geo; fall back to any capturing
   // on-ramp, then to the seeded region.lat when no geometry is available.

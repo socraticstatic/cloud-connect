@@ -3,9 +3,10 @@ import {
   allKeys,
   cloudVpcCount,
   cloudRegionCount,
+  aiPublicFlowGbps,
   estateDomains,
-  estateStats,
   openSummary,
+  regionLatencyMap,
   tagHex,
   toggleKey,
   regionKey,
@@ -17,6 +18,12 @@ import {
   selectionKind,
 } from './discoveryModel';
 import { CC } from '../../engine';
+
+/* `estateStats` used to live in discoveryModel as a production export nothing
+   in the app called; its own doc claimed "e.g. the tour" used it and the tour
+   does not. The flattening is a test convenience, so it lives here. */
+const estateStats = (cc: unknown) =>
+  estateDomains(cc as never).flatMap(d => d.stats);
 
 describe('discoveryModel', () => {
   it('derives per-cloud region and VPC counts from the engine', () => {
@@ -391,5 +398,81 @@ describe('estateDomains', () => {
     ).not.toBe(blurbBefore);
     expect(blurbAfter.toLowerCase()).not.toContain('public internet');
     expect(blurbAfter.toLowerCase()).toContain('security');
+  });
+
+  /* ---------------------------------------------------------------- *
+   * CRITICAL: `aiExposed()` counts VPCs, and the single
+   * `activateOnramp('nb2')` above zeroes it. The flows TO those endpoints
+   * are rooted in their source regions, which nb2 does not attach, so
+   * /naas/observe still lists `rd-helion -> AI endpoints` and
+   * `shared-services -> AI endpoints` on Public internet / Uncontrolled.
+   *
+   * This pins the CLAIM against that flow table rather than against
+   * `aiExposed()`. Reverting the blurb to the two-branch version — or
+   * keying the zero-branch on `aiExposed()` alone — fails here.
+   * ---------------------------------------------------------------- */
+  it('does not claim the AI gap closed while the flow table still shows public AI traffic', () => {
+    expect(CC.aiExposed(), 'nb2 is active from the test above').toBe(0);
+
+    const publicAi = CC.routeFlows().filter(
+      r => r.dst === 'ai-endpoints' && !r.current.attControlled,
+    );
+    expect(
+      publicAi.length,
+      'the flow table must still carry public AI traffic here, or this test proves nothing',
+    ).toBeGreaterThan(0);
+
+    const gbps = aiPublicFlowGbps(CC as never);
+    expect(gbps).toBeCloseTo(publicAi.reduce((s, r) => s + r.gbps, 0), 5);
+    expect(gbps).toBeGreaterThan(0);
+
+    const blurb = estateDomains(CC as never)[2].blurb;
+    expect(
+      blurb.toLowerCase(),
+      'a "gap closed" claim here is denied by /naas/observe one click away',
+    ).not.toContain('closed');
+    // The sentence carries the figure that table sums to, not a vaguer word.
+    expect(blurb).toContain(`${gbps} Gbps`);
+    expect(blurb.toLowerCase()).toContain('security');
+  });
+
+  it('closes the claim only once no AI flow is left on a public path', () => {
+    // Attaching every remaining on-ramp puts each flow's source region on the
+    // fabric, which is the only thing that clears these rows.
+    (CC.onramps as { id: string; active: boolean }[])
+      .filter(o => !o.active)
+      .forEach(o => CC.activateOnramp(o.id));
+
+    expect(aiPublicFlowGbps(CC as never), 'the estate is fully attached now').toBe(0);
+    expect(CC.aiExposed()).toBe(0);
+
+    const blurb = estateDomains(CC as never)[2].blurb;
+    expect(blurb.toLowerCase()).toContain('closed');
+    expect(blurb.toLowerCase()).toContain('security');
+  });
+});
+
+/* IMPORTANT: Discover rendered the raw seed `r.lat` while Connect's panel and
+   the new PathChoice cards render `fabricModel().latencyMs`, so every one of
+   the nine regions read two different latencies on two screens one click
+   apart (Nebius: 44ms vs 120ms). Discover now reads the same surface. */
+describe('region latency — one derivation for Discover and Connect', () => {
+  it('maps every region the estate carries, with no seed fallback left in play', () => {
+    const map = regionLatencyMap(CC as never);
+    const shaped = CC.fabricModel().regions;
+    expect(shaped.length).toBeGreaterThan(0);
+    expect(Object.keys(map).length).toBe(shaped.length);
+    for (const r of shaped) {
+      expect(map[r.regionId], `no latency mapped for ${r.regionId}`).toBe(r.latencyMs);
+    }
+  });
+
+  it('never falls back to the seeded region latency for a region the fabric shapes', () => {
+    const map = regionLatencyMap(CC as never);
+    for (const rs of Object.values(CC.regions as Record<string, { id: string }[]>)) {
+      for (const r of rs) {
+        expect(map[r.id], `${r.id} is not covered by fabricModel()`).toBeTypeOf('number');
+      }
+    }
   });
 });

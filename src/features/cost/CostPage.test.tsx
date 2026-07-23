@@ -66,3 +66,29 @@ it('steer-to-save still captures the realized delta as a running tally', async (
   fireEvent.click(screen.getAllByRole('button', { name: /steer to save/i })[0]);
   await waitFor(() => expect(screen.getByText(/captured this session/i)).toBeInTheDocument());
 });
+
+/* Minor: /naas/cost used "on the table" with opposite meanings 200px apart —
+   the arbitrage hero's "$Xk/mo more on the table — attach the paths below"
+   above the steer list's "Nothing left on the table." One is about attaching
+   paths that do not exist yet; the other is about steering flows that already
+   have one. On the money screen the same idiom cannot mean both, so it is
+   reserved for the headroom sense the page header already uses. */
+it('uses "on the table" only for unattached headroom, never for steering', () => {
+  const arb = CC.arbitrage();
+  page();
+  const body = document.body.textContent ?? '';
+
+  // Every occurrence is followed by the attach clause (or is the page header's
+  // "still on the table"), never by a steer claim.
+  for (const m of body.matchAll(/on the table[^.]*/gi)) {
+    expect(m[0], `"${m[0]}" is not the headroom sense`).not.toMatch(/steer/i);
+  }
+  expect(body, 'the steer list must not borrow the hero\'s idiom').not.toMatch(
+    /nothing left on the table/i,
+  );
+
+  if (arb.availableSavings > 0) {
+    // The idiom's one job on this screen, naming a derived figure.
+    expect(screen.getByText(/more on the table/i)).toBeInTheDocument();
+  }
+});

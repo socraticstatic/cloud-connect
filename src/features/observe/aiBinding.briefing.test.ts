@@ -59,6 +59,42 @@ describe('AI Fabric briefing', () => {
     expect(Number(shownM![1])).toBeCloseTo(largest.budget / 1_000_000, 2);
   });
 
+  /* Minor: the exposure sentence named `externalRow` — the gpt-class row and
+     nothing else. With all three identities metering and all three public it
+     read "100% of AI Fabric tokens (1.4k) … via Shared Platform Services on
+     GPT-class" beside a Records table showing that row carrying about a third
+     of them. Name what is actually true. MUTATES: meters every identity. */
+  it('attributes public tokens to what is actually public, not to the external row alone', () => {
+    const meters = CC.tokenMeterList() as { tag: string }[];
+    // Deliberately uneven, and deliberately NOT largest on the gpt-class row,
+    // so an attribution that still hardcodes the external model is visible.
+    const volumes = [1_183, 1_225, 1_320];
+    meters.forEach((m, i) => CC.meterTokens(m.tag, volumes[i]));
+
+    const rows = aiBinding(CC).records('none') as { cells: string[] }[];
+    const onPublic = publicRouteRows();
+    expect(onPublic.length, 'more than one public identity, or this proves nothing').toBeGreaterThan(1);
+    expect(rows.length).toBe(meters.length);
+
+    const routes = CC.modelRoutes() as { app: string; path: string }[];
+    const tags = CC.tokenMeterList() as { tag: string; today: number }[];
+    const largestPublic = routes
+      .map((r, i) => ({ app: r.app, path: r.path, today: tags[i].today }))
+      .filter(r => r.path === 'public')
+      .sort((a, b) => b.today - a.today)[0];
+
+    const text = briefingText();
+    expect(text).toMatch(/still cross the public internet/i);
+    // It counts the public identities…
+    expect(text).toContain(`across ${onPublic.length} identities`);
+    // …and leads with the one actually carrying the most of those tokens.
+    expect(text).toContain(largestPublic.app);
+    // The old sentence attributed the whole figure to one row with "via".
+    expect(text, 'a single-row attribution for a multi-row figure').not.toMatch(
+      /still cross the public internet via /i,
+    );
+  });
+
   /* Once the fabric is lit the briefing switches to the consumption reading.
      Runs last: the engine is a shared singleton and this mutates it. */
   it('switches to the measured reading once tokens are actually metered', () => {

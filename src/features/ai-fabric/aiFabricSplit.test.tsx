@@ -6,7 +6,7 @@ import { AiConnectPage } from './AiConnectPage';
 import { AiGovernPage } from './AiGovernPage';
 import { AiObservePage } from './AiObservePage';
 import { AiCostPage } from './AiCostPage';
-import { aiSpendTotals, fmtTokens, fmtUsd, statesRealMoney } from './aiSpend';
+import { aiSpendTotals, fmtTokens, fmtUsd, routeLabel, statesRealMoney } from './aiSpend';
 import { aiBinding } from '../observe/aiBinding';
 
 /**
@@ -136,7 +136,8 @@ describe('AI Fabric · Cost — nothing metered yet', () => {
       const row = screen.getByRole('row', { name: new RegExp(r.tag) });
       expect(row).toHaveTextContent(r.budgetTokens.toLocaleString());
       expect(row).toHaveTextContent('No spend yet');
-      expect(row).toHaveTextContent('Endpoint not attached');
+      // The path line states the ROUTE, in the same words /ai/observe uses.
+      expect(row).toHaveTextContent(routeLabel(r.routePath));
     }
   });
 });
@@ -160,7 +161,7 @@ describe('AI Fabric · Cost — metered, but nothing attached', () => {
 
     const totals = aiSpendTotals(CC);
     expect(totals.tokensToday, 'tokens are metered').toBeGreaterThan(0);
-    expect(totals.governedCount, 'and nothing is attached').toBe(0);
+    expect(totals.publicPathCount, 'and every route is public').toBe(totals.identityCount);
     expect(totals.meteringCount).toBeGreaterThan(0);
 
     // The summary sentence, the table header and the row chips are the same
@@ -194,10 +195,12 @@ describe('AI Fabric · Cost — metered, but nothing attached', () => {
   it('says the spend is leaving over the public internet, and where to fix it', () => {
     at(<AiCostPage />);
     const totals = aiSpendTotals(CC);
-    const ungoverned = totals.identityCount - totals.governedCount;
 
+    expect(totals.publicPathCount, 'the claim needs something to claim').toBeGreaterThan(0);
     expect(
-      screen.getByText(new RegExp(`${ungoverned} of ${totals.identityCount} call a model endpoint`)),
+      screen.getByText(
+        new RegExp(`${totals.publicPathCount} of ${totals.identityCount} route to a model endpoint`),
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: /Attach them in AI Fabric · Connect/i }),
@@ -223,6 +226,51 @@ describe('AI Fabric · Cost — metering', () => {
     expect(totals.meteringCount).toBeGreaterThan(0);
   });
 
+  /* ---------------------------------------------------------------- *
+   * The seam Cost and Connect used to contradict each other across.
+   *
+   * `activateOnramp('nb2')` above is the tour's Connect beat. It attaches
+   * every AI endpoint, so `modelCatalog().ready` is true for all three and
+   * Connect renders "3 / 3 governed & ready" with nothing left to attach.
+   * `tokenMeterList().ready` is a DIFFERENT predicate — it additionally wants
+   * `fixes.segmentHelion` / `fixes.fwInspection` — so readiness still lags.
+   * Cost reading readiness printed "1 of 3 … leave over the public internet"
+   * with a link to the screen that denied it.
+   *
+   * Rendered together, in one engine state, comparing what a viewer actually
+   * reads on each. Neither figure is a literal.
+   * ---------------------------------------------------------------- */
+  it('states a path claim /ai/connect agrees with, in the state they used to differ in', () => {
+    const totals = aiSpendTotals(CC);
+    const models = CC.modelCatalog() as { ready: boolean }[];
+
+    // The fixture must actually be the disagreement state, or this proves
+    // nothing: readiness lags the catalog here.
+    expect(totals.endpointReadyCount, 'readiness lags').toBeLessThan(totals.identityCount);
+    expect(models.filter(m => m.ready).length, 'while every model is attached').toBe(models.length);
+
+    const connect = at(<AiConnectPage />);
+    expect(
+      within(connect.container).getByText(
+        `${models.filter(m => m.ready).length} / ${models.length} governed & ready`,
+      ),
+    ).toBeInTheDocument();
+
+    const cost = at(<AiCostPage />);
+    // Nothing on Cost may claim traffic is leaving, and the remediation link
+    // must be gone — there is nothing on Connect left to remediate.
+    expect(totals.publicPathCount).toBe(0);
+    expect(within(cost.container).queryByText(/leave over the public internet/i)).toBeNull();
+    expect(
+      within(cost.container).queryByRole('link', { name: /Attach them in AI Fabric · Connect/i }),
+    ).toBeNull();
+    expect(
+      within(cost.container).getByText(
+        new RegExp(`All ${totals.identityCount} route to a model endpoint attached to the fabric`),
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('states tokens, spend and budget use as CC derivations, never as literals', () => {
     at(<AiCostPage />);
 
@@ -246,7 +294,7 @@ describe('AI Fabric · Cost — metering', () => {
       expect(row).toHaveTextContent(r.budgetTokens.toLocaleString());
       expect(row).toHaveTextContent(`${r.pct}% of budget`);
       expect(row).toHaveTextContent(r.metering ? 'Metering' : 'No spend yet');
-      expect(row).toHaveTextContent(r.onGovernedPath ? 'Governed endpoint' : 'Endpoint not attached');
+      expect(row).toHaveTextContent(routeLabel(r.routePath));
     }
   });
 

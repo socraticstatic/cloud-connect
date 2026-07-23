@@ -40,6 +40,40 @@ describe('fabricModel()', () => {
     expect(usw2.reliability).toBe('none');
   });
 
+  /* IMPORTANT: `reliability` used to read `active.length === 1 || r.spof`, so
+     a seeded single-path region rendered a "Single path" pill above a Reach
+     line reading "On the public internet - not yet attached" and two path
+     cards reading "Provisionable here" / "Not available here" — a pill
+     asserting a path everything under it denied. Reliability counts ACTIVE
+     on-ramps and nothing else; the type already carried 'none' for this. */
+  it('never claims a path for a region with no active on-ramp', () => {
+    const regions = CC.fabricModel().regions;
+    const unattached = regions.filter(r => r.path === 'public');
+    expect(unattached.length, 'the seed must carry unattached regions').toBeGreaterThan(0);
+    for (const r of unattached) {
+      expect(r.reliability, `${r.regionId} claims a path it does not have`).toBe('none');
+    }
+  });
+
+  it('seed: UK South is spof and unattached, and reads as not attached, not single', () => {
+    const seed = (CC.regions as Record<string, { id: string; spof?: boolean; attached: boolean }[]>)
+      .azure.find(r => r.id === 'uks')!;
+    expect(seed.spof, 'uks is the seeded single-point-of-failure region').toBe(true);
+    expect(seed.attached).toBe(false);
+
+    const uks = CC.fabricModel().regions.find(r => r.regionId === 'uks')!;
+    expect(uks.path).toBe('public');
+    expect(uks.reliability).toBe('none');
+  });
+
+  it('still reads single once an on-ramp is actually carrying the region', () => {
+    // use1 is the seeded attached region: one active on-ramp, so 'single' is
+    // earned by the on-ramp, not by the spof flag.
+    const use1 = CC.fabricModel().regions.find(r => r.regionId === 'use1')!;
+    expect(use1.onrampIds.length).toBeGreaterThan(0);
+    expect(use1.reliability).toBe('single');
+  });
+
   it('surfaces cloud-to-cloud flows', () => {
     const { c2c } = CC.fabricModel();
     expect(c2c.length).toBeGreaterThan(0);

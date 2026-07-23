@@ -34,6 +34,30 @@ describe('SteerToSave', () => {
     ).toBeInTheDocument();
   });
 
+  /* The empty state used to read "Every flow is on its optimal path. Nothing
+     left on the table." directly under the arbitrage hero's "$11.9k/mo more on
+     the table — attach the paths below". Two opposite readings of one idiom on
+     the money screen. This list is about STEERING; the hero is about
+     ATTACHING. Reached by actually exhausting the recommendations, not by
+     asserting against a string the component might never render. */
+  it('states its empty case without borrowing the hero\'s "on the table" idiom', () => {
+    for (let i = 0; i < 30; i++) {
+      const rec = CC.routeAdvisor().recommendations.find(r => r.action === 'steer');
+      if (!rec || steered.has(rec.flowId)) break;
+      CC.steerFlow(rec.flowId, rec.pathId!);
+      steered.add(rec.flowId);
+    }
+    expect(
+      CC.routeAdvisor().recommendations.filter(r => r.action === 'steer').length,
+      'the empty state must actually be reachable, or this asserts nothing',
+    ).toBe(0);
+
+    render(<SteerToSave />);
+    const empty = screen.getByText(/nothing left to steer/i);
+    expect(empty).toBeInTheDocument();
+    expect(empty.textContent).not.toMatch(/on the table/i);
+  });
+
   it('never captures more than the public exposure it was carved from', () => {
     const publicBefore = CC.egress().pub;
     let captured = 0;

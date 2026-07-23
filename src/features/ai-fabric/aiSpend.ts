@@ -13,22 +13,42 @@ import type { CloudControl } from '../../engine/types';
  * identity actually invokes, `modelCatalog()` for that model's name and price.
  * No literals, no clock, no random.
  *
- * ## Two different facts, never conflated
+ * ## Three different facts, never conflated
  *
  * The engine meters an identity's tokens from `promptTrace()` whether or not
- * its endpoint is attached (agents keep issuing requests; unattached, those
- * requests simply leave over the public internet). `tokenMeterList()` therefore
- * reports a `today` that can be non-zero while `ready` is false. Those are two
- * facts, not one:
+ * its endpoint is ready — agents keep issuing requests either way — so
+ * `tokenMeterList()` reports a `today` that can be non-zero while `ready` is
+ * false. And `ready` is NOT the path. Three facts, not one:
  *
- * - `metering`        — this identity has accrued token spend today.
- * - `onGovernedPath`  — its endpoint's prerequisites are met, so that spend
- *                       rides the private fabric rather than the internet.
+ * - `metering`      — this identity has accrued token spend today.
+ * - `endpointReady` — `tokenMeterList().ready`, i.e. `endpointReadyFor()`: the
+ *                     endpoint's prerequisites are met, meaning its region is
+ *                     attached AND its governance control has been applied
+ *                     (`fixes.segmentHelion` / `fixes.fwInspection`). This is
+ *                     what gates the engine's SERIES metering — `tickTokens`
+ *                     and `tokenSeries` — and nothing else.
+ *                     **Readiness gates metering, not path.**
+ * - `routePath`     — `modelRoutes().path`: where an identity's requests
+ *                     actually go (`private` / `governed egress` / `public`).
+ *                     This, and only this, decides whether spend leaves over
+ *                     the public internet. It turns on region attachment
+ *                     alone — the same predicate `modelCatalog().ready` uses
+ *                     for `/ai/connect`'s "governed & ready", and the same one
+ *                     `/ai/observe`'s Route column and briefing read.
  *
- * A screen that reads either one as "how many identities are metering" and the
- * other as the token column will contradict itself in the seeded state, which
- * rests at `today > 0, ready === false`. Both are exported, separately named,
- * and every count on a screen must come from one of them.
+ * The distinction is not academic. After the tour's Connect and Govern beats
+ * (`activateOnramp('nb2')` + `enforceAny('pol-insp')`) every model is attached
+ * and routed private or governed, while `rd-helion`'s `ready` is still false
+ * because `fixes.segmentHelion` has not been applied. Reading `ready` as "on a
+ * governed path" is what printed "1 of 3 … leave over the public internet" on
+ * `/ai/cost` beside `/ai/connect`'s "3 / 3 governed & ready", `/ai/observe`'s
+ * "No AI Fabric traffic currently crosses the public internet" and Discover's
+ * "0 exposed endpoints" — with the remediation link pointing at the screen
+ * that denied it.
+ *
+ * So: every sentence about the PATH reads `routePath` / `onPublicPath`; every
+ * count about spend accrual reads `metering`; `endpointReady` is carried for
+ * callers that genuinely mean the engine's readiness gate, and is never a path.
  */
 
 /** The external, third-party model. Its price is the comparison rate: what the
@@ -59,13 +79,44 @@ interface Agent {
   scopes: string[];
 }
 
+/** The three paths `CC.modelRoutes()` distinguishes. There is no fourth. */
+export type ModelRoutePath = 'private' | 'governed egress' | 'public';
+
+interface ModelRoute {
+  app: string;
+  path: ModelRoutePath;
+}
+
+/**
+ * How a route renders, in words. Exported and imported rather than restated,
+ * so `/ai/cost`'s State column and `/ai/observe`'s Route column cannot end up
+ * describing the same engine value with two different phrases.
+ */
+export function routeLabel(path: ModelRoutePath): string {
+  switch (path) {
+    case 'private':
+      return 'AT&T private fabric';
+    case 'governed egress':
+      return 'Governed egress';
+    default:
+      return 'Public internet';
+  }
+}
+
 export interface AiSpendRow {
   tag: string;
   /** True once this identity has accrued token spend today. */
   metering: boolean;
-  /** True once the identity's endpoint prerequisites are met, i.e. its spend
-   *  rides the private fabric instead of leaving over the public internet. */
-  onGovernedPath: boolean;
+  /**
+   * `tokenMeterList().ready` — the engine's readiness gate on SERIES metering
+   * (`tickTokens` / `tokenSeries`): region attached AND governance control
+   * applied. Not a path. See the module header.
+   */
+  endpointReady: boolean;
+  /** `modelRoutes().path` — where this identity's requests actually go. */
+  routePath: ModelRoutePath;
+  /** True when `routePath === 'public'`, i.e. requests leave over the internet. */
+  onPublicPath: boolean;
   tokensToday: number;
   budgetTokens: number;
   /** Percent of budget consumed — taken from the engine's own meter. */
@@ -88,8 +139,10 @@ export interface AiSpendTotals {
   savings: number;
   /** How many identities have accrued spend today. */
   meteringCount: number;
-  /** How many identities call an attached endpoint. */
-  governedCount: number;
+  /** How many identities the engine considers meter-ready. Never a path claim. */
+  endpointReadyCount: number;
+  /** How many identities route over the public internet — the path claim. */
+  publicPathCount: number;
   identityCount: number;
   /**
    * Token policies that carry a budget but no meter.
@@ -143,15 +196,32 @@ const nameOf = (catalog: ModelCatalogEntry[], modelId: string) =>
 export function aiSpendRows(cc: CloudControl): AiSpendRow[] {
   const meters = cc.tokenMeterList() as TokenMeter[];
   const catalog = cc.modelCatalog() as ModelCatalogEntry[];
+  const routes = cc.modelRoutes() as ModelRoute[];
   const externalPrice = priceOf(catalog, EXTERNAL_MODEL_ID);
 
-  return meters.map(m => {
+  /* `tokenMeterList()` and `modelRoutes()` are both built by iterating the same
+     TOKEN_BUDGETS-keyed set in the same order (state-billing.ts), so index i of
+     one is index i of the other — the contract `aiBinding` already relies on.
+     If that ever stops holding, every path sentence on /ai/cost silently
+     describes the wrong identity, so say so loudly instead. */
+  if (routes.length !== meters.length) {
+    throw new Error(
+      `aiSpend: CC.modelRoutes() returned ${routes.length} routes for ` +
+        `${meters.length} token meters. The engine's routes and meters are no ` +
+        `longer index-aligned, so no identity's path can be stated.`,
+    );
+  }
+
+  return meters.map((m, i) => {
     const modelId = modelForTag(cc, m.tag);
     const price = priceOf(catalog, modelId);
+    const routePath = routes[i].path;
     return {
       tag: m.tag,
       metering: m.today > 0,
-      onGovernedPath: m.ready,
+      endpointReady: m.ready,
+      routePath,
+      onPublicPath: routePath === 'public',
       tokensToday: m.today,
       budgetTokens: m.budget,
       pct: m.pct,
@@ -181,14 +251,25 @@ export function aiSpendTotals(cc: CloudControl): AiSpendTotals {
     spendIfExternal,
     savings: Math.max(0, spendIfExternal - spendToday),
     meteringCount: rows.filter(r => r.metering).length,
-    governedCount: rows.filter(r => r.onGovernedPath).length,
+    endpointReadyCount: rows.filter(r => r.endpointReady).length,
+    publicPathCount: rows.filter(r => r.onPublicPath).length,
     identityCount: rows.length,
   };
 }
 
+/**
+ * Token volume, as the screens state it.
+ *
+ * One significant decimal in the `k` band, not zero. `Math.round(n / 1000)`
+ * printed a Records column of `1k / 1k / 1k` under a TOKENS tile of `4k`
+ * (1,183 + 1,225 + 1,320 = 3,728) — three roundings that each lose up to half
+ * a thousand, under a total that rounded once. A viewer adds that column up.
+ * At one decimal the same rows read `1.2k / 1.2k / 1.3k` under `3.7k` and the
+ * arithmetic closes. `M` already carried two decimals for the same reason.
+ */
 export function fmtTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `${Math.round(n / 1_000)}k`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
   return String(Math.round(n));
 }
 

@@ -46,15 +46,21 @@ interface CatalogEntry {
   id: string;
   name: string;
   price: number;
+  ready: boolean;
 }
 interface Agent {
   id: string;
   app: string;
   scopes: string[];
 }
+interface Route {
+  app: string;
+  path: 'private' | 'governed egress' | 'public';
+}
 
 const meters = () => CC.tokenMeterList() as Meter[];
 const catalog = () => CC.modelCatalog() as CatalogEntry[];
+const routes = () => CC.modelRoutes() as Route[];
 const agents = () => CC.agentList() as Agent[];
 const entry = (id: string) => catalog().find(m => m.id === id)!;
 
@@ -90,17 +96,76 @@ describe('aiSpend — spend and endpoint attachment are two different facts', ()
 
     const row = aiSpendRows(CC).find(r => r.tag === restingTag)!;
     expect(row.metering, 'metering must follow the tokens').toBe(true);
-    expect(row.onGovernedPath, 'the path must follow readiness').toBe(false);
+    expect(row.endpointReady, 'readiness must follow the engine meter').toBe(false);
     expect(row.spendToday).toBeGreaterThan(0);
   });
 
-  it('counts spend and governed paths separately, so a screen cannot conflate them', () => {
+  it('counts spend and readiness separately, so a screen cannot conflate them', () => {
     const t = aiSpendTotals(CC);
     const ms = meters();
     expect(t.meteringCount).toBe(ms.filter(m => m.today > 0).length);
-    expect(t.governedCount).toBe(ms.filter(m => m.ready).length);
+    expect(t.endpointReadyCount).toBe(ms.filter(m => m.ready).length);
     // The whole point: in this state they disagree.
-    expect(t.meteringCount).toBeGreaterThan(t.governedCount);
+    expect(t.meteringCount).toBeGreaterThan(t.endpointReadyCount);
+  });
+
+  it('states the path from modelRoutes(), which in this state is all public', () => {
+    const rows = aiSpendRows(CC);
+    rows.forEach((r, i) => expect(r.routePath).toBe(routes()[i].path));
+    expect(aiSpendTotals(CC).publicPathCount).toBe(routes().filter(r => r.path === 'public').length);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * The tour's own two beats, in the tour's own order, and the ONE state
+ * in which readiness and path disagree.
+ *
+ * `activateOnramp('nb2')` attaches CoreWeave and Nebius; `pol-insp`
+ * applies `fixes.fwInspection`. `fixes.segmentHelion` is deliberately NOT
+ * applied — that is `rd-helion`'s remaining readiness prerequisite, so it
+ * rests at `ready === false` with its endpoint attached and its route
+ * private. This is the state in which /ai/cost read "1 of 3 … leave over
+ * the public internet" while /ai/connect read "3 / 3 governed & ready".
+ * ------------------------------------------------------------------ */
+describe('aiSpend — after the Connect and Govern beats, path is not readiness', () => {
+  beforeAll(() => {
+    CC.activateOnramp('nb2');
+    (CC as unknown as { enforceAny(id: string): boolean }).enforceAny('pol-insp');
+  });
+
+  it('reaches a state where an identity is not meter-ready but is not public either', () => {
+    const split = aiSpendRows(CC).find(r => !r.endpointReady && !r.onPublicPath);
+    expect(
+      split,
+      'the fixture no longer produces the readiness/path split this file exists to pin',
+    ).toBeTruthy();
+    expect(
+      (CC as unknown as { fixes: Record<string, boolean> }).fixes.segmentHelion,
+      'and it is unready for the reason we think it is',
+    ).toBe(false);
+  });
+
+  it('agrees with /ai/connect: an identity is public exactly when its model is not ready', () => {
+    // `modelCatalog().ready` is the predicate behind Connect's "n / m governed
+    // & ready" badge and every row's "Governed · ready" state. If Cost's path
+    // claim and Connect's readiness badge ever key off different engine facts
+    // again, this fails.
+    for (const row of aiSpendRows(CC)) {
+      expect(row.onPublicPath, `${row.tag} vs the model catalog`).toBe(!entry(row.modelId).ready);
+    }
+    const t = aiSpendTotals(CC);
+    expect(t.identityCount - t.publicPathCount).toBe(
+      catalog().filter(m => m.ready && aiSpendRows(CC).some(r => r.modelId === m.id)).length,
+    );
+  });
+
+  it('does not let readiness stand in for the path count', () => {
+    const t = aiSpendTotals(CC);
+    expect(t.publicPathCount, 'nothing is routed public once every endpoint is attached').toBe(0);
+    expect(
+      t.endpointReadyCount,
+      'while readiness still lags, which is exactly why the two must not be swapped',
+    ).toBeLessThan(t.identityCount);
   });
 });
 
@@ -136,11 +201,16 @@ describe('aiSpend — pinned to the engine, not to itself', () => {
       expect(row.tokensToday).toBe(m.today);
       expect(row.budgetTokens).toBe(m.budget);
       expect(row.pct).toBe(m.pct);
-      // Two distinct engine facts, and neither is the other: `ready` is
-      // endpoint attachment, `today > 0` is accrued spend.
-      expect(row.onGovernedPath).toBe(m.ready);
+      // Three distinct engine facts, and none is another: `ready` is the
+      // engine's meter gate, `today > 0` is accrued spend, and the path comes
+      // from modelRoutes().
+      expect(row.endpointReady).toBe(m.ready);
       expect(row.metering).toBe(m.today > 0);
     }
+    aiSpendRows(CC).forEach((row, i) => {
+      expect(row.routePath).toBe(routes()[i].path);
+      expect(row.onPublicPath).toBe(routes()[i].path === 'public');
+    });
   });
 
   it('prices each identity with the catalog price of the model its agent invokes', () => {
@@ -182,7 +252,8 @@ describe('aiSpend — pinned to the engine, not to itself', () => {
     expect(t.spendIfExternal).toBeCloseTo(sum(r => r.spendIfExternal), 10);
     expect(t.identityCount).toBe(t.rows.length);
     expect(t.meteringCount).toBe(t.rows.filter(r => r.metering).length);
-    expect(t.governedCount).toBe(t.rows.filter(r => r.onGovernedPath).length);
+    expect(t.endpointReadyCount).toBe(t.rows.filter(r => r.endpointReady).length);
+    expect(t.publicPathCount).toBe(t.rows.filter(r => r.onPublicPath).length);
   });
 
   it('states the totals the engine implies, summed independently here', () => {
@@ -196,7 +267,7 @@ describe('aiSpend — pinned to the engine, not to itself', () => {
       ms.reduce((s, m) => s + (m.today / 1_000_000) * entry(tagModel[m.tag]).price, 0),
       10,
     );
-    expect(t.governedCount).toBe(ms.filter(m => m.ready).length);
+    expect(t.endpointReadyCount).toBe(ms.filter(m => m.ready).length);
   });
 
   it('never states a negative saving, and states the external comparison rate', () => {
@@ -245,7 +316,10 @@ describe('modelForTag — derived from the engine, and loud on a miss', () => {
 describe('formatting and the money guard', () => {
   it('formats tokens and dollars at the thresholds the screens hit', () => {
     expect(fmtTokens(334)).toBe('334');
-    expect(fmtTokens(1_500)).toBe('2k');
+    // One decimal in the k band: `Math.round(n/1000)` made a Records column of
+    // three ~1.2k rows read `1k / 1k / 1k` under a `4k` tile.
+    expect(fmtTokens(1_500)).toBe('1.5k');
+    expect(fmtTokens(1_183)).toBe('1.2k');
     expect(fmtTokens(4_900_000)).toBe('4.90M');
     expect(fmtUsd(0)).toBe('$0.00');
     expect(fmtUsd(1.618)).toBe('$1.62');
