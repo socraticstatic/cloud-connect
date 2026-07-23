@@ -264,7 +264,15 @@ export function estateDomains(cc: CloudControl): EstateDomain[] {
         ? 'GPU regions, models, and the agents calling them — with the AI endpoints still riding public internet, the security gap in this domain.'
         : aiFlowPublic > 0
           ? `GPU regions, models, and the agents calling them — every AI endpoint is on a private path, and ${aiFlowPublic} Gbps of traffic still reaches them from source regions that are not: the rest of the security gap, itemised in NaaS · Observe.`
-          : 'GPU regions, models, and the agents calling them — every AI endpoint on a private path and every flow reaching them under AT&T control, the security gap in this domain closed.',
+          /* Scoped, deliberately. This branch measures two BYTES-layer facts —
+             endpoints attached, and Gbps of flow reaching them under control —
+             and neither is a statement about token spend. An identity can meter
+             ungoverned tokens over the public internet in exactly this estate
+             (AI Fabric · Cost states that figure from its own engine bucket),
+             so a bare "the security gap in this domain closed" would be denied
+             one screen away. It names the layer it measured and points at the
+             one it did not. */
+          : 'GPU regions, models, and the agents calling them — every AI endpoint on a private path and every flow reaching them under AT&T control, the network-layer security gap in this domain closed. Token-layer governance is metered separately in AI Fabric · Observe.',
       stats: [
         { key: 'aiRegions', label: 'AI regions', value: allRegions.filter(r => r.ai).length },
         { key: 'models', label: 'Models', value: models.length },

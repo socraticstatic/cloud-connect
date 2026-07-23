@@ -50,8 +50,14 @@ export const DEMO_BEATS: DemoBeat[] = [
   {
     route: '/ai/govern',
     title: 'The foundation beneath AI Fabric',
+    /* "Every AI route governed" was a claim the AI Fabric screens deny in the
+       state a cold demo opens in: agents meter real tokens over the public
+       internet before any endpoint is attached, and the engine books those in
+       their own bucket rather than discarding them. The beat now narrates the
+       split, which is the stronger story anyway — the fabric can tell you what
+       was ungoverned, which is the thing nobody else can. */
     narration:
-      'The same fabric routes models and meters tokens. Every AI route governed, every prompt traced. Connectivity is the foundation — this is what it enables next.',
-    hero: 'Token meter running on live routes',
+      'The same fabric routes models and meters tokens — governed and ungoverned counted apart, so you can see what left over the public internet before you attached it. Every prompt traced hop by hop. Connectivity is the foundation — this is what it enables next.',
+    hero: 'Governed and ungoverned tokens, side by side',
   },
 ];

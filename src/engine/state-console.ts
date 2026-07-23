@@ -178,8 +178,11 @@ CC.promptTrace=function(tag,modelId,prompt){
   // guardrail
   if(pol&&pol.guardrail)steps.push({hop:'Guardrail',detail:'ai-guardrail inline · prompt + completion scanned',ok:true});
   steps.push({hop:'Completion',detail:`${tokens.toLocaleString()} tokens · $${(tokens/1e6*model.price).toFixed(4)} @ $${model.price}/1M · ~${model.p50}ms P50`,ok:true});
-  // meter the spend
-  CC.meterTokens&&CC.meterTokens(tag,tokens);
+  /* Meter the spend into the bucket THIS trace just walked. `priv` is the
+     same value the Network path hop above prints, so the trace a viewer
+     reads and the meter a viewer reads can never describe one request as
+     both governed and public. */
+  CC.meterTokens&&CC.meterTokens(tag,tokens,priv);
   recordDecision(true,pol&&pol.guardrail);
   return {blocked:false,steps,tokens};
 };

@@ -11,14 +11,51 @@ const {onramps,regions,fixes}=CC;
    Once an AI endpoint's bytes-layer prerequisites are satisfied, its
    consuming apps start SPENDING: token meters tick with the same
    cadence as policy hits, proportional to inference traffic. The
-   payoff is watchable - complete the substrate, watch the tokens flow. */
-const tokenMeters={}; // appTag -> {today,budget}
+   payoff is watchable - complete the substrate, watch the tokens flow.
+
+   TWO BUCKETS, NOT ONE.
+
+   Agents issue traced requests before the substrate is attached - that
+   is the cold-start beat, and those tokens are real spend, so nothing
+   here discards them. But they rode the PUBLIC INTERNET, and a token
+   metered once the endpoint is attached did not. Both facts are the
+   product's story and neither can be recovered from the other after
+   the fact: attaching an endpoint does not retroactively govern what
+   already left, and detaching does not ungovern what already rode the
+   fabric.
+
+   So the engine carries both, distinctly:
+     governed   - metered against an AT&T-controlled path
+     ungoverned - metered while the identity's route was public
+     today      - governed + ungoverned, the total spend
+
+   Every consumer then STATES which bucket it means instead of
+   inferring exposure from the identity's route right now. That
+   inference is what printed "none of that spend leaves over the
+   public internet" on /ai/cost over a total accrued entirely public. */
+const tokenMeters={}; // appTag -> {governed,ungoverned,budget}
 const TOKEN_BUDGETS={'rd-helion':2400000,'classified-helion':900000,'shared-services':1600000};
 // budgets become editable once the console module loads - read lazily
 const budgetOf=tag=>CC.tokenBudgetOf?CC.tokenBudgetOf(tag):TOKEN_BUDGETS[tag];
-CC.meterTokens=function(tag,n){
-  const m=tokenMeters[tag]=tokenMeters[tag]||{today:0,budget:budgetOf(tag)};
-  m.today+=n;
+function meterFor(tag,seedGoverned){
+  return tokenMeters[tag]||(tokenMeters[tag]={governed:seedGoverned||0,ungoverned:0,budget:budgetOf(tag)});
+}
+/* Governed means "on an AT&T-controlled path" - read off modelRoutes(),
+   the ONE path derivation this estate has. `promptTrace` stamps the same
+   predicate on its Network-path hop, /ai/observe renders it in its Route
+   column and /ai/connect in its catalog state, so a token's bucket and
+   every sentence about that token's path come from one source. */
+function governedPathFor(tag){
+  const r=modelRoutes().find(x=>x.tag===tag);
+  return !!r&&r.path!=='public';
+}
+/* `governed` is optional: a caller that KNOWS the path it took (promptTrace
+   walked it hop by hop) passes it; anything else gets the honest answer for
+   the identity's route at meter time. */
+CC.meterTokens=function(tag,n,governed){
+  const m=meterFor(tag);
+  const g=governed===undefined?governedPathFor(tag):!!governed;
+  if(g)m.governed+=n;else m.ungoverned+=n;
 };
 function endpointReadyFor(tag){
   if(tag==='rd-helion')return regions.cw.find(r=>r.id==='cwe').attached&&fixes.segmentHelion;
@@ -29,10 +66,13 @@ function endpointReadyFor(tag){
 function tickTokens(rng){
   let any=false;
   Object.keys(TOKEN_BUDGETS).forEach(tag=>{
+    /* Readiness is strictly stronger than attachment (it also wants the
+       identity's governance fix), so anything this gate lets through is on
+       an AT&T path by construction - every token it adds is governed. */
     if(!endpointReadyFor(tag))return;
-    const m=tokenMeters[tag]=tokenMeters[tag]||{today:Math.round(budgetOf(tag)*0.22),budget:budgetOf(tag)};
+    const m=meterFor(tag,Math.round(budgetOf(tag)*0.22));
     const gbps=CC.flows().filter(f=>f.srcTag===tag&&f.dst==='ai-endpoints').reduce((s,f)=>s+f.gbps,0);
-    m.today+=Math.round(gbps*(900+rng()*700));
+    m.governed+=Math.round(gbps*(900+rng()*700));
     any=true;
   });
   return any;
@@ -43,21 +83,28 @@ function tokenMeterList(){
   return Object.keys(TOKEN_BUDGETS).map(tag=>{
     const ready=endpointReadyFor(tag);
     const m=tokenMeters[tag];
-    return {tag,ready,today:m?m.today:0,budget:budgetOf(tag),
-      pct:m?Math.min(100,Math.round(m.today/budgetOf(tag)*100)):0};
+    const governed=m?m.governed:0,ungoverned=m?m.ungoverned:0;
+    const today=governed+ungoverned;
+    return {tag,ready,governed,ungoverned,today,budget:budgetOf(tag),
+      pct:Math.min(100,Math.round(today/budgetOf(tag)*100))};
   });
 }
-/* model routing: app -> model class -> endpoint -> path, all derived */
+/* model routing: app -> model class -> endpoint -> path, all derived.
+   Each route carries the `tag` it belongs to. Consumers used to pair a route
+   with its meter by ARRAY INDEX, which held only while both lists iterated
+   the same keys in the same order - and every path sentence on every AI
+   screen would have described the wrong identity the first time one of them
+   stopped. The tag makes the pairing a lookup. */
 function modelRoutes(){
   const routes=[];
   const cwReady=regions.cw.find(r=>r.id==='cwe').attached;
   const nbReady=regions.neb.find(r=>r.id==='nbe').attached;
   const nb2=onramps.find(o=>o.id==='nb2').active;
-  routes.push({app:'Project Helion · R&D',model:'helion-70b (self-hosted)',endpoint:'CoreWeave H100',cloud:'cw',
+  routes.push({tag:'rd-helion',app:'Project Helion · R&D',model:'helion-70b (self-hosted)',endpoint:'CoreWeave H100',cloud:'cw',
     path:cwReady?'private':'public',guardrail:fixes.segmentHelion?'segmented':null});
-  routes.push({app:'Project Helion · Classified',model:'helion-cls-13b (air-gapped)',endpoint:'Nebius L40S',cloud:'neb',
+  routes.push({tag:'classified-helion',app:'Project Helion · Classified',model:'helion-cls-13b (air-gapped)',endpoint:'Nebius L40S',cloud:'neb',
     path:nbReady?'private':'public',guardrail:fixes.fwInspection?'inline guardrail':null});
-  routes.push({app:'Shared Platform Services',model:'GPT-class (external)',endpoint:'OpenAI API',cloud:null,
+  routes.push({tag:'shared-services',app:'Shared Platform Services',model:'GPT-class (external)',endpoint:'OpenAI API',cloud:null,
     path:nb2?'governed egress':'public',guardrail:nb2?'metered':null});
   return routes;
 }

@@ -1,6 +1,6 @@
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { AttIcon } from '../../components/icons/AttIcon';
-import { useCloudControl } from '../../engine/react/useCloudControl';
+import { useCloudControlLive } from '../../engine/react/useCloudControl';
 
 // Literal Flywheel/Okabe-Ito hex values — SVG/Recharts fill props don't
 // resolve `fill-fw-*` Tailwind classes, so bar colors are literal here.
@@ -14,8 +14,18 @@ interface Decision {
   guarded: boolean;
 }
 
+/**
+ * The decision log, subscribed LIVE.
+ *
+ * `agentTick` writes a decision every 7s and emits `hits`; `useCloudControl`
+ * drops `hits`, so this panel froze at its mount instant while the REQUESTS
+ * KPI 400px above it — which reads `decisionLog().length` through the same
+ * engine — kept counting. On a cold `/ai/observe` that rendered `REQUESTS 1`
+ * over "0 traced requests", and later `REQUESTS 10` over "9 traced requests".
+ * One derivation, one screen, two numbers.
+ */
 export function GovernanceDecisions() {
-  const log = useCloudControl(cc => cc.decisionLog()) as Decision[];
+  const log = useCloudControlLive(cc => cc.decisionLog()) as Decision[];
 
   const allowed = log.filter(d => d.allowed && !d.guarded).length;
   const guardrail = log.filter(d => d.allowed && d.guarded).length;

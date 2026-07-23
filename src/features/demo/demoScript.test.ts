@@ -23,6 +23,18 @@ describe('DEMO_BEATS', () => {
       NAV_ROUTES);
   });
 
+  /* The AI beat used to narrate "Every AI route governed" over a screen the
+     demo reaches in its cold-start state, where agents have already metered
+     real tokens over the public internet and the AI Fabric screens say so.
+     Narration that the product denies on screen is the worst kind of copy
+     defect: the presenter reads it aloud while the audience reads the
+     contradiction. The beat states the split instead. */
+  it('does not narrate a blanket "every AI route governed" claim the screens deny', () => {
+    const ai = DEMO_BEATS.find(b => b.route === '/ai/govern')!;
+    expect(ai.narration).not.toMatch(/every AI route governed/i);
+    expect(`${ai.narration} ${ai.hero}`.toLowerCase()).toContain('ungoverned');
+  });
+
   it('every beat has real, stage-relevant copy (not just non-empty strings)', () => {
     for (const b of DEMO_BEATS) {
       expect(NAV_ROUTES).toContain(b.route);

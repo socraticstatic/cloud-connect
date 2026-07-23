@@ -17,10 +17,13 @@ interface TokenMeter {
   tag: string;
   ready: boolean;
   today: number;
+  governed: number;
+  ungoverned: number;
   budget: number;
   pct: number;
 }
 interface ModelRoute {
+  tag: string;
   app: string;
   model: string;
   endpoint: string;
@@ -44,9 +47,9 @@ interface Decision {
   guarded: boolean;
 }
 
-// tokenMeterList() and modelRoutes() are both built by iterating the same
-// TOKEN_BUDGETS-keyed object in the same order (rd-helion, classified-helion,
-// shared-services), so index i of one corresponds to index i of the other.
+// modelRoutes() names the tag each route belongs to, so a route is paired with
+// its meter by identity rather than by both lists happening to iterate the same
+// keys in the same order.
 // The tag -> model mapping and the token-money maths now live in
 // ai-fabric/aiSpend.ts — imported rather than re-declared, so the Cost KPI
 // here and the Cost screen at /ai/cost state the same figure by construction.
@@ -66,6 +69,9 @@ interface AiRow {
   app: string;
   ready: boolean;
   today: number;
+  /** Of `today`, the tokens that rode the public internet. Booked by the
+   *  engine at meter time, so it is not re-derivable from `path`. */
+  ungoverned: number;
   budget: number;
   pct: number;
   model: string;
@@ -107,21 +113,37 @@ function percentile95(values: number[]): number {
   return sorted[idx];
 }
 
+/**
+ * Rounding that cannot turn a real quantity into a zero.
+ *
+ * The flow panel fires its empty state on `series.every(v === 0)`, so any
+ * rounding here is load-bearing: a flat `Math.round(v * 10) / 10` renders a
+ * Cost series of a few tenths of a cent as 0.0 at every point, and the panel
+ * printed "No token flow yet" directly under a COST tile reading `<$0.01` and
+ * a TOKENS tile reading hundreds. One decimal above 1, three significant
+ * figures below it — small values stay small and stay non-zero.
+ */
+function chartValue(v: number): number {
+  if (v === 0) return 0;
+  return Math.abs(v) >= 1 ? Math.round(v * 10) / 10 : Number(v.toPrecision(3));
+}
+
 function seriesFromNumbers(values: number[]): SeriesPoint[] {
-  return values.map((v, i) => ({ t: `T${i}`, v: Math.round(v * 10) / 10 }));
+  return values.map((v, i) => ({ t: `T${i}`, v: chartValue(v) }));
 }
 
 function buildAiRows(cc: CloudControl): AiRow[] {
   const meters = cc.tokenMeterList() as TokenMeter[];
   const routes = cc.modelRoutes() as ModelRoute[];
   const tagModel = tagModelMap(cc);
-  return meters.map((m, i) => {
-    const r = routes[i];
+  return meters.map(m => {
+    const r = routes.find(x => x.tag === m.tag);
     return {
       tag: m.tag,
       app: r?.app ?? m.tag,
       ready: m.ready,
       today: m.today,
+      ungoverned: m.ungoverned,
       budget: m.budget,
       pct: m.pct,
       model: r?.model ?? 'unknown model',
@@ -145,16 +167,37 @@ function providerOf(row: AiRow): string {
   return 'OpenAI (external)';
 }
 
+/* The path comes FIRST. `ready` is the engine's meter gate, not a path, and
+   leading with it printed "Provisioning" in the Status column of a row whose
+   own Route column, one cell to the left, read "Public internet" and whose
+   Tokens column read 165. Provisioning is a benign word for an identity that
+   is actively spending over the open internet. */
 function statusOf(row: AiRow): { label: string; tone: RecordRow['tone'] } {
-  if (!row.ready) return { label: 'Provisioning', tone: 'warn' };
   if (row.path === 'public') return { label: 'Public · unguarded', tone: 'bad' };
+  if (!row.ready) return { label: 'Provisioning', tone: 'warn' };
   if (row.guardrail) return { label: capitalize(row.guardrail), tone: 'warn' };
   return { label: 'Private · allowed', tone: 'ok' };
 }
 
+/* Today's tokens, and how many of them were ungoverned — stated in the same
+   cell as the total they qualify, because a "Private · allowed" status beside
+   a bare token count says nothing about the tokens that rode the internet
+   before the endpoint attached. */
+function tokenCell(today: number, ungoverned: number): string {
+  return ungoverned > 0
+    ? `${fmtTokens(today)} · ${fmtTokens(ungoverned)} ungoverned`
+    : fmtTokens(today);
+}
+
 function cellsFor(row: AiRow): string[] {
   const status = statusOf(row);
-  return [row.app, fmtTokens(row.today), row.model, routeLabel(row.path), status.label];
+  return [
+    row.app,
+    tokenCell(row.today, row.ungoverned),
+    row.model,
+    routeLabel(row.path),
+    status.label,
+  ];
 }
 
 function groupKey(row: AiRow, groupBy: string): string {
@@ -231,6 +274,7 @@ function buildRecords(cc: CloudControl, groupBy: string): RecordRow[] {
   return Array.from(groups.entries())
     .map(([key, list]) => {
       const tokens = list.reduce((s, r) => s + r.today, 0);
+      const ungoverned = list.reduce((s, r) => s + r.ungoverned, 0);
       const models = Array.from(new Set(list.map(r => r.model)));
       const routes = Array.from(new Set(list.map(r => routeLabel(r.path))));
       const statuses = Array.from(new Set(list.map(r => statusOf(r).label)));
@@ -242,7 +286,7 @@ function buildRecords(cc: CloudControl, groupBy: string): RecordRow[] {
         label,
         cells: [
           label,
-          fmtTokens(tokens),
+          tokenCell(tokens, ungoverned),
           models.length === 1 ? models[0] : 'Mixed',
           routes.length === 1 ? routes[0] : 'Mixed',
           statuses.length === 1 ? statuses[0] : 'Mixed',
@@ -275,8 +319,19 @@ function buildKpis(cc: CloudControl): Kpi[] {
   const ttftPoints = readyModelIds.flatMap(id => cc.modelLatencySeries(id, SERIES_POINTS) as number[]);
   const ttft = percentile95(ttftPoints.length ? ttftPoints : catalog.map(m => m.p50));
 
+  /* The bucket gets a tile of its own. It is the one number on this screen a
+     reader cannot reconstruct from the others — Tokens is the total, Cost is
+     the money, and the Route column is about the next request, not the ones
+     already metered. Stated, it is an observability figure; inferred, it was
+     the source of four contradictory sentences. */
   return [
     { key: 'tokens', label: 'Tokens', value: fmtTokens(totalTokens), sub: '/today' },
+    {
+      key: 'ungoverned',
+      label: 'Ungoverned',
+      value: fmtTokens(spend.ungovernedTokensToday),
+      sub: 'public internet',
+    },
     { key: 'requests', label: 'Requests', value: String(decisions.length) },
     { key: 'cost', label: 'Cost', value: fmtUsd(costActual), sub: '/today' },
     { key: 'ttft', label: 'TTFT', value: String(Math.round(ttft)), unit: 'ms' },
@@ -290,51 +345,70 @@ function buildBriefing(cc: CloudControl): Briefing {
   const totalTokens = meteredTokens || 1; // divisor guard only
   const top = rows.slice().sort((a, b) => b.today - a.today)[0];
   const publicRows = rows.filter(r => r.path === 'public');
-  const publicTokens = publicRows.reduce((s, r) => s + r.today, 0);
-  const pctPublic = Math.round((publicTokens / totalTokens) * 100);
+
+  /* Exposure is a MEASURED bucket, not an inference from the current route.
+   *
+   * This used to sum `today` over the rows whose route is public right now,
+   * which reclassifies history every time an endpoint attaches: after the
+   * tour's Connect beat every route is governed, the sum went to zero, and the
+   * briefing printed "No AI Fabric traffic currently crosses the public
+   * internet" over a total most of which had already crossed it. The engine
+   * now books each token into `governed` or `ungoverned` at meter time, which
+   * is the only moment the fact is knowable. */
+  const ungovernedRows = rows.filter(r => r.ungoverned > 0);
+  const ungovernedTokens = ungovernedRows.reduce((s, r) => s + r.ungoverned, 0);
+  const rawPct = Math.round((ungovernedTokens / totalTokens) * 100);
+  /* A non-zero quantity must never be introduced by a share that rounds to
+     zero — "0% … crossed the public internet" beside a non-zero figure is the
+     same contradiction in smaller type. */
+  const pctPublic = ungovernedTokens > 0 && rawPct === 0 ? '<1%' : `${rawPct}%`;
 
   /* Three states, not two.
    *
-   * On a seeded estate nothing has attached yet, so every identity meters
-   * zero — and a share-of-traffic reading of that is 0% public, which used to
-   * print "No AI Fabric traffic currently crosses the public internet — every
-   * identity rides a private or governed path" directly beside a Records table
-   * listing all three identities on Public internet. Two statements, one
-   * screen, flatly contradicting each other. (Latent before the domain split,
-   * on the old AI Fabric page's Observability tab; the split gave that block
-   * its own screen, so it is fixed here rather than carried across.)
+   * On a seeded estate nothing has metered yet, and a share-of-traffic reading
+   * of that is 0% public, which used to print "No AI Fabric traffic currently
+   * crosses the public internet — every identity rides a private or governed
+   * path" directly beside a Records table listing all three identities on
+   * Public internet.
    *
    * Zero traffic is its own state and says so: nothing is metered YET, and the
-   * routes those identities will use the moment they start are public. The
-   * "every identity rides a private or governed path" claim is reserved for
-   * when it is true of the routes, which is what the reader can see. */
+   * routes those identities will use the moment they start are public. */
   const nothingMetered = meteredTokens === 0;
   const publicCount = publicRows.length;
 
-  /* Name what is actually public, not what is external.
+  /* Name what actually rode the internet.
    *
-   * `externalRow` is the gpt-class row and nothing more. With all three
-   * identities metering and all three public, "via Shared Platform Services on
-   * GPT-class" attributed 100% of the tokens to the row carrying about a third
-   * of them — beside a Records table that shows the split. The public rows are
-   * the ones the sentence is about, so it names them: the single one when
-   * there is one, otherwise the largest with the rest counted. Sorted by the
-   * quantity being claimed (tokens), and only reached when tokens are non-zero,
-   * so the ordering is never arbitrary. */
-  const topPublic = publicRows.slice().sort((a, b) => b.today - a.today)[0];
-  const publicAttribution = !topPublic
+   * The old sentence named the gpt-class row and nothing else, attributing
+   * 100% of the tokens to a row carrying about a third of them — beside a
+   * Records table showing the split. Attribution is now sorted by the very
+   * quantity being claimed, `ungoverned`, over the rows that carry any of it. */
+  const topUngoverned = ungovernedRows.slice().sort((a, b) => b.ungoverned - a.ungoverned)[0];
+  const attribution = !topUngoverned
     ? ''
-    : publicCount === 1
-      ? ` via ${topPublic.app} on ${topPublic.model}`
-      : ` across ${publicCount} identities, led by ${topPublic.app} on ${topPublic.model} at ${fmtTokens(topPublic.today)}`;
+    : ungovernedRows.length === 1
+      ? ` via ${topUngoverned.app} on ${topUngoverned.model}`
+      : ` across ${ungovernedRows.length} identities, led by ${topUngoverned.app} on ${topUngoverned.model} at ${fmtTokens(topUngoverned.ungoverned)}`;
+
+  /* Where the NEXT request goes is a separate clause, in a separate tense,
+     because the two genuinely differ after an attach: nothing routes public
+     any more, and a third of today's tokens still went that way. */
+  const forward =
+    publicCount > 0
+      ? ` ${publicCount} of ${rows.length} identities are still routed over the public internet, so that continues until they are attached.`
+      : ` Every identity now routes to an attached endpoint, so nothing further leaves that way.`;
 
   const exposure = nothingMetered
     ? publicCount > 0
       ? `No tokens are metered yet, so nothing has crossed a path today — but ${publicCount} of ${rows.length} identities are still routed over the public internet, which is the path they take the moment they start.`
       : 'No tokens are metered yet. Every identity is already on a private or governed route, so the first request will not cross the public internet.'
-    : pctPublic > 0
-      ? `${pctPublic}% of AI Fabric tokens (${fmtTokens(publicTokens)}) still cross the public internet${publicAttribution}, unguardrailed and exposed to external providers.`
-      : 'No AI Fabric traffic currently crosses the public internet — every identity rides a private or governed path.';
+    : ungovernedTokens > 0
+      /* "exposed to external providers" was true only of the gpt-class row.
+         `helion-70b` is self-hosted on CoreWeave — its ungoverned tokens rode
+         an unscreened path to the operator's own GPUs, which is a different
+         exposure and not an external provider. The clause now says what is
+         true of every row it can name. */
+      ? `${pctPublic} of today's AI Fabric tokens (${fmtTokens(ungovernedTokens)}) were metered over the public internet${attribution}, unguardrailed and outside the fabric's control.${forward}`
+      : 'Every token metered today rode a private or governed path — none of it crossed the public internet.';
 
   /* With every meter at zero, sorting by consumption picks an arbitrary row —
      so a "largest" claim in that state has to be sorted by the thing it
@@ -369,31 +443,26 @@ function buildBriefing(cc: CloudControl): Briefing {
 /**
  * What the flow panel says when its series is flat zero.
  *
- * It cannot be a constant. `tokenSeries()` returns all zeros for any identity
- * whose endpoint is not meter-ready, while the TOKENS tile 40px above reads
- * `aiSpendTotals().tokensToday`, which counts the live agent requests
- * `promptTrace()` meters regardless of readiness. On a cold load of a permanent
- * route that printed "No token flow yet" directly under `TOKENS 1.4k` with a
- * Records table listing the same 1.4k beside it.
+ * This is a constant again, and that is the point. It used to need a second
+ * branch — "today's 1.4k tokens are live agent requests, and the fabric charts
+ * them as a trend once a GPU substrate is attached" — because `tokenSeries()`
+ * charted zero for any identity the engine did not consider meter-ready while
+ * the TOKENS tile 40px above counted its live spend. A sentence explaining why
+ * the chart disagrees with the tile beside it is a workaround, not a fix.
  *
- * The engine's readiness split is deliberate and is not touched here; the HINT
- * is made to read the same derivation as the tile, so the two cannot disagree.
- * When tokens really are zero the original sentence is the true one and is
- * kept verbatim.
+ * `tokenSeries()` now tails on the live meter whatever the readiness gate says
+ * (`state-telemetry.ts`), and `chartValue()` above stops a sub-dollar Cost
+ * series rounding every point to zero, so the panel is empty in exactly one
+ * state: nothing has been metered. In that state this sentence is just true.
  */
-function buildEmptyHint(cc: CloudControl): string {
-  const tokensToday = aiSpendTotals(cc).tokensToday;
-  if (tokensToday === 0)
-    return 'No token flow yet — attach a GPU substrate in Connect to light up the fabric.';
-  return `No charted flow in this window yet — today's ${fmtTokens(tokensToday)} tokens are live agent requests, and the fabric charts them as a trend once a GPU substrate is attached in Connect.`;
-}
+const EMPTY_HINT = 'No token flow yet — attach a GPU substrate in Connect to light up the fabric.';
 
 export function aiBinding(cc: CloudControl): ObservabilityBinding {
   return {
     layer: 'ai',
     title: 'AI Fabric Observability',
     columns: ['Identity', 'Tokens', 'Model', 'Route', 'Status'],
-    emptyHint: buildEmptyHint(cc),
+    emptyHint: EMPTY_HINT,
     kpis: () => buildKpis(cc),
     flowTabs: () => FLOW_TABS,
     flowSeries: (tabId: string) => buildFlowSeries(cc, tabId),

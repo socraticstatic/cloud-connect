@@ -177,20 +177,26 @@ function topTalkers(rid){
 Object.assign(CC,{telemetry,obsSummary,latencySeries,lossSeries,percentiles,topTalkers});
 
 /* tokens get a time dimension: spend/day per app (flat zero before the
-   substrate exists, ramping once it does, tail = today's live meter)
-   and per-model inference latency derived from the same region
-   latencies everything else uses. */
+   substrate exists, ramping once it does) and per-model inference latency
+   derived from the same region latencies everything else uses.
+
+   The TAIL is always today's live meter, ready or not. An identity whose
+   endpoint has never been attached has no charted history - it started
+   metering today - but it is not at zero, and this series used to say it
+   was: all-zero points fired /ai/observe's "No token flow yet" empty state
+   directly under a TOKENS tile reading the same meter. History it does not
+   have, and today it does. */
 CC.tokenSeries=function(tag,N){
   const rng=_.mulberry32(_.hashStr('tok:'+tag));
-  const ready=CC.tokenMeterList().find(m=>m.tag===tag);
+  const m=CC.tokenMeterList().find(x=>x.tag===tag);
   const budget=CC.tokenBudgetOf?CC.tokenBudgetOf(tag):1000000;
   const pts=[];
   for(let i=0;i<N;i++){
-    if(!ready||!ready.ready){pts.push(0);continue;}
+    if(!m||!m.ready){pts.push(0);continue;}
     const ramp=Math.min(1,(i/(N-1))*1.6); // adoption ramps
     pts.push(Math.round(budget*0.55*ramp*(0.75+rng()*0.5)));
   }
-  if(ready&&ready.ready)pts[N-1]=ready.today;
+  if(m&&N>0)pts[N-1]=m.today;
   return pts;
 };
 CC.modelLatencySeries=function(modelId,N){
