@@ -6,16 +6,18 @@ test('boots to Discover, nav shows both domains, attach works on NaaS Connect', 
   await page.goto('/');
   await expect(page).toHaveTitle(/Cloud Connect/);
   const mainNav = page.getByLabel('Main navigation');
-  // Two domains, each carrying the same four verbs. The verb labels repeat by
-  // design, so each domain is asserted through its own named group — which is
-  // also the only thing a screen-reader user has to tell them apart.
+  // Layer-first: Discover is the only bare link; each layer is a dropdown
+  // whose panel carries its four verbs. No verb label repeats in the bar.
   await expect(mainNav.getByRole('link', { name: 'Discover', exact: true })).toBeVisible();
-  for (const domain of ['NaaS', 'AI Fabric']) {
-    const group = mainNav.getByRole('group', { name: domain });
-    await expect(group).toBeVisible();
+  for (const layer of ['NaaS', 'AI Fabric']) {
+    const trigger = mainNav.getByRole('button', { name: layer, exact: true });
+    await expect(trigger).toBeVisible();
+    await trigger.click();
+    const menu = mainNav.getByRole('menu', { name: layer });
     for (const verb of ['Connect', 'Govern', 'Observe', 'Cost']) {
-      await expect(group.getByRole('link', { name: verb, exact: true })).toBeVisible();
+      await expect(menu.getByRole('menuitem', { name: new RegExp(`^${verb}\\b`) })).toBeVisible();
     }
+    await trigger.click();
   }
   // Discover is a read view of the unified estate — no attach control here.
   // The rebuilt Discover tree exposes Expand/Collapse controls and per-row
