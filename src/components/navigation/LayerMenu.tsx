@@ -23,6 +23,11 @@ export function LayerMenu({ layer }: { layer: NavLayer }) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout>>();
+  // A mouse click lands AFTER its own pointerenter has already hover-opened
+  // the panel — a naive toggle would snap it shut on the very click meant to
+  // open it. The first click after a hover-open is spent confirming, not
+  // toggling.
+  const openedByHover = useRef(false);
   const panelId = useId();
 
   const layerActive = layer.items.some(i => isNavRouteActive(location.pathname, i.to));
@@ -100,7 +105,13 @@ export function LayerMenu({ layer }: { layer: NavLayer }) {
     <div
       ref={rootRef}
       className="relative h-full flex items-stretch"
-      onPointerEnter={e => { if (e.pointerType === 'mouse') { cancelClose(); setOpen(true); } }}
+      onPointerEnter={e => {
+        if (e.pointerType === 'mouse') {
+          cancelClose();
+          if (!open) openedByHover.current = true;
+          setOpen(true);
+        }
+      }}
       onPointerLeave={e => { if (e.pointerType === 'mouse') scheduleClose(); }}
     >
       <button
@@ -109,7 +120,18 @@ export function LayerMenu({ layer }: { layer: NavLayer }) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        onClick={() => setOpen(o => !o)}
+        onClick={() => {
+          // The click's own pointerenter may have hover-opened the panel in
+          // the SAME event batch — `open` here can still read false while a
+          // setOpen(true) sits queued, and a toggle would invert it shut.
+          // After any hover-open, the click confirms; it never toggles.
+          if (openedByHover.current) {
+            openedByHover.current = false;
+            setOpen(true);
+            return;
+          }
+          setOpen(o => !o);
+        }}
         onKeyDown={onTriggerKeyDown}
         className={`
           inline-flex items-center gap-1 px-1 py-4 h-full border-b-2 font-medium

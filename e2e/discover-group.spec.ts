@@ -80,8 +80,9 @@ test('picking sites and naming them creates a group with exactly that membership
 
   /* Now Govern. The expected membership is stated from the SEED — the three
      Bay Area branch ids — and never read back off a number the UI just
-     reported. */
-  await page.getByRole('link', { name: /Govern/i }).first().click();
+     reported. Enter through the stack panel's NaaS band: a bare first()
+     on /Govern/i would land on the AI Fabric band, which draws above NaaS. */
+  await page.getByTestId('stack-band-naas').getByRole('link', { name: /^Govern\b/ }).click();
   await page.getByRole('button', { name: /^Groups/ }).click();
 
   const row = page.locator('tbody tr', { hasText: 'West branches E2E' });

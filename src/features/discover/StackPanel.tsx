@@ -71,7 +71,7 @@ export function StackPanel() {
           <div className="min-w-0">
             <p className="text-figma-base font-bold text-fw-bodyLight tracking-[-0.02em]">
               Cloud
-              <span className="ml-2 align-middle text-[10px] font-semibold uppercase tracking-[0.08em] text-fw-disabled">
+              <span className="ml-2 align-middle text-[10px] font-semibold uppercase tracking-[0.08em] text-fw-bodyLight">
                 its own layer, next
               </span>
             </p>
@@ -96,7 +96,7 @@ export function StackPanel() {
         >
           <p className="text-figma-base font-bold text-fw-bodyLight tracking-[-0.02em]">
             Transport &amp; Access
-            <span className="ml-2 align-middle text-[10px] font-semibold uppercase tracking-[0.08em] text-fw-disabled">
+            <span className="ml-2 align-middle text-[10px] font-semibold uppercase tracking-[0.08em] text-fw-bodyLight">
               vision
             </span>
           </p>
@@ -104,7 +104,7 @@ export function StackPanel() {
             {['Fiber', 'Dark fiber', 'Wireless · 5G · FirstNet', 'Satellite'].map(m => (
               <span
                 key={m}
-                className="rounded-full border border-dashed border-fw-secondary px-3 py-1 text-figma-sm font-medium text-fw-disabled select-none"
+                className="rounded-full border border-dashed border-fw-secondary px-3 py-1 text-figma-sm font-medium text-fw-bodyLight select-none"
               >
                 {m}
               </span>

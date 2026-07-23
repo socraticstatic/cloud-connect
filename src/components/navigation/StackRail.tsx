@@ -22,10 +22,10 @@ function VisionSlot({ label }: { label: string }) {
       data-testid="vision-slot"
       className="w-full rounded-md border border-dashed border-fw-secondary px-1 py-1 text-center pointer-events-none select-none"
     >
-      <span className="block text-[9px] font-semibold uppercase tracking-[0.08em] text-fw-disabled leading-tight">
+      <span className="block text-[9px] font-semibold uppercase tracking-[0.08em] text-fw-bodyLight leading-tight">
         {label}
       </span>
-      <span className="block text-[8px] font-medium text-fw-disabled">next</span>
+      <span className="block text-[8px] font-medium text-fw-bodyLight">next</span>
     </div>
   );
 }

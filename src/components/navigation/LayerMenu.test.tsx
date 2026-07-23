@@ -55,6 +55,19 @@ describe('LayerMenu', () => {
     expect(screen.getByRole('button', { name: naas.label }).className).toContain('border-fw-active');
   });
 
+  test('a click right after hover-open confirms the panel, never closes it', () => {
+    renderMenu();
+    const trigger = screen.getByRole('button', { name: naas.label });
+    fireEvent.pointerEnter(trigger.parentElement!, { pointerType: 'mouse' });
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    // The click that follows the opening hover keeps the panel open…
+    fireEvent.click(trigger);
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    // …and only the NEXT click toggles it shut.
+    fireEvent.click(trigger);
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+
   test('hover-open schedules a delayed close on pointer leave', () => {
     vi.useFakeTimers();
     renderMenu();
