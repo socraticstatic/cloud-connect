@@ -1,12 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { seedAuth, openLayerVerb } from '../tests/e2e/helpers';
+import { seedAuth } from '../tests/e2e/helpers';
 
 /* The layer-first IA, walked end to end as a person walks it:
-   in through the Discover stack, across a layer with the dropdown,
-   vertically with the rail, and out to the concept deck that explains
-   why it is shaped this way. */
+   in through the Discover stack, across a layer with the left rail, up to
+   another layer with the top tabs, and out to the concept deck. */
 
-test('Discover stack → layer verbs → dropdown → rail hop', async ({ page }) => {
+test('Discover stack → layer rail → top-tab layer switch', async ({ page }) => {
   await seedAuth(page);
   await page.goto('/#/discover', { waitUntil: 'domcontentloaded' });
 
@@ -22,19 +21,17 @@ test('Discover stack → layer verbs → dropdown → rail hop', async ({ page }
   await panel.getByTestId('stack-band-naas').getByRole('link', { name: /^Connect\b/ }).click();
   await expect(page).toHaveURL(/#\/naas\/connect/);
 
-  // Cross the layer with the dropdown: NaaS → Cost.
-  await openLayerVerb(page, 'NaaS', 'Cost');
-  await expect(page).toHaveURL(/#\/naas\/cost/);
-
-  // Hop the stack: same verb, other layer, one click on the rail.
-  const rail = page.getByTestId('stack-rail');
+  // Cross the layer with the left rail: NaaS Connect → Cost.
+  const rail = page.getByTestId('left-rail');
   await expect(rail).toBeVisible();
-  await rail.getByRole('link', { name: /AI Fabric/ }).click();
-  await expect(page).toHaveURL(/#\/ai\/cost/);
-
-  // And back down — the rail keeps the verb both directions.
-  await rail.getByRole('link', { name: /NaaS/ }).click();
+  await rail.getByRole('link', { name: 'Cost', exact: true }).click();
   await expect(page).toHaveURL(/#\/naas\/cost/);
+
+  // Switch layers up top: the AI Fabric tab lands on its Home.
+  await page.getByLabel('Main navigation').getByRole('tab', { name: 'AI Fabric', exact: true }).click();
+  await expect(page).toHaveURL(/#\/ai\/home/);
+  // And the rail is now the AI Fabric lifecycle.
+  await expect(page.getByTestId('left-rail').getByText('AI Fabric')).toBeVisible();
 });
 
 test('the concept deck explains the table and links only into live rows', async ({ page }) => {
