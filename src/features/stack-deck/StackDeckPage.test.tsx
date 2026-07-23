@@ -13,15 +13,27 @@ const LIVE_ROUTES = [
 ];
 
 describe('StackDeckPage', () => {
-  it('renders all seven section headlines', () => {
+  it('renders all eight section headlines', () => {
     render(<StackDeckPage />);
     expect(screen.getByRole('heading', { name: /A verb is not a destination/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Four verbs across\. Four layers down/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /One experience over everything AT&T runs/ })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Five rules route every label/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Design on it\. Share it\. A human commits/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Seven rules route every label/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Eight links\. Four words/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Sticky is three columns riding a fourth/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /The table was always there/ })).toBeInTheDocument();
+  });
+
+  it('the twin section walks the five-step loop and cites both companions', () => {
+    render(<StackDeckPage />);
+    for (const step of ['Design', 'Simulate', 'Share', 'Approve', 'The advisor drafts']) {
+      expect(screen.getByText(step, { exact: true })).toBeInTheDocument();
+    }
+    expect(screen.getByText(/The time machine\./)).toBeInTheDocument();
+    expect(screen.getByText(/⌘K intents\./)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Open the twin/ })).toHaveAttribute('href', '#/discover');
+    expect(screen.getByRole('link', { name: /Scrub the window/ })).toHaveAttribute('href', '#/naas/observe');
   });
 
   it('draws the full matrix: 16 body cells', () => {
