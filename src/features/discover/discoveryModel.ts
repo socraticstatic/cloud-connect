@@ -164,18 +164,29 @@ export function aiPublicFlowGbps(cc: CloudControl): number {
 }
 
 /**
- * Region id -> latency in ms, from `fabricModel()` — the ONE region-latency
- * derivation this estate has (nearest capturing on-ramp site to the region's
- * geo). Connect's Performance tile and the new PathChoice cards already render
- * it; Discover used to render the raw seed `r.lat` instead, so Nebius read
- * 44ms on Discover and 120ms on Connect, and all nine regions disagreed.
+ * Region id -> the latency it states, and the PATH that figure measures.
  *
- * Discover now reads this map, so the two surfaces agree by construction
- * rather than by anyone remembering to keep them in step.
+ * From `fabricModel()` — the ONE region-latency derivation this estate has.
+ * Discover used to render the raw seed `r.lat`, so Nebius read 44ms here and
+ * 120ms on Connect and all nine regions disagreed; that was fixed by reading
+ * `latencyMs`. It then rendered the FABRIC figure for regions still riding
+ * public transit, under a bare "LATENCY" label, while /naas/observe stated the
+ * public figure for the same regions — a second disagreement in the same tile.
+ *
+ * `latencyMs` is now the figure for the path the region is on today and this
+ * map carries the path with it, so the tile can say which of the two it is
+ * showing rather than leaving a viewer to guess between two screens.
  */
 export function regionLatencyMap(cc: CloudControl): Record<string, number> {
   const map: Record<string, number> = {};
   for (const r of cc.fabricModel().regions) map[r.regionId] = r.latencyMs;
+  return map;
+}
+
+/** Region id -> which path its `regionLatencyMap` figure measures. */
+export function regionLatencyPathMap(cc: CloudControl): Record<string, 'private' | 'public'> {
+  const map: Record<string, 'private' | 'public'> = {};
+  for (const r of cc.fabricModel().regions) map[r.regionId] = r.path;
   return map;
 }
 

@@ -226,9 +226,23 @@ function buildKpis(cc: CloudControl): Kpi[] {
   const p95 = percentile95(rows.map(r => r.current.latencyMs));
   const loss = currentLoss(cc);
 
+  /* P95 is taken over the flow rows in the table below, each on the path it is
+     on right now — and the tile says so. The briefing rail beside it speaks
+     about REGIONS on the public path ("eu-north1 is the outlier at 204ms"),
+     which is a different population, and neither tile nor sentence used to
+     name its own. That is how a KPI reading 265ms came to sit beside a
+     sentence naming 204ms as the estate's outlier: the 265 was a cloud-to-
+     cloud row whose public latency was being priced off an AT&T backbone
+     detour (fixed in `state-routing.ts`, `cloudToCloud`). */
   return [
     { key: 'throughput', label: 'Throughput', value: rk.totalGbps.toFixed(1), unit: 'Gbps' },
-    { key: 'p95-latency', label: 'P95 Latency', value: String(Math.round(p95)), unit: 'ms' },
+    {
+      key: 'p95-latency',
+      label: 'P95 Latency',
+      value: String(Math.round(p95)),
+      unit: 'ms',
+      sub: `across ${rows.length} flows`,
+    },
     { key: 'loss', label: 'Packet Loss', value: loss.toFixed(2), unit: '%' },
     { key: 'egress', label: 'Egress', value: fmtDollars(eg.total), sub: '/mo' },
     { key: 'under-control', label: 'Under Control', value: String(rk.pctUnderControl), unit: '%' },

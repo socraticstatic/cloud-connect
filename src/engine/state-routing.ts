@@ -131,16 +131,28 @@ function cloudToCloud(){
         egressPerGb:PRIVATE_EGRESS,attControlled:true,diversityGroup:city,
         available:(pair.dci?gpuUp:true)&&!failedPaths.has(id)};
     }).sort((x,y)=>x.latencyMs-y.latencyMs);
-    /* East-west is priced by the SAME rule as north-south: the public figure is
-       the best AT&T route for this pair times PUBLIC_TRANSIT_FACTOR, not an
-       independent great circle. Measuring the two ends with different geometry
-       is what let the GPU DCI row read "AT&T-controlled · 59ms" beside "Public
-       internet · 12ms" — the on-ramp that reaches CoreWeave is in Dallas and
-       the region is in New Jersey, so the fabric route is a long way round and
-       a straight-line public figure beat it on the same row. */
-    const best=att.length?att[0].latencyMs:_pairRttMs(A.r,B.r,null);
+    /* East-west PUBLIC latency derives from the two ENDPOINTS' own geography,
+       never from the AT&T route that happens to serve them: the public internet
+       does not ride AT&T's PoPs. Pricing it as `best AT&T route × factor` made
+       `AWS us-east-1 ↔ CoreWeave US-EAST-04A` render "Public internet · 100ms"
+       — Virginia to New Jersey — because the only PoP reaching CoreWeave is in
+       Dallas, so the pair's AT&T detour was charged to a path that never goes
+       near Dallas. It also drove /naas/observe's P95 KPI to 265ms beside a
+       briefing on the same screen naming 204ms as the estate's public outlier.
+
+       `_pairRttMs(A,B,null)` IS that derivation: the direct great circle with
+       PUBLIC_TRANSIT_FACTOR applied — the same coefficient, and the same fiber
+       constants, north-south uses. So public and private still differ only by
+       the path, and the AT&T figure is still the one that changes when the
+       fabric changes.
+
+       Where the fabric route is genuinely longer than the straight line (the
+       GPU DCI: New Jersey reached through Dallas), the row says so and the
+       advisor states the sign of the difference — see `routeAdvisor`. A path
+       that costs latency still buys the egress rate and the control; a figure
+       bent to hide that is the thing this file exists to stop. */
     const paths=[{id:'public',label:'Public internet',sub:pair.dci?'GPU-cloud public peering':'hyperscaler-native peering',
-      via:null,mechanism:'public',latencyMs:Math.round(best*PUBLIC_TRANSIT_FACTOR),
+      via:null,mechanism:'public',latencyMs:_pairRttMs(A.r,B.r,null),
       egressPerGb:PUBLIC_EGRESS,attControlled:false,diversityGroup:'public',available:true},...att];
     return {id:pair.id,kind:'c2c',label,gbps:pair.gbps,srcCloud:pair.a[0],dstCloud:pair.b[0],
       viaPublic:pair.dci?!gpuUp:true,paths};
@@ -301,11 +313,19 @@ function routeAdvisor(){
       const att=f.paths.find(p=>p.attControlled&&p.available);
       if(att){
         const pub=f.paths.find(p=>p.id==='public')||f.current;
-        const dLat=Math.max(0,(pub.latencyMs||0)-(att.latencyMs||0));
+        /* The latency delta is stated WITH ITS SIGN. `Math.max(0, …)` printed
+           "−0ms" for the one pair whose AT&T path is genuinely longer than the
+           public one — the GPU DCI reaches CoreWeave's New Jersey region only
+           through the Dallas PoP — so the recommendation claimed a saving the
+           flow table beside it contradicted. Cost and control are why that
+           steer is still worth making; the sentence now leads with them and
+           names the latency it costs. */
+        const dLat=Math.round((pub.latencyMs||0)-(att.latencyMs||0));
         const dCost=Math.round(((pub.egressPerGb||0.09)-(att.egressPerGb||0.02))*100)/100;
+        const latPhrase=dLat>0?`−${dLat}ms`:dLat<0?`+${-dLat}ms`:'no latency change';
         recs.push({id:'rec-'+f.id,flowId:f.id,pathId:att.id,
           title:f.label+' is on the public internet',
-          detail:`Recommend steer to ${att.label}${att.sub?' · '+att.sub:''} — −${dLat}ms, −$${dCost}/GB`,
+          detail:`Recommend steer to ${att.label}${att.sub?' · '+att.sub:''} — −$${dCost}/GB and AT&T-controlled, ${latPhrase}`,
           action:'steer'});
       }
     } else if(!f.diverse){
@@ -316,7 +336,25 @@ function routeAdvisor(){
     }
   });
   const events=history.filter(h=>h.kind==='failover').slice(0,3).map(h=>({title:h.label,detail:h.detail}));
-  return {recommendations:recs.slice(0,5),events};
+  /* STEER recommendations rank above DIVERSIFY ones, because the list is
+     truncated and /naas/cost's "Steer to save" panel reads only the steers out
+     of what survives.
+
+     After the tour's own Connect beat (`activateOnramp('nb2')`) five
+     controlled-but-single-homed flows filled the top five, so that panel
+     rendered "Every flow is already on its optimal path — there is nothing
+     left to steer" while /naas/observe's flow table, one click away, listed
+     `AWS us-east-1 ↔ Azure West US 2` and `AWS us-east-1 ↔ Google Cloud
+     us-central1` as `Public internet · Uncontrolled` — each with an available
+     AT&T path and a live Steer button in its own Action column.
+
+     A truncation must never drop the whole class of recommendation another
+     screen states is empty. Steers also carry an action and two figures; a
+     diversity note is advice about a path that does not exist yet. Ordering is
+     stable within each class (`routeFlows()` order), so nothing here depends on
+     a clock or a sort of equal keys. */
+  const ranked=[...recs.filter(r=>r.action==='steer'),...recs.filter(r=>r.action!=='steer')];
+  return {recommendations:ranked.slice(0,5),events};
 }
 
 /* ---- fabric model (Cloud Fabric redesign C1): Sites → AT&T Fabric → Regions ----
@@ -372,9 +410,26 @@ function _regionShape(cid,cloud,r){
      either way. The type already carries 'none' for exactly this state. */
   const reliability = active.length>=2 ? 'dual' : active.length===1 ? 'single' : 'none';
   const path = active.length>=1 ? 'private' : 'public';
+  const L=_latencyPair(cid,r.id);
+  /* A region has TWO figures and every surface that shows one must say which.
+     `latencyMs` used to be the private figure unconditionally, so Connect's
+     region node rendered "Public · 54ms" — the word saying public transit, the
+     number being the fabric RTT — while /naas/observe's flow rows for the same
+     region read 92ms under a Path column reading "Public internet". Eight of
+     nine regions disagreed across two screens a hover card links between.
+
+     `latencyMs` is now the figure for the path the region is ON today, so the
+     word and the number agree and Observe agrees with both. `privateMs` and
+     `publicMs` are carried alongside for the surfaces that tell the two-figure
+     story — the hover card, the Performance tile, the PathChoice cards, which
+     describe the FABRIC path whether or not the region is on it yet. That gap
+     is the product's argument; it has to be told, not left implicit. */
   return {
     cloudId:cid, regionId:r.id, name:r.name, cloudName:cloud.name, attached:!!r.attached,
-    reliability, path, latencyMs:_regionLatencyMs(cid,r), onrampIds:ramps.map(o=>o.id),
+    reliability, path,
+    privateMs:L.privateMs, publicMs:L.publicMs,
+    latencyMs: path==='private'?L.privateMs:L.publicMs,
+    onrampIds:ramps.map(o=>o.id),
   };
 }
 

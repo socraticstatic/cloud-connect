@@ -300,7 +300,6 @@ function buildRecords(cc: CloudControl, groupBy: string): RecordRow[] {
 }
 
 function buildKpis(cc: CloudControl): Kpi[] {
-  const rows = buildAiRows(cc);
   const catalog = cc.modelCatalog() as ModelCatalogEntry[];
   const decisions = cc.decisionLog() as Decision[];
 
@@ -311,12 +310,22 @@ function buildKpis(cc: CloudControl): Kpi[] {
   const costActual = spend.spendToday;
   const savings = spend.savings;
 
-  // TTFT: no selector exposes an aggregate "time to first token" metric.
-  // Derive it the same way Task 2 derived P95 latency — from an already
-  // deterministic, seeded per-model series (modelLatencySeries), taking the
-  // P95 across all ready models' full series. No Date.now/Math.random.
-  const readyModelIds = Array.from(new Set(rows.filter(r => r.ready).map(r => r.modelId).filter(Boolean)));
-  const ttftPoints = readyModelIds.flatMap(id => cc.modelLatencySeries(id, SERIES_POINTS) as number[]);
+  /* TTFT: no selector exposes an aggregate "time to first token" metric, so it
+   * is P95 over the deterministic, seeded per-model series
+   * (`modelLatencySeries`) — the same series the TTFT flow tab charts.
+   *
+   * The POPULATION is every model in `modelCatalog()`, which is exactly the
+   * table `/ai/connect` renders and the denominator of its "n / m governed &
+   * ready" badge. It used to be the models whose IDENTITY meter was ready
+   * (`tokenMeterList().ready` — region attached AND that identity's governance
+   * fix applied, `aiSpend.ts`'s "readiness gates metering, not path"). After
+   * the tour's own Connect beat that is one model of three, so this tile read
+   * TTFT 47ms while `/ai/connect` one click away listed helion-cls-13b at
+   * 133ms P50 under a badge reading "3 / 3 governed & ready" — and TTFT
+   * "improved" 217→47ms on attach, which was a change of population, not of
+   * network. The catalog never changes size, so every movement in this figure
+   * is now a movement in the P50s beside it. */
+  const ttftPoints = catalog.flatMap(m => cc.modelLatencySeries(m.id, SERIES_POINTS) as number[]);
   const ttft = percentile95(ttftPoints.length ? ttftPoints : catalog.map(m => m.p50));
 
   /* The bucket gets a tile of its own. It is the one number on this screen a
@@ -334,7 +343,15 @@ function buildKpis(cc: CloudControl): Kpi[] {
     },
     { key: 'requests', label: 'Requests', value: String(decisions.length) },
     { key: 'cost', label: 'Cost', value: fmtUsd(costActual), sub: '/today' },
-    { key: 'ttft', label: 'TTFT', value: String(Math.round(ttft)), unit: 'ms' },
+    {
+      key: 'ttft',
+      label: 'TTFT',
+      value: String(Math.round(ttft)),
+      unit: 'ms',
+      // Names the population, so the tile cannot be read as a claim about
+      // whichever subset of models happens to be metering.
+      sub: `P95 across ${catalog.length} models`,
+    },
     { key: 'savings', label: 'Savings', value: fmtUsd(savings), sub: '/today' },
   ];
 }

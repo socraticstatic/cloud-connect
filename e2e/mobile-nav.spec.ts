@@ -187,10 +187,20 @@ async function readFold(page: Page): Promise<FoldReading> {
   });
 }
 
+/* 375x667 is first, and it is the reason this list is a list.
+   The drawer was previously measured at 375x812 / 768x1024 / 900x800 and fit
+   all three — while an iPhone SE / 8 (375x667, the shortest phone still in the
+   support matrix) gave the scroller 392px for 409px of destinations, putting
+   `/ai/observe` and `/ai/cost` 17px below the fold. A fold test that only
+   measures the viewports the layout was designed against measures the
+   designer, not the layout. 1023x700 is the last width before the desktop bar
+   returns at 1280px, i.e. the tallest-content / shortest-viewport corner. */
 for (const vp of [
+  { width: 375, height: 667 },
   { width: 375, height: 812 },
   { width: 768, height: 1024 },
   { width: 900, height: 800 },
+  { width: 1023, height: 700 },
 ]) {
   test.describe(`drawer fold at ${vp.width}x${vp.height}`, () => {
     test.use({ viewport: vp });

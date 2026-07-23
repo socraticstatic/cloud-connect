@@ -71,6 +71,10 @@ const REGION_X = 596;
 const REGION_W = 320;
 const REGION_RIGHT = REGION_X + REGION_W;
 
+/** Performance hover card. Wide enough for "Public today Nms · on the fabric
+ *  Nms" plus the Observe link, on one line, without wrapping. */
+const HOVER_W = 340;
+
 /** short product label for an on-ramp type — the edge detail, not a block. */
 export function onrampShort(type: string): string {
   if (/direct connect/i.test(type)) return 'DX';
@@ -288,7 +292,7 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
                   strokeOpacity={focusId && !lit ? 0.3 : 0.9}
                   strokeDasharray={dash} strokeLinecap="round"
                 >
-                  <title>{region.cloudName} {region.name} · {region.path} · {region.reliability} · {region.latencyMs}ms</title>
+                  <title>{region.cloudName} {region.name} · {region.path} · {region.reliability} · {region.latencyMs}ms on the {region.path === 'private' ? 'AT&T fabric' : 'public internet'}</title>
                 </path>
                 {/* on-ramp product label — the edge detail-on-demand */}
                 {region.onrampIds.length > 0 && (
@@ -401,6 +405,14 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
                       <span className="truncate text-[11px] font-semibold text-fw-heading leading-tight">{region.name}</span>
                       {firstOfCloud && <span className="truncate text-[10px] text-fw-bodyLight leading-tight">· {region.cloudName}</span>}
                     </span>
+                    {/* The word and the number describe ONE path. `latencyMs`
+                        is the figure for the path the region is on, so
+                        "Public · 92ms" is the public figure — the same one
+                        /naas/observe's flow rows state for this region — and
+                        "Private · 3ms" is the fabric figure. This line used to
+                        pair the word "Public" with the PRIVATE number, which
+                        put eight of nine regions at odds with the Observe
+                        screen the hover card links to. */}
                     <span className="flex items-center gap-1.5 leading-tight">
                       <span className={`text-[10px] font-medium ${region.path === 'private' ? 'text-[#0057b8]' : 'text-[#475569]'}`}>
                         {region.path === 'private' ? 'Private' : 'Public'}
@@ -439,11 +451,40 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
           })()}
         </g>
 
-        {/* ---- performance hover tooltip: latency + jump to Observe ---- */}
+        {/* ---- performance hover card: BOTH figures, each labelled ----
+             This card carries a link into Observe, so the two screens have to
+             be readable against each other. It used to show one unlabelled
+             number — the fabric RTT — beside "View in Observe →", and Observe
+             showed the public figure for the same region under a Path column
+             reading "Public internet": 40ms here, 68ms one click away.
+             A region on the public path now leads with what it costs TODAY and
+             names the fabric figure as the second term, because that gap is
+             the whole argument for attaching it. An attached region has one
+             path and states one figure.
+
+             Its right edge lands on the region column's left edge: the card is
+             wider now that it carries two labelled figures, and the fixed left
+             offset it used to carry pushed it across the node above the one
+             being hovered. */}
         {hoverInfo && (
-          <foreignObject x={Math.max(4, hoverInfo.x - 150)} y={Math.max(2, hoverInfo.y)} width={200} height={34}>
-            <div className="flex items-center justify-end gap-1.5 whitespace-nowrap rounded-md border border-fw-secondary bg-white px-2 py-1 text-[10px] shadow-sm">
-              <span className="font-semibold tabular-nums text-fw-heading">{hoverInfo.region.latencyMs}ms</span>
+          <foreignObject x={Math.max(4, hoverInfo.x + 8 - HOVER_W)} y={Math.max(2, hoverInfo.y)} width={HOVER_W} height={34}>
+            <div
+              data-testid={`fabric-hover-${hoverInfo.region.regionId}`}
+              className="flex items-center justify-end gap-1.5 whitespace-nowrap rounded-md border border-fw-secondary bg-white px-2 py-1 text-[10px] shadow-sm"
+            >
+              {hoverInfo.region.path === 'private' ? (
+                <span className="text-fw-bodyLight">
+                  On the fabric{' '}
+                  <span className="font-semibold tabular-nums text-fw-heading">{hoverInfo.region.privateMs}ms</span>
+                </span>
+              ) : (
+                <span className="text-fw-bodyLight">
+                  Public today{' '}
+                  <span className="font-semibold tabular-nums text-fw-heading">{hoverInfo.region.publicMs}ms</span>
+                  {' · on the fabric '}
+                  <span className="font-semibold tabular-nums text-[#0057b8]">{hoverInfo.region.privateMs}ms</span>
+                </span>
+              )}
               <Link to="/naas/observe" className="font-medium text-[#0057b8] hover:underline">View in Observe →</Link>
             </div>
           </foreignObject>

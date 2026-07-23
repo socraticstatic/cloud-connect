@@ -54,6 +54,16 @@ export interface FabricRegion {
   attached: boolean;
   reliability: 'dual' | 'single' | 'none';
   path: 'private' | 'public';
+  /** RTT to the on-ramp serving this region — what it costs ON the fabric,
+   *  whether or not it is attached yet. */
+  privateMs: number;
+  /** The same region over public transit — what it costs today while `path`
+   *  is `'public'`, and the counterfactual once it is `'private'`. */
+  publicMs: number;
+  /** The figure for the path the region is on RIGHT NOW (`privateMs` when
+   *  `path === 'private'`, `publicMs` otherwise). A surface rendering this
+   *  bare must name the path beside it; a surface naming a SPECIFIC path
+   *  must render that path's own figure instead. */
   latencyMs: number;
   onrampIds: string[];
 }

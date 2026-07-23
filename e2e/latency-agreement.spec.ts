@@ -25,9 +25,19 @@ interface LatencyPair {
   privateMs: number;
   publicMs: number;
 }
+interface FabricRegionLite {
+  regionId: string;
+  name: string;
+  cloudName: string;
+  path: 'private' | 'public';
+  latencyMs: number;
+  privateMs: number;
+  publicMs: number;
+}
 interface CCHandle {
   regionLatency(id: string): LatencyPair | null;
   activateOnramp(id: string): boolean;
+  fabricModel(): { regions: FabricRegionLite[] };
 }
 async function goHash(page: Page, hash: string) {
   await page.evaluate(h => { window.location.hash = h; }, hash);
@@ -64,6 +74,20 @@ async function observeRowLatencies(page: Page, pathName: string): Promise<string
     .filter(Boolean);
 }
 
+const fabricRegions = (page: Page): Promise<FabricRegionLite[]> =>
+  page.evaluate(() => (window as unknown as { CC: CCHandle }).CC.fabricModel().regions);
+
+/** What the Connect region node renders: the path word and the ms beside it. */
+async function connectNode(page: Page, rid: string): Promise<{ path: string; ms: string }> {
+  await goHash(page, '#/naas/connect');
+  const node = page.getByTestId(`fabric-node-region-${rid}`);
+  await expect(node).toBeVisible();
+  const text = (await node.innerText()).replace(/\s+/g, ' ');
+  const m = /(Private|Public) · (\d+)ms/.exec(text);
+  expect(m, `no path/latency pairing on the ${rid} node: "${text}"`).not.toBeNull();
+  return { path: m![1], ms: m![2] };
+}
+
 test('us-east-1 states one latency on every screen a viewer moves between', async ({ page }) => {
   await seedAuth(page);
   await page.goto('/#/naas/connect', { waitUntil: 'domcontentloaded' });
@@ -94,14 +118,142 @@ test('us-east-1 states one latency on every screen a viewer moves between', asyn
   await expect(briefing).toContainText(/on-ramp/i);
 });
 
+/* THE WIDENED WALK.
+ *
+ * The two tests either side of this one follow ONE region along the AT&T path,
+ * which is the only path where the two screens had ever been compared. Every
+ * region a demo is about to attach is on the PUBLIC path, and there the two
+ * screens were never compared at all: Connect rendered `Public · 54ms` — the
+ * word public, the number the fabric RTT — while /naas/observe rendered 92ms
+ * under a Path column reading "Public internet". Eight of nine regions
+ * disagreed, and a hover card put the Connect figure beside a "View in Observe
+ * →" link straight to the other one.
+ *
+ * So this walks ALL NINE, on whichever path each is on, and compares the
+ * screens rather than asserting each against a different engine field. */
+test('every region states one figure across Connect, Discover and Observe — on the path it is on', async ({
+  page,
+}) => {
+  await seedAuth(page);
+  await page.goto('/#/naas/connect', { waitUntil: 'domcontentloaded' });
+
+  const regions = await fabricRegions(page);
+  expect(regions.length, 'the estate must carry regions').toBeGreaterThan(0);
+  expect(regions.some(r => r.path === 'public'), 'no public region to walk').toBe(true);
+  expect(regions.some(r => r.path === 'private'), 'no private region to walk').toBe(true);
+
+  for (const region of regions) {
+    const expected = region.path === 'private' ? region.privateMs : region.publicMs;
+
+    // 1. Connect's node: the WORD and the NUMBER describe one path.
+    const node = await connectNode(page, region.regionId);
+    expect(node.path, `${region.name}: node path word`).toBe(
+      region.path === 'private' ? 'Private' : 'Public',
+    );
+    expect(
+      node.ms,
+      `${region.name}: Connect pairs "${node.path}" with the other path's figure`,
+    ).toBe(String(expected));
+
+    // 2. Discover's tile: same number, and its label names the same path.
+    await goHash(page, '#/discover');
+    const row = page.getByRole('button', { name: region.name, exact: true }).first();
+    if (!(await row.isVisible().catch(() => false))) {
+      await page.getByRole('button', { name: region.cloudName, exact: true }).first().click();
+    }
+    await expect(row).toBeVisible();
+    const tile = (await row.innerText()).replace(/\s+/g, ' ');
+    const m = /(\d+)ms LATENCY · (FABRIC|PUBLIC)/i.exec(tile);
+    expect(m, `${region.name}: no labelled latency tile on Discover: "${tile}"`).not.toBeNull();
+    expect(m![1], `${region.name}: Discover disagrees with Connect`).toBe(String(expected));
+    expect(m![2].toLowerCase(), `${region.name}: Discover's tile names the wrong path`).toBe(
+      region.path === 'private' ? 'fabric' : 'public',
+    );
+  }
+
+  /* 3. Observe: every flow row's figure is one its own region states. The
+     table names the region only through its path, so this compares the SET —
+     a row showing a number no region carries fails, which is exactly what the
+     old public rows did (region seed x 1.7, off the fabric geometry). */
+  await goHash(page, '#/naas/observe');
+  const rows = page.getByTestId('record-row');
+  await expect(rows.first()).toBeVisible();
+  // Cloud-to-cloud rows measure a PAIR, not a region, so they are excluded
+  // here and covered by `src/engine/latencyVocabulary.test.ts`.
+  const appShown = (await rows.allInnerTexts())
+    .filter(t => !t.includes('↔'))
+    .map(t => /(\d+)ms/.exec(t.replace(/\s+/g, ' '))?.[1] ?? '');
+  expect(appShown.length, 'no app flow rows on Observe').toBeGreaterThan(0);
+  expect(appShown.every(Boolean), 'a flow row shows no latency at all').toBe(true);
+
+  const derivable = new Set(regions.flatMap(r => [String(r.privateMs), String(r.publicMs)]));
+  for (const ms of appShown) {
+    expect(derivable.has(ms), `a flow row shows ${ms}ms, which no region on any path states`).toBe(
+      true,
+    );
+  }
+});
+
+test('the hover card that links into Observe states both figures, each labelled', async ({
+  page,
+}) => {
+  /* This card carries "View in Observe →". It used to show one unlabelled
+     number — the fabric RTT — and the screen it linked to showed the public
+     one: 40ms here, 68ms one click away. Both figures now render, each said
+     for what it is, because the gap between them is the argument for
+     attaching the region. */
+  await seedAuth(page);
+  await page.goto('/#/naas/connect', { waitUntil: 'domcontentloaded' });
+
+  const regions = await fabricRegions(page);
+  const pub = regions.find(r => r.path === 'public')!;
+  expect(pub, 'no public region to hover').toBeTruthy();
+
+  await page.getByTestId(`fabric-node-region-${pub.regionId}`).hover();
+  const card = page.getByTestId(`fabric-hover-${pub.regionId}`);
+  await expect(card).toBeVisible();
+  await expect(card).toContainText(`${pub.publicMs}ms`);
+  await expect(card).toContainText(`${pub.privateMs}ms`);
+  await expect(card).toContainText(/public today/i);
+  await expect(card).toContainText(/on the fabric/i);
+  await expect(card.getByRole('link', { name: /View in Observe/ })).toBeVisible();
+
+  // An attached region has one path, so it states one figure.
+  const priv = regions.find(r => r.path === 'private')!;
+  await page.getByTestId(`fabric-node-region-${priv.regionId}`).hover();
+  const privCard = page.getByTestId(`fabric-hover-${priv.regionId}`);
+  await expect(privCard).toBeVisible();
+  await expect(privCard).toContainText(`${priv.privateMs}ms`);
+  await expect(privCard).not.toContainText(/public today/i);
+});
+
 test('attaching a region moves every screen to the same new number', async ({ page }) => {
   await seedAuth(page);
   await page.goto('/#/naas/connect', { waitUntil: 'domcontentloaded' });
 
   // us-west-2 starts on public transit; dx1 is the on-ramp that reaches it.
   const before = await regionLatency(page, 'usw2');
+
+  /* Before the attach, all three screens must already agree ON THE PUBLIC
+     FIGURE. This step used to assert only that Observe showed `publicMs`,
+     leaving the screen a viewer comes FROM unchecked — and Connect was showing
+     `privateMs` under the word "Public" the whole time. Comparing the screens,
+     not each against its own engine field, is the point. */
+  const nodeBefore = await connectNode(page, 'usw2');
+  expect(nodeBefore.path, 'us-west-2 should start on the public path').toBe('Public');
+  expect(nodeBefore.ms, 'Connect states the fabric figure under the word "Public"').toBe(
+    String(before.publicMs),
+  );
+  expect(await discoverLatency(page, /^AWS/, 'us-west-2'), 'Discover disagrees with Connect').toBe(
+    String(before.publicMs),
+  );
   const publicRows = await observeRowLatencies(page, 'Public internet');
-  expect(publicRows, 'us-west-2 flows should start on the public figure').toContain(String(before.publicMs));
+  expect(publicRows, 'Observe disagrees with Connect and Discover').toContain(
+    String(before.publicMs),
+  );
+  expect(before.publicMs, 'the two figures must differ, or this proves nothing').not.toBe(
+    before.privateMs,
+  );
 
   await goHash(page, '#/naas/connect');
   await page.evaluate(() => (window as unknown as { CC: CCHandle }).CC.activateOnramp('dx1'));

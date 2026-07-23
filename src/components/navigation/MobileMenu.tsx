@@ -271,26 +271,36 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
                 made in this file for Sign Out and the profile chevron; the
                 real search lives in the top bar (SearchBar). */}
 
-            {/* User Profile */}
-            <div className="p-4 border-b border-fw-secondary bg-fw-wash">
+            {/* User Profile.
+                Chrome, not navigation. It and the footer below it took 202 of
+                667px on an iPhone SE / 8 viewport — the scroller got 392px for
+                409px of destinations, so `/ai/observe` and `/ai/cost` sat 17px
+                below the fold on the ONE surface that can reach them under
+                1280px. The recovery comes out of these two blocks rather than
+                out of the verb rows: shrinking a touch target or deleting the
+                descriptions that tell "Connect" from "Connect" would pay for
+                the fold with the thing the fold exists to show.
+                Nothing here was removed — the avatar, all three identity lines
+                and the whole footer sentence still render. */}
+            <div className="px-4 py-3 border-b border-fw-secondary bg-fw-wash">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
                   {userInfo.avatar ? (
                     <img
                       src={userInfo.avatar}
                       alt={userInfo.name}
-                      className="h-12 w-12 rounded-full object-cover border-2 border-fw-base shadow-sm"
+                      className="h-10 w-10 rounded-full object-cover border-2 border-fw-base shadow-sm"
                     />
                   ) : (
-                    <div className="h-12 w-12 rounded-full bg-fw-cobalt-600 flex items-center justify-center text-white text-figma-lg font-semibold">
+                    <div className="h-10 w-10 rounded-full bg-fw-cobalt-600 flex items-center justify-center text-white text-figma-base font-semibold">
                       {userInfo.name.charAt(0)}
                     </div>
                   )}
                 </div>
                 <div className="ml-3">
-                  <p className="text-figma-base font-medium text-fw-heading">{userInfo.name}</p>
-                  <p className="text-figma-sm font-medium text-fw-bodyLight">{userInfo.role}</p>
-                  <p className="text-figma-sm text-fw-bodyLight">{userInfo.account}</p>
+                  <p className="text-figma-sm font-medium text-fw-heading">{userInfo.name}</p>
+                  <p className="text-figma-xs font-medium text-fw-bodyLight">{userInfo.role}</p>
+                  <p className="text-figma-xs text-fw-bodyLight">{userInfo.account}</p>
                 </div>
                 {/* A chevron here used to navigate to /profile, which is a
                     Navigate to /discover — a no-op that only closed the
@@ -306,10 +316,10 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
                 navigating to /login, which itself redirects to /discover.
                 Removed as a dead affordance rather than left pointing at a
                 feature that no longer exists. */}
-            <div className="p-4 border-t border-fw-secondary">
-              <div className="text-center text-figma-sm text-fw-bodyLight">
+            <div className="px-4 py-3 border-t border-fw-secondary">
+              <div className="text-center text-figma-xs text-fw-bodyLight">
                 <p className="font-semibold text-fw-heading">AT&T Cloud Connect • v2.0.1</p>
-                <p className="mt-1">© 2025 AT&T Intellectual Property. All rights reserved.</p>
+                <p>© 2025 AT&T Intellectual Property. All rights reserved.</p>
               </div>
             </div>
           </motion.div>
