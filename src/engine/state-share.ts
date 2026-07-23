@@ -101,13 +101,24 @@ function b64decode(b64){
   catch(e){return bin;} // legacy payload: the old encoder wrote Latin-1 bytes
 }
 
+/* Pristine token-policy snapshot, taken at module load - state-share loads
+   last of the state modules (see header), before any user mutation or
+   hydrate() replay can touch the seeds. Only policies that differ from this
+   snapshot travel: the seeds already exist on the receiving end, and an
+   always-true filter here would defeat the emptiness check below (a pristine
+   engine must keep minting an empty payload). */
+const tpSeed=JSON.parse(JSON.stringify(_.tokenPolicies||{}));
+function tpChanged(t,p){
+  const s=tpSeed[t];
+  return !s||p.enforced!==s.enforced||p.scope!==s.scope||p.budget!==s.budget||!p.guardrail!==!s.guardrail;
+}
 function serialize(){
   const d={
     o:onramps.filter(o=>o.active&&o.id!=='nb1').map(o=>o.id),
     f:Object.keys(fixes).filter(k=>fixes[k]),
     p:_.customPolicies.map(p=>({n:p.name,t:p.tag,r:p.requirement,e:p.enforced,c:p.cloud,m:p.param})),
     r:_.rules.filter(r=>!r.system).map(r=>({n:r.name,s:r.src,d:r.dst,po:r.ports,a:r.action,ch:r.chain,e:r.enforced})),
-    tp:Object.entries(_.tokenPolicies||{}).filter(([,p])=>p.enforced||p.scope!==undefined).map(([t,p])=>({t,s:p.scope,b:p.budget,g:p.guardrail?1:0,e:p.enforced?1:0})),
+    tp:Object.entries(_.tokenPolicies||{}).filter(([t,p])=>tpChanged(t,p)).map(([t,p])=>({t,s:p.scope,b:p.budget,g:p.guardrail?1:0,e:p.enforced?1:0})),
     s:sim.onrampId||undefined,
     // Only custom (user-created) groups travel - the seeded groups
     // (west-branches, west-workloads) already exist on the receiving end,
@@ -124,7 +135,7 @@ function serialize(){
   if(!d.r.length)delete d.r;
   if(!d.tp.length)delete d.tp;
   if(!d.groups.length)delete d.groups;
-  if(!d.o.length&&!d.f.length&&!d.p.length&&!d.r&&!d.s&&!d.groups)return '';
+  if(!d.o.length&&!d.f.length&&!d.p.length&&!d.r&&!d.tp&&!d.s&&!d.groups)return '';
   return b64encode(JSON.stringify(d)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
 function shareUrl(){
