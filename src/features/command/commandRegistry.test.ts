@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { CC } from '../../engine';
 import { commandRegistry } from './commandRegistry';
-import { NAV_DOMAINS } from '../../components/navigation/navItems';
+import { NAV_LAYERS } from '../../components/navigation/navItems';
 describe('command registry', () => {
   it('includes nav to the six sections and executable engine actions', () => {
     const navigate = vi.fn();
@@ -26,7 +26,7 @@ describe('command registry', () => {
     const navLabels = cmds.filter(c => c.kind === 'nav').map(c => c.label);
     expect(new Set(navLabels).size).toBe(navLabels.length);
 
-    for (const domain of NAV_DOMAINS) {
+    for (const domain of NAV_LAYERS) {
       for (const item of domain.items) {
         const label = `Go to ${domain.label} \u00b7 ${item.label}`;
         const cmd = cmds.find(c => c.label === label);

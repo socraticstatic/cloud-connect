@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, test, expect } from 'vitest';
 import { MainNav } from './MainNav';
-import { NAV_DOMAINS, NAV_ITEMS } from './navItems';
+import { NAV_LAYERS, NAV_ITEMS } from './navItems';
 import { attIcons } from '../icons/att-icons';
 import { AuthProvider } from '../../contexts/AuthContext';
 
@@ -30,7 +30,7 @@ describe('MainNav curated Cloud Connect nav', () => {
   test('each domain is a named group whose links stay inside that domain', () => {
     render(<MemoryRouter><AuthProvider><MainNav /></AuthProvider></MemoryRouter>);
 
-    for (const domain of NAV_DOMAINS) {
+    for (const domain of NAV_LAYERS) {
       const group = screen.getByRole('group', { name: domain.label });
       const hrefs = within(group).getAllByRole('link').map(a => a.getAttribute('href'));
       expect(hrefs).toEqual(domain.items.map(i => i.to));

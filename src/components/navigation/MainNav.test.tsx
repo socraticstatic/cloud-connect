@@ -4,7 +4,7 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '../../contexts/AuthContext';
 import { MainNav } from './MainNav';
-import { NAV_DISCOVER, NAV_DOMAINS } from './navItems';
+import { NAV_DISCOVER, NAV_LAYERS } from './navItems';
 
 // Mock framer-motion. MobileMenu's nav item list only renders once its
 // panel's onAnimationComplete callback fires (see MobileMenu.test.tsx for
@@ -78,7 +78,7 @@ describe('MainNav', () => {
     const drawer = screen.getByLabelText('Close menu').closest('.fixed') as HTMLElement;
     expect(drawer).toBeTruthy();
 
-    for (const domain of NAV_DOMAINS) {
+    for (const domain of NAV_LAYERS) {
       const group = within(drawer).getByRole('group', { name: domain.label });
       for (const item of domain.items) {
         expect(

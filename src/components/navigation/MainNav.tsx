@@ -10,7 +10,7 @@ import { TenantSelector } from './TenantSelector';
 import { TourLauncher } from '../../features/tour/TourLauncher';
 import { CommandPalette } from '../../features/command/CommandPalette';
 import { UndoControl } from '../../features/undo/UndoControl';
-import { NAV_DISCOVER, NAV_DOMAINS, NAV_ITEMS, isNavRouteActive } from './navItems';
+import { NAV_DISCOVER, NAV_LAYERS, NAV_ITEMS, isNavRouteActive } from './navItems';
 import { Button } from '../common/Button';
 import { useStore } from '../../store/useStore';
 import { usePermissions } from '../../hooks/usePermission';
@@ -70,7 +70,7 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
   });
 
   // A caller-supplied `items` list is still rendered as one flat row — it has
-  // no domains to group by. The curated nav renders NAV_DOMAINS instead.
+  // no domains to group by. The curated nav renders NAV_LAYERS instead.
   const usingCuratedNav = items.length === 0;
   const navItems = usingCuratedNav ? NAV_ITEMS.map(toNavItem) : items;
 
@@ -225,7 +225,7 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
                     {renderNavLink(toNavItem(NAV_DISCOVER))}
                   </div>
 
-                  {NAV_DOMAINS.map(domain => (
+                  {NAV_LAYERS.map(domain => (
                     <div key={domain.key} className="flex items-end gap-4 min-[1440px]:gap-5">
                       <span className="w-px h-8 bg-fw-secondary" aria-hidden="true" />
                       <div
