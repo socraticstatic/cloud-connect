@@ -14,6 +14,9 @@ export interface NavLayer {
   blurb: string;
   /** One-breath name for the rail and the stack visuals. */
   tagline: string;
+  /** The layer's overview — first in the left rail, the landing when you pick
+   *  the layer up top. A layer opens onto its Home, never onto a verb. */
+  home: CuratedNavItem;
   items: CuratedNavItem[];
 }
 
@@ -38,6 +41,7 @@ export const NAV_LAYERS: NavLayer[] = [
     label: 'NaaS',
     blurb: 'Network as a service — the paths, the policy on them, and what they cost.',
     tagline: 'The network layer',
+    home: { label: 'Home', to: '/naas/home', icon: 'home', description: 'The network layer at a glance' },
     items: [
       { label: 'Connect', to: '/naas/connect', icon: 'cloud', description: 'Attach clouds and sites to the fabric' },
       { label: 'Govern', to: '/naas/govern', icon: 'check-shield', description: 'Policy on network paths' },
@@ -50,6 +54,7 @@ export const NAV_LAYERS: NavLayer[] = [
     label: 'AI Fabric',
     blurb: 'The token layer — model endpoints, the agents calling them, and their budgets.',
     tagline: 'The token layer',
+    home: { label: 'Home', to: '/ai/home', icon: 'home', description: 'The token layer at a glance' },
     items: [
       { label: 'Connect', to: '/ai/connect', icon: 'apis', description: 'Attach model endpoints and neoclouds' },
       { label: 'Govern', to: '/ai/govern', icon: 'check-shield', description: 'Token policy and guardrails' },
@@ -92,6 +97,22 @@ export function counterpartPath(pathname: string, target: NavLayer['key']): stri
 
 /** Discover, alone above both domains. */
 export const NAV_DISCOVER: CuratedNavItem = DISCOVER;
+
+/**
+ * The left rail for a layer: Home first, then the four verbs. The rail is the
+ * lifecycle switch inside a layer — persistent, one click, no menu — while the
+ * top tabs switch layers. Home leads because a layer opens onto its overview.
+ */
+export function layerRail(layer: NavLayer): CuratedNavItem[] {
+  return [layer.home, ...layer.items];
+}
+
+/** The layer a path belongs to (/naas/* → naas), or null for global routes
+ *  like /discover. Drives the active top tab and whether the rail shows. */
+export function layerForPath(pathname: string): NavLayer | null {
+  const key = pathname.match(/^\/(ai|naas)(?:\/|$)/)?.[1] as NavLayer['key'] | undefined;
+  return key ? NAV_LAYERS.find(l => l.key === key) ?? null : null;
+}
 
 /**
  * Is `href` the destination the viewer is currently on?

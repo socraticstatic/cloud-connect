@@ -13,63 +13,48 @@ const renderNav = (path = '/discover') =>
     </MemoryRouter>,
   );
 
-describe('MainNav curated Cloud Connect nav — layer-first', () => {
-  test('the closed bar carries one link per destination and no verb twice', () => {
+describe('MainNav curated Cloud Connect nav — layers on top', () => {
+  test('the top bar carries Discover plus one tab per layer, no verbs', () => {
     renderNav();
-    // Discover is the only plain link; each layer is a dropdown trigger.
-    const linkLabels = screen.getAllByRole('link').map(a => a.textContent?.trim());
-    expect(linkLabels).toEqual(['Discover']);
-    for (const layer of NAV_LAYERS) {
-      expect(screen.getByRole('button', { name: layer.label })).toHaveAttribute('aria-haspopup', 'menu');
-    }
-    // The verbs live inside the panels — never in the closed bar.
+    const tabs = screen.getAllByRole('tab').map(t => t.textContent?.trim());
+    expect(tabs).toEqual(['Discover', 'NaaS', 'AI Fabric']);
+    // Verbs never appear in the top bar — they live in the left rail.
     for (const verb of ['Connect', 'Govern', 'Observe', 'Cost']) {
-      expect(screen.queryByRole('link', { name: verb })).toBeNull();
+      expect(screen.queryByRole('tab', { name: verb })).toBeNull();
     }
-    expect(screen.queryByText('NetOps for AI')).toBeNull();
-    expect(screen.queryByText('Marketplace')).toBeNull();
   });
 
-  test('each layer menu opens to its own four verbs, scoped to its routes', () => {
+  test('each layer tab links to its Home, never a verb', () => {
     renderNav();
-    for (const layer of NAV_LAYERS) {
-      fireEvent.click(screen.getByRole('button', { name: layer.label }));
-      const menu = screen.getByRole('menu', { name: layer.label });
-      const items = within(menu).getAllByRole('menuitem');
-      expect(items.map(a => a.getAttribute('href'))).toEqual(layer.items.map(i => i.to));
-      for (const item of items) {
-        expect(item.getAttribute('href')).toMatch(new RegExp(`^/${layer.key}/`));
-      }
-      // One layer open at a time means one "Connect" visible at a time.
-      expect(screen.getAllByText('Connect')).toHaveLength(1);
-      fireEvent.click(screen.getByRole('button', { name: layer.label }));
-    }
+    expect(screen.getByRole('tab', { name: 'NaaS' })).toHaveAttribute('href', '/naas/home');
+    expect(screen.getByRole('tab', { name: 'AI Fabric' })).toHaveAttribute('href', '/ai/home');
+    expect(screen.getByRole('tab', { name: 'Discover' })).toHaveAttribute('href', '/discover');
   });
 
-  test('the trigger carries the active state for any route inside its layer', () => {
+  test('the active tab tracks the layer you are in, from any of its routes', () => {
     renderNav('/ai/cost');
-    const ai = screen.getByRole('button', { name: 'AI Fabric' });
-    const naas = screen.getByRole('button', { name: 'NaaS' });
-    expect(ai.className).toContain('border-fw-active');
-    expect(naas.className).not.toContain('border-fw-active');
+    expect(screen.getByRole('tab', { name: 'AI Fabric' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'NaaS' })).toHaveAttribute('aria-selected', 'false');
+    expect(screen.getByRole('tab', { name: 'Discover' })).toHaveAttribute('aria-selected', 'false');
+  });
+
+  test('Discover is the active tab on the global estate view', () => {
+    renderNav('/discover');
+    expect(screen.getByRole('tab', { name: 'Discover' })).toHaveAttribute('aria-selected', 'true');
   });
 
   test('Create is a global action listing each creatable with its layer', () => {
     renderNav();
     fireEvent.click(screen.getByRole('button', { name: /create/i }));
     const menu = screen.getByRole('menu', { name: 'Create' });
-    const items = within(menu).getAllByRole('menuitem');
-    expect(items.length).toBeGreaterThanOrEqual(2);
-    const hrefs = items.map(a => a.getAttribute('href'));
+    const hrefs = within(menu).getAllByRole('menuitem').map(a => a.getAttribute('href'));
     expect(hrefs).toContain('/naas/connect');
     expect(hrefs).toContain('/ai/connect');
-    expect(within(menu).getByText('NaaS')).toBeInTheDocument();
-    expect(within(menu).getByText('AI Fabric')).toBeInTheDocument();
   });
 
   test('every curated nav icon name is a valid key in the attIcons registry', () => {
-    NAV_ITEMS.forEach(item => {
+    for (const item of [...NAV_ITEMS, ...NAV_LAYERS.map(l => l.home)]) {
       expect(attIcons).toHaveProperty(item.icon);
-    });
+    }
   });
 });

@@ -41,19 +41,15 @@ export async function switchRole(page: Page, role: 'user' | 'admin' | 'super-adm
 }
 
 /**
- * Layer-first nav: open a layer's dropdown in the main bar and follow one of
- * its verbs. The verbs live only inside the panel, so this is the one honest
- * way a pointer user reaches them.
+ * Layer-first nav: pick the layer up top, then the verb in the left rail.
+ * Layers are the top tabs; the lifecycle verbs live in the persistent left
+ * rail, Home first. This is how a pointer user reaches a verb.
  */
 export async function openLayerVerb(
   page: Page,
   layer: 'NaaS' | 'AI Fabric',
-  verb: 'Connect' | 'Govern' | 'Observe' | 'Cost',
+  verb: 'Home' | 'Connect' | 'Govern' | 'Observe' | 'Cost',
 ) {
-  const nav = page.getByLabel('Main navigation');
-  await nav.getByRole('button', { name: layer, exact: true }).click();
-  // A menuitem's accessible name is its label plus its description line, so
-  // match on the leading verb, never exact.
-  await nav.getByRole('menu', { name: layer })
-    .getByRole('menuitem', { name: new RegExp(`^${verb}\\b`) }).click();
+  await page.getByLabel('Main navigation').getByRole('tab', { name: layer, exact: true }).click();
+  await page.getByTestId('left-rail').getByRole('link', { name: verb, exact: true }).click();
 }

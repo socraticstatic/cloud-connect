@@ -10,8 +10,7 @@ import { TenantSelector } from './TenantSelector';
 import { TourLauncher } from '../../features/tour/TourLauncher';
 import { CommandPalette } from '../../features/command/CommandPalette';
 import { UndoControl } from '../../features/undo/UndoControl';
-import { NAV_DISCOVER, NAV_LAYERS, NAV_ITEMS, isNavRouteActive } from './navItems';
-import { LayerMenu } from './LayerMenu';
+import { NAV_DISCOVER, NAV_LAYERS, NAV_ITEMS, isNavRouteActive, layerForPath } from './navItems';
 import { CreateMenu } from './CreateMenu';
 import { Button } from '../common/Button';
 import { useStore } from '../../store/useStore';
@@ -89,6 +88,30 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
   /* Active-route matching lives in navItems.ts so this bar and the mobile
      drawer cannot drift apart — they are the same navigation at two widths. */
   const isRouteActive = (href: string) => isNavRouteActive(location.pathname, href);
+
+  /* Which layer's world we are in, if any — lights its top tab. */
+  const activeLayerKey = layerForPath(location.pathname)?.key ?? null;
+
+  /** One top tab: a layer, or Discover (the global estate view). The tab is
+   *  the layer switch; the lifecycle switch is the left rail. */
+  const renderTab = (label: string, to: string, active: boolean) => (
+    <Link
+      key={to}
+      to={to}
+      role="tab"
+      aria-selected={active}
+      aria-current={active ? 'page' : undefined}
+      className={`
+        inline-flex items-center h-full px-3 border-b-2 font-medium text-figma-base
+        tracking-[-0.03em] whitespace-nowrap transition-colors
+        ${active
+          ? 'border-fw-active text-fw-link'
+          : 'border-transparent text-fw-heading hover:border-fw-secondary hover:text-fw-body'}
+      `}
+    >
+      {label}
+    </Link>
+  );
 
   /** One nav link. `compact` is the in-group form: no icon (the same three
    *  icons repeat across both domains, so they disambiguate nothing there)
@@ -180,7 +203,7 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
             {/* Hamburger Menu Button - Now next to the logo */}
             <button
               onClick={toggleMobileMenu}
-              className="min-[1280px]:hidden flex items-center justify-center h-9 w-9 rounded-full text-fw-bodyLight hover:text-fw-body hover:bg-fw-wash"
+              className="min-[1024px]:hidden flex items-center justify-center h-9 w-9 rounded-full text-fw-bodyLight hover:text-fw-body hover:bg-fw-wash"
               data-nav-toggle="true"
               aria-label="Open navigation menu"
             >
@@ -210,21 +233,21 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
               </div>
             </div>
 
-            {/* Desktop Navigation.
+            {/* Desktop Navigation — layers across the top.
 
-                Curated nav, layer-first: Discover, then one dropdown per
-                layer of the stack. The verbs (Connect/Govern/Observe/Cost)
-                appear only INSIDE their layer's panel, so no label in the
-                bar ever repeats — enter through the layer, act through the
-                lifecycle (spec: 2026-07-23-layer-first-ia-design.md). */}
-            <div className="hidden min-[1280px]:flex min-[1280px]:items-center min-[1280px]:h-full ml-6">
+                Layers are the top tabs (the "which world am I in" switch);
+                the lifecycle verbs live in the left rail (LeftRail.tsx), with
+                Home first. Discover leads as the global estate view — it
+                belongs to no single layer. Picking a layer lands on its Home,
+                never on a verb. */}
+            <div className="hidden min-[1024px]:flex min-[1024px]:items-center min-[1024px]:h-full ml-6">
               {usingCuratedNav ? (
-                <div className="flex items-stretch h-full gap-4 min-[1440px]:gap-6">
-                  {renderNavLink(toNavItem(NAV_DISCOVER))}
-                  <span className="w-px self-center h-8 bg-fw-secondary" aria-hidden="true" />
-                  {NAV_LAYERS.map(layer => (
-                    <LayerMenu key={layer.key} layer={layer} />
-                  ))}
+                <div className="flex items-stretch h-full gap-1" role="tablist" aria-label="Layers">
+                  {renderTab(NAV_DISCOVER.label, NAV_DISCOVER.to, isNavRouteActive(location.pathname, '/discover'))}
+                  <span className="w-px self-center h-6 bg-fw-secondary mx-2" aria-hidden="true" />
+                  {NAV_LAYERS.map(layer =>
+                    renderTab(layer.label, layer.home.to, activeLayerKey === layer.key),
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center h-full gap-3 min-[1440px]:gap-5 min-[1680px]:gap-7">

@@ -22,7 +22,7 @@ const LEGACY: { from: string; to: RegExp }[] = [
   { from: '/cost', to: /#\/naas\/cost/ },
   // The single AI Fabric page led with the token-policy table, which is what
   // /ai/govern carries — so that is where the retired path lands.
-  { from: '/ai-fabric', to: /#\/ai\/govern/ },
+  { from: '/ai-fabric', to: /#\/ai\/home/ },
 ];
 
 for (const legacy of LEGACY) {

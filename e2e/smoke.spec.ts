@@ -1,24 +1,24 @@
 import { test, expect } from '@playwright/test';
 import { seedAuth } from '../tests/e2e/helpers';
 
-test('boots to Discover, nav shows both domains, attach works on NaaS Connect', async ({ page }) => {
+test('boots to Discover, layers on top, verbs in the left rail, attach works on NaaS Connect', async ({ page }) => {
   await seedAuth(page);
   await page.goto('/');
   await expect(page).toHaveTitle(/Cloud Connect/);
   const mainNav = page.getByLabel('Main navigation');
-  // Layer-first: Discover is the only bare link; each layer is a dropdown
-  // whose panel carries its four verbs. No verb label repeats in the bar.
-  await expect(mainNav.getByRole('link', { name: 'Discover', exact: true })).toBeVisible();
+  // Layers across the top: Discover, then a tab per layer. No verbs up here.
+  await expect(mainNav.getByRole('tab', { name: 'Discover', exact: true })).toBeVisible();
   for (const layer of ['NaaS', 'AI Fabric']) {
-    const trigger = mainNav.getByRole('button', { name: layer, exact: true });
-    await expect(trigger).toBeVisible();
-    await trigger.click();
-    const menu = mainNav.getByRole('menu', { name: layer });
-    for (const verb of ['Connect', 'Govern', 'Observe', 'Cost']) {
-      await expect(menu.getByRole('menuitem', { name: new RegExp(`^${verb}\\b`) })).toBeVisible();
-    }
-    await trigger.click();
+    await expect(mainNav.getByRole('tab', { name: layer, exact: true })).toBeVisible();
   }
+  // Pick a layer: it lands on Home, and the left rail carries Home + verbs.
+  await mainNav.getByRole('tab', { name: 'NaaS', exact: true }).click();
+  await expect(page).toHaveURL(/#\/naas\/home/);
+  const rail = page.getByTestId('left-rail');
+  for (const item of ['Home', 'Connect', 'Govern', 'Observe', 'Cost']) {
+    await expect(rail.getByRole('link', { name: item, exact: true })).toBeVisible();
+  }
+  await page.goto('/#/discover', { waitUntil: 'domcontentloaded' });
   // Discover is a read view of the unified estate — no attach control here.
   // The rebuilt Discover tree exposes Expand/Collapse controls and per-row
   // connection-state indicators (via the AT&T fabric / public internet).
