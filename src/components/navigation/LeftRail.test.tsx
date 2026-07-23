@@ -1,12 +1,14 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, beforeEach } from 'vitest';
 import { LeftRail } from './LeftRail';
 
 const renderAt = (path: string) =>
   render(<MemoryRouter initialEntries={[path]}><LeftRail /></MemoryRouter>);
 
 describe('LeftRail', () => {
+  beforeEach(() => localStorage.clear());
+
   test('absent on the global estate view', () => {
     renderAt('/discover');
     expect(screen.queryByTestId('left-rail')).toBeNull();
@@ -34,5 +36,31 @@ describe('LeftRail', () => {
     renderAt('/naas/home');
     const active = screen.getByTestId('left-rail').querySelector('[aria-current="page"]');
     expect(active?.getAttribute('href')).toBe('/naas/home');
+  });
+
+  test('expanded by default; the toggle collapses to icons only and persists', () => {
+    renderAt('/naas/connect');
+    const rail = screen.getByTestId('left-rail');
+    expect(rail).toHaveAttribute('data-collapsed', 'false');
+    // Expanded: verb labels are visible text, links still there.
+    expect(within(rail).getByText('Connect')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('rail-collapse-toggle'));
+    expect(screen.getByTestId('left-rail')).toHaveAttribute('data-collapsed', 'true');
+    // Collapsed: no label text, but the links remain (icon only) with a tooltip.
+    const collapsed = screen.getByTestId('left-rail');
+    expect(within(collapsed).queryByText('Connect')).toBeNull();
+    const connect = within(collapsed).getByTestId('rail-connect');
+    expect(connect).toHaveAttribute('title', 'Connect');
+    expect(connect.getAttribute('href')).toBe('/naas/connect');
+    // The choice persisted.
+    expect(localStorage.getItem('cc-rail-collapsed')).toBe('1');
+  });
+
+  test('restores the collapsed choice from storage', () => {
+    localStorage.setItem('cc-rail-collapsed', '1');
+    renderAt('/ai/govern');
+    expect(screen.getByTestId('left-rail')).toHaveAttribute('data-collapsed', 'true');
+    expect(screen.getByTestId('rail-collapse-toggle')).toHaveAttribute('aria-label', 'Expand sidebar');
   });
 });
