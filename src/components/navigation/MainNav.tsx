@@ -196,7 +196,10 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
       role="navigation"
       aria-label="Main navigation"
     >
-      <div className="max-w-[1600px] mx-auto w-full px-4 sm:px-6 lg:px-8">
+      {/* Full-bleed: the header shares the body's left edge (the rail and
+          content are full-bleed too), so the logo lines up over the rail
+          instead of floating inside a centered container. */}
+      <div className="w-full pl-6 pr-3">
         <div className="flex justify-between h-16">
           {/* Left Side: Logo and Navigation */}
           <div className="flex items-center min-w-0">
