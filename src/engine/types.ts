@@ -173,6 +173,14 @@ export interface CloudControl {
   shareUrl(): string;
   serialize(): string;
   hydrate(): boolean;
+  /** A share link carrying the session PLUS staged, uncommitted moves. The
+   *  receiving engine reprices every move from its own getters. */
+  proposalUrl(moves: ({ kind: 'attach'; regionId: string } | { kind: 'steer'; flowId: string; pathId: string })[]): string;
+  /** Read-once: the proposal moves a share payload carried, staged by the UI
+   *  and never applied by the engine. */
+  takeProposal(): ({ kind: 'attach'; regionId: string } | { kind: 'steer'; flowId: string; pathId: string })[] | null;
+  /** Replays one decoded ?s= payload through the real mutations. */
+  applyShareData(raw: string): boolean;
 
   // catch-all for the rest of the ported surface not yet typed
   [key: string]: any;

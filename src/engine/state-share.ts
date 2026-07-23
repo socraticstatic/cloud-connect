@@ -112,7 +112,7 @@ function tpChanged(t,p){
   const s=tpSeed[t];
   return !s||p.enforced!==s.enforced||p.scope!==s.scope||p.budget!==s.budget||!p.guardrail!==!s.guardrail;
 }
-function serialize(){
+function payloadObject(){
   const d={
     o:onramps.filter(o=>o.active&&o.id!=='nb1').map(o=>o.id),
     f:Object.keys(fixes).filter(k=>fixes[k]),
@@ -135,12 +135,36 @@ function serialize(){
   if(!d.r.length)delete d.r;
   if(!d.tp.length)delete d.tp;
   if(!d.groups.length)delete d.groups;
-  if(!d.o.length&&!d.f.length&&!d.p.length&&!d.r&&!d.tp&&!d.s&&!d.groups)return '';
+  return d;
+}
+function encodePayload(d){
   return b64encode(JSON.stringify(d)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function serialize(){
+  const d=payloadObject();
+  if(!d.o.length&&!d.f.length&&!d.p.length&&!d.r&&!d.tp&&!d.s&&!d.groups)return '';
+  return encodePayload(d);
 }
 function shareUrl(){
   const s=serialize();
   return location.origin+location.pathname+(s?'?s='+s:'')+location.hash;
+}
+/* A proposal link: the session payload PLUS the staged, uncommitted moves.
+   The link carries INTENTIONS, never figures - the receiving engine reprices
+   every move from its own getters, so a stale link cannot state a stale
+   number. Never empty: `pr` itself is the content. */
+function proposalUrl(moves){
+  const d=payloadObject();
+  d.pr=(moves||[]).map(m=>m.kind==='attach'?['a',m.regionId]:['s',m.flowId,m.pathId]);
+  return location.origin+location.pathname+'?s='+encodePayload(d)+location.hash;
+}
+/* Decoded proposal moves wait here for the UI to claim them - staged, never
+   applied. takeProposal() is read-once so a remount cannot re-stage. */
+let pendingProposal=null;
+function takeProposal(){
+  const p=pendingProposal;
+  pendingProposal=null;
+  return p;
 }
 /* Applies one decoded payload string against the live model. Shared by
    hydrate() (below) and any router-safe caller (see the React bridge's
@@ -181,6 +205,18 @@ function applyShareData(raw){
       const created=CC.addGroup(g);
       if(!created&&g.custom)CC.updateGroup(g.id,{members:g.members,predicates:g.predicates,label:g.label});
     });
+    /* Proposal moves surface to the UI, they are NEVER applied here - the
+       whole point is that the recipient commits, or does not. Malformed
+       entries are dropped, not guessed. */
+    if(Array.isArray(d.pr)){
+      const moves=d.pr.map(x=>{
+        if(!Array.isArray(x))return null;
+        if(x[0]==='a'&&typeof x[1]==='string')return {kind:'attach',regionId:x[1]};
+        if(x[0]==='s'&&typeof x[1]==='string'&&typeof x[2]==='string')return {kind:'steer',flowId:x[1],pathId:x[2]};
+        return null;
+      }).filter(Boolean);
+      if(moves.length)pendingProposal=moves;
+    }
     _.hist.push({label:'Restored shared session',posture:CC.posture()});
     return true;
   }catch(e){console.warn('bad share payload',e);return false;}
@@ -217,5 +253,5 @@ function stream(elm,html,done){
   },420);
 }
 
-Object.assign(CC,{answerFor,serialize,shareUrl,hydrate,stream,b64encode,b64decode});
+Object.assign(CC,{answerFor,serialize,shareUrl,proposalUrl,takeProposal,applyShareData,hydrate,stream,b64encode,b64decode});
 })(window.CC);
