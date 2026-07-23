@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Printer, ChevronDown } from 'lucide-react';
 import { AttIcon } from '../../components/icons/AttIcon';
+import { PersonasView } from './PersonasView';
 
 /**
  * /stack — the layer-first IA concept deck.
@@ -346,6 +347,83 @@ function StackElevation() {
   );
 }
 
+// ── The twin: the loop the layer-first IA unlocked ──────────────────────────
+
+const LOOP_STEPS = [
+  {
+    n: 1,
+    title: 'Design',
+    body: 'Flip the stack on Discover into design mode. Every stageable move is priced by the engine before anything happens: attach a region and the chip states its latency arrow and its monthly saving.',
+  },
+  {
+    n: 2,
+    title: 'Simulate',
+    body: 'The tray sums what the staged moves would do. The preview and the committed state read the same derivations, so the twin cannot promise a figure the estate would later deny.',
+  },
+  {
+    n: 3,
+    title: 'Share',
+    body: 'The tray travels as a link. It carries intentions, never figures — the recipient’s engine reprices every move on arrival. A stale link cannot state a stale price.',
+  },
+  {
+    n: 4,
+    title: 'Approve',
+    body: 'The recipient lands on the same tray, marked as a proposal. Commit runs the real mutations. Undo reverts them. Infrastructure gets the review loop code has had for a decade.',
+  },
+  {
+    n: 5,
+    title: 'The advisor drafts',
+    body: 'Every move the engine prices, staged into a reviewable draft with one chip. It never commits anything. Its whole authority is a pre-filled tray.',
+  },
+];
+
+function TwinLoop() {
+  return (
+    <div className="mt-10 space-y-3">
+      {LOOP_STEPS.map(s => (
+        <div key={s.n} className="grid grid-cols-12 gap-4 rounded-2xl px-6 py-5 items-start"
+          style={{ background: '#f8fafb', border: '1px solid #dcdfe3' }}>
+          <div className="col-span-1 flex items-center justify-center h-8 w-8 rounded-full text-[14px] font-bold"
+            style={{ background: '#0057b8', color: '#ffffff' }}>{s.n}</div>
+          <div className="col-span-3 text-[16px] font-bold tracking-[-0.02em] pt-1" style={{ color: '#1d2329' }}>
+            {s.title}
+          </div>
+          <p className="col-span-8 text-[14px] font-medium leading-relaxed pt-1" style={{ color: '#454b52' }}>
+            {s.body}
+          </p>
+        </div>
+      ))}
+      <div className="grid sm:grid-cols-2 gap-3 pt-3">
+        <div className="rounded-2xl px-6 py-5" style={{ background: '#f8fafb', border: '1px solid #dcdfe3' }}>
+          <p className="text-[11px] font-bold uppercase tracking-[0.06em] mb-2" style={{ color: '#009fdb' }}>
+            And when something already happened
+          </p>
+          <p className="text-[14px] font-medium leading-relaxed" style={{ color: '#454b52' }}>
+            <b style={{ color: '#1d2329' }}>The time machine.</b> Observe’s window is scrubbable. Markers sit
+            only where the engine placed a moment — the seeded transit-congestion event, a this-session
+            attach, an active failure sim — and the readout restates the drawn value, never a re-derivation.
+            “What did the stack look like when latency spiked” is answered by name.{' '}
+            <a href="#/naas/observe" className="font-semibold hover:underline" style={{ color: '#0057b8' }}>
+              Scrub the window →
+            </a>
+          </p>
+        </div>
+        <div className="rounded-2xl px-6 py-5" style={{ background: '#f8fafb', border: '1px solid #dcdfe3' }}>
+          <p className="text-[11px] font-bold uppercase tracking-[0.06em] mb-2" style={{ color: '#009fdb' }}>
+            And when you already know what you want
+          </p>
+          <p className="text-[14px] font-medium leading-relaxed" style={{ color: '#454b52' }}>
+            <b style={{ color: '#1d2329' }}>⌘K intents.</b> Type “cap shared-services 2m” and the palette
+            answers with one command, priced in policy vocabulary, that runs against the engine. A typed
+            grammar over the engine’s own tags — free text can never reach a mutation. Attach and steer
+            intents carry the same arrows and savings the twin states, because they are the same derivation.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── The rules ────────────────────────────────────────────────────────────────
 
 const RULES = [
@@ -373,6 +451,16 @@ const RULES = [
     when: 'A question spans every layer',
     then: 'Discover answers it.',
     example: 'The estate view is the single pane of glass',
+  },
+  {
+    when: 'The machine has an opinion',
+    then: 'It stages a draft. It never commits.',
+    example: 'The advisor chip fills the tray; a human clicks Commit',
+  },
+  {
+    when: 'A decision needs a second pair of eyes',
+    then: 'The tray travels as a link, and the recipient’s engine reprices it.',
+    example: 'Share proposal → Opened from a proposal link · Commit',
   },
 ];
 
@@ -473,6 +561,8 @@ function AfterBar() {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export function StackDeckPage() {
+  // Two audiences, one deck: the concept, and the people it was shaped for.
+  const [view, setView] = useState<'concept' | 'personas'>('concept');
   return (
     <div style={{ fontFamily: "'ATT Aleck Sans', system-ui, sans-serif", paddingBottom: 48, background: '#ffffff' }}>
       <style>{`
@@ -494,12 +584,32 @@ export function StackDeckPage() {
             The Stack · layer-first IA
           </span>
         </div>
+        <nav aria-label="Deck views" className="flex items-center gap-1 rounded-full p-1"
+          style={{ background: '#f8fafb', border: '1px solid #dcdfe3' }}>
+          {([['concept', 'The concept'], ['personas', 'Personas']] as const).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              data-testid={`deck-tab-${key}`}
+              aria-pressed={view === key}
+              onClick={() => { setView(key); window.scrollTo(0, 0); }}
+              className="px-4 py-1 rounded-full text-[13px] font-semibold transition-colors"
+              style={view === key
+                ? { background: '#0057b8', color: '#ffffff' }
+                : { background: 'transparent', color: '#454b52' }}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
         <button onClick={() => window.print()}
           className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[13px] font-medium"
           style={{ background: '#f8fafb', color: '#454b52', border: '1px solid #dcdfe3' }}>
           <Printer size={14} /> Export PDF
         </button>
       </header>
+
+      {view === 'personas' ? <PersonasView /> : <>
 
       {/* ── COVER ── */}
       <section className="sd-section" style={{ background: '#001a3d', minHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
@@ -585,16 +695,37 @@ export function StackDeckPage() {
         </div>
       </section>
 
-      {/* ── 4 · THE RULES ── */}
+      {/* ── 4 · THE TWIN ── */}
+      <section className="sd-section" style={{ background: '#ffffff' }}>
+        <div className="max-w-5xl mx-auto px-16 py-20">
+          <SectionLabel>The twin</SectionLabel>
+          <h2 className="text-[40px] font-bold tracking-[-0.03em] leading-tight mb-4" style={{ color: '#1d2329' }}>
+            Design on it. Share it. A human commits.
+          </h2>
+          <p className="text-[16px] font-medium leading-relaxed max-w-3xl" style={{ color: '#454b52' }}>
+            The stack on Discover is not a diagram — it is a digital twin of the estate,
+            stating live engine figures per stratum. Terraform gave code review to
+            infrastructure; nothing gave it to the network. This does. Five steps, one
+            law: every figure, staged or committed, is one derivation stated twice.{' '}
+            <a href="#/discover" className="font-semibold hover:underline" style={{ color: '#0057b8' }}>
+              Open the twin →
+            </a>
+          </p>
+          <TwinLoop />
+        </div>
+      </section>
+
+      {/* ── 5 · THE RULES ── */}
       <section className="sd-section" style={{ background: '#ffffff' }}>
         <div className="max-w-5xl mx-auto px-16 py-20">
           <SectionLabel>The rules</SectionLabel>
           <h2 className="text-[40px] font-bold tracking-[-0.03em] leading-tight mb-4" style={{ color: '#1d2329' }}>
-            Five rules route every label.
+            Seven rules route every label.
           </h2>
           <p className="text-[16px] font-medium leading-relaxed max-w-3xl" style={{ color: '#454b52' }}>
-            The whole IA reduces to five when/then pairs. Everything on the bar,
-            in the rail, and behind "+ Create" follows from them.
+            The whole IA reduces to seven when/then pairs. Everything on the bar,
+            in the rail, behind "+ Create", in the advisor's chip and on a
+            proposal link follows from them.
           </p>
           <IaRules />
         </div>
@@ -675,6 +806,8 @@ export function StackDeckPage() {
           </a>
         </div>
       </section>
+
+      </>}
     </div>
   );
 }
