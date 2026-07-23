@@ -141,3 +141,24 @@ describe('stackFigures — commit (mutates, then restores)', () => {
     expect(failed).toHaveLength(1);
   });
 });
+
+describe('stackFigures — the advisor draft', () => {
+  it('drafts only moves the engine itself prices, with stagedDeltas over them', async () => {
+    const { advisorDraft, attachOpportunities: attach, steerOpportunities: steer, stagedDeltas: deltas } =
+      await import('./stackFigures');
+    const draft = advisorDraft(CC);
+    const pricedAttach = attach(CC).filter(o => o.bucketSavingMo !== null);
+    const steers = steer(CC);
+    expect(draft.moves).toHaveLength(pricedAttach.length + steers.length);
+    for (const m of draft.moves) {
+      if (m.kind === 'attach') {
+        expect(pricedAttach.some(o => o.regionId === m.regionId)).toBe(true);
+      } else {
+        expect(steers.some(o => o.flowId === m.flowId && o.pathId === m.pathId)).toBe(true);
+      }
+    }
+    expect(draft.deltas).toEqual(deltas(CC, draft.moves));
+    // Every drafted move is priced, so nothing lands in the unpriced list.
+    expect(draft.deltas.unpricedMoves).toEqual([]);
+  });
+});

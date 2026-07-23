@@ -191,6 +191,22 @@ export function stagedDeltas(cc: CloudControl, moves: StagedMove[]): StagedDelta
   return { moves: moves.length, worstPath: worst, egressSavingMo, unpricedMoves: unpriced };
 }
 
+/**
+ * The advisor's draft: every steer the engine already recommends and every
+ * attach the arbitrage table prices. A derivation, not a daemon — its whole
+ * authority is a pre-filled tray, and nothing commits without a human.
+ */
+export function advisorDraft(cc: CloudControl): { moves: StagedMove[]; deltas: StagedDeltas } {
+  const moves: StagedMove[] = [
+    ...attachOpportunities(cc)
+      .filter(o => o.bucketSavingMo !== null)
+      .map(o => ({ kind: 'attach' as const, regionId: o.regionId })),
+    ...steerOpportunities(cc)
+      .map(o => ({ kind: 'steer' as const, flowId: o.flowId, pathId: o.pathId })),
+  ];
+  return { moves, deltas: stagedDeltas(cc, moves) };
+}
+
 /** Apply staged moves through the real engine actions, in order. Returns the
  *  moves that failed — the caller states them, never swallows them. */
 export function commitMoves(cc: CloudControl, moves: StagedMove[]): StagedMove[] {

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check, Plus } from 'lucide-react';
+import { ArrowRight, Check, Link2, Plus, Sparkles } from 'lucide-react';
 import { AttIcon } from '../../components/icons/AttIcon';
 import { STACK_LAYERS, type NavLayer } from '../../components/navigation/navItems';
 import { useCloudControlLive } from '../../engine/react/useCloudControl';
@@ -13,6 +13,7 @@ import {
   steerOpportunities,
   stagedDeltas,
   commitMoves,
+  advisorDraft,
   type StagedMove,
 } from './stackFigures';
 
@@ -120,6 +121,37 @@ export function StackPanel() {
   const [designing, setDesigning] = useState(false);
   const [staged, setStaged] = useState<StagedMove[]>([]);
   const [commitNote, setCommitNote] = useState<string | null>(null);
+  const [proposalNote, setProposalNote] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const copyTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  // A proposal link stages the tray it carried — same estate, same deltas,
+  // Commit in front of the recipient. Valid means the move still exists in
+  // the engine's own opportunity lists; the estate may have moved on since
+  // the link was minted, and stale moves are counted, never guessed.
+  useEffect(() => {
+    const carried = cc.takeProposal?.();
+    if (!carried?.length) return;
+    const attaches = attachOpportunities(cc);
+    const steers = steerOpportunities(cc);
+    const valid = carried.filter(m =>
+      m.kind === 'attach'
+        ? attaches.some(o => o.regionId === m.regionId)
+        : steers.some(o => o.flowId === m.flowId && o.pathId === m.pathId),
+    );
+    const dropped = carried.length - valid.length;
+    setProposalNote(
+      `Opened from a proposal link · ${valid.length} move${valid.length === 1 ? '' : 's'}` +
+        (dropped ? ` · ${dropped} no longer appl${dropped === 1 ? 'ies' : 'y'}` : ''),
+    );
+    if (valid.length) {
+      setStaged(valid);
+      setDesigning(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => () => clearTimeout(copyTimer.current), []);
 
   const aiFig = aiStratum(cc);
   const naasFig = naasStratum(cc);
@@ -138,10 +170,31 @@ export function StackPanel() {
   const toggleMove = (m: StagedMove) =>
     setStaged(prev => (isStaged(m) ? prev.filter(s => JSON.stringify(s) !== JSON.stringify(m)) : [...prev, m]));
 
+  const draft = advisorDraft(cc);
+
   const discard = () => {
     setStaged([]);
     setDesigning(false);
     setCommitNote(null);
+    setProposalNote(null);
+  };
+
+  const reviewDraft = () => {
+    setStaged(draft.moves);
+    setDesigning(true);
+    setCommitNote(null);
+    setProposalNote(null);
+  };
+
+  const shareProposal = async () => {
+    try {
+      await navigator.clipboard?.writeText?.(cc.proposalUrl(staged));
+      setCopied(true);
+      clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopied(false), 2000);
+    } catch (e) {
+      console.warn('clipboard write failed', e);
+    }
   };
 
   const commit = () => {
@@ -153,6 +206,7 @@ export function StackPanel() {
     );
     setStaged([]);
     setDesigning(false);
+    setProposalNote(null);
   };
 
   return (
@@ -169,6 +223,19 @@ export function StackPanel() {
           </p>
         </div>
         <div className="flex items-center gap-4">
+          {/* The advisor: a derivation with a chip. Its whole authority is a
+              pre-filled tray — a human commits, or does not. */}
+          {!designing && draft.moves.length > 0 && (
+            <button
+              type="button"
+              data-testid="advisor-chip"
+              onClick={reviewDraft}
+              className="inline-flex items-center gap-1.5 rounded-full border border-fw-secondary bg-fw-wash px-3.5 py-1.5 text-figma-sm font-medium text-fw-body hover:border-fw-active hover:text-fw-link transition-colors"
+            >
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+              Advisor: {draft.moves.length} moves · {money(draft.deltas.egressSavingMo)}/mo · Review
+            </button>
+          )}
           <button
             type="button"
             data-testid="design-toggle"
@@ -314,6 +381,11 @@ export function StackPanel() {
           <p aria-live="polite" className="text-figma-sm font-medium text-fw-heading">
             {commitNote ?? (
               <>
+                {proposalNote && (
+                  <span data-testid="proposal-note" className="block text-figma-xs font-semibold text-fw-link">
+                    {proposalNote}
+                  </span>
+                )}
                 {deltas.moves} move{deltas.moves === 1 ? '' : 's'} staged
                 {deltas.worstPath &&
                   ` · ${deltas.worstPath.label} ${deltas.worstPath.publicMs}→${deltas.worstPath.privateMs} ms on the fabric`}
@@ -325,6 +397,15 @@ export function StackPanel() {
           </p>
           {!commitNote && (
             <div className="mt-2 sm:mt-0 flex items-center gap-2 flex-shrink-0">
+              <button
+                type="button"
+                data-testid="share-proposal"
+                onClick={shareProposal}
+                className="inline-flex items-center gap-1.5 rounded-full border border-fw-secondary bg-fw-base px-4 py-1.5 text-figma-sm font-medium text-fw-body hover:border-fw-active hover:text-fw-link"
+              >
+                <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
+                {copied ? 'Copied' : 'Share proposal'}
+              </button>
               <button
                 type="button"
                 data-testid="design-discard"

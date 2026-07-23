@@ -132,3 +132,58 @@ describe('StackPanel — design mode', () => {
     expect(naasStratum(CC).regionsAttached).toBe(before.regionsAttached);
   });
 });
+
+describe('StackPanel — proposals and the advisor', () => {
+  test('the advisor chip states the draft and Review stages it', async () => {
+    const { advisorDraft } = await import('./stackFigures');
+    renderPanel();
+    const draft = advisorDraft(CC);
+    expect(draft.moves.length).toBeGreaterThan(0);
+    const chip = screen.getByTestId('advisor-chip');
+    expect(chip.textContent).toContain(`Advisor: ${draft.moves.length} moves`);
+    expect(chip.textContent).toContain(`$${Math.round(draft.deltas.egressSavingMo).toLocaleString()}/mo`);
+    fireEvent.click(chip);
+    expect(screen.getByTestId('design-tray').textContent)
+      .toContain(`${draft.moves.length} moves staged`);
+    // The chip yields while designing — one authority at a time.
+    expect(screen.queryByTestId('advisor-chip')).toBeNull();
+    fireEvent.click(screen.getByTestId('design-discard'));
+  });
+
+  test('Share proposal copies proposalUrl(staged) and flips to Copied', async () => {
+    const writes: string[] = [];
+    const original = navigator.clipboard;
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: (t: string) => { writes.push(t); return Promise.resolve(); } },
+    });
+    try {
+      renderPanel();
+      fireEvent.click(screen.getByTestId('design-toggle'));
+      const opp = attachOpportunities(CC)[0];
+      fireEvent.click(screen.getByTestId(`move-attach-${opp.regionId}`));
+      fireEvent.click(screen.getByTestId('share-proposal'));
+      await screen.findByText('Copied');
+      expect(writes).toHaveLength(1);
+      expect(writes[0]).toBe(CC.proposalUrl([{ kind: 'attach', regionId: opp.regionId }]));
+      fireEvent.click(screen.getByTestId('design-discard'));
+    } finally {
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: original });
+    }
+  });
+
+  test('a pending proposal stages the tray on mount and counts stale moves', () => {
+    const opp = attachOpportunities(CC)[0];
+    const raw = new URL(CC.proposalUrl([
+      { kind: 'attach', regionId: opp.regionId },
+      { kind: 'attach', regionId: 'no-such-region' },
+    ])).searchParams.get('s')!;
+    CC.applyShareData(raw);
+    renderPanel();
+    const tray = screen.getByTestId('design-tray');
+    expect(within(tray).getByTestId('proposal-note').textContent)
+      .toBe('Opened from a proposal link · 1 move · 1 no longer applies');
+    expect(tray.textContent).toContain(`${opp.publicMs}→${opp.privateMs} ms`);
+    fireEvent.click(screen.getByTestId('design-discard'));
+  });
+});
