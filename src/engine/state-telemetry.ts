@@ -14,17 +14,31 @@ function hashStr(str){let h=2166136261;for(const c of str){h^=c.charCodeAt(0);h=
    PRNG family keeps every derived number reproducible across pages */
 _.mulberry32=mulberry32;
 _.hashStr=hashStr;
-const PRIVATE_LAT=12;
+/* Latency figures come from ONE place: CC.regionLatency (state-routing.ts).
+   `privateMs` is the region's RTT to the on-ramp serving it — the figure
+   /discover, Connect's Performance tile, both PathChoice cards and every
+   AT&T flow row on /naas/observe render. `publicMs` is the same region over
+   public transit. This file used to carry its own `PRIVATE_LAT=12` and read
+   the raw seed `r.lat` for the public baseline, which is how the briefing
+   came to say "~12ms" beside regions Connect showed at 3, 29, 33 and 120ms.
+   Called through CC at call time, never at load time (see state.ts header). */
+function _lat(rid){return CC.regionLatency(rid)||{privateMs:null,publicMs:null};}
 
 function regionList(){
   const out=[];
   clouds.forEach(cl=>(regions[cl.id]||[]).forEach(r=>out.push({key:cl.id+'/'+r.id,cloud:cl,region:r})));
   return out;
 }
-/* one seeded anomaly: eu-west-1 transit congestion event in the past */
+/* one seeded anomaly: eu-west-1 transit congestion event in the past.
+   Both figures in the sentence are derived: the spike is the region's public
+   baseline times the anomaly factor the series actually applies, and the
+   private figure is the region's own fabric RTT — not a "~12-14ms" literal. */
 const ANOMALY={key:'aws/euw1',at:0.62,factor:2.3,
   title:'Transit congestion · eu-west-1',
-  explain:()=>`<b>eu-west-1 latency spiked to ~${Math.round(regions.aws.find(r=>r.id==='euw1').lat*2.3)}ms</b> for roughly 4 hours. The signature — latency up, throughput flat, every other region steady — is upstream transit congestion on the public path, not an application change. ${regions.aws.find(r=>r.id==='euw1').attached?'Since attaching over Direct Connect this session, eu-west-1 rides the private envelope (~12-14ms) where transit events like this cannot reach it.':'eu-west-1 still rides public transit — Direct Connect · Equinix DC2 already terminates near it; attaching removes exposure to exactly this class of event.'}`};
+  explain:()=>{
+    const euw=regions.aws.find(r=>r.id==='euw1'), L=_lat('euw1');
+    return `<b>eu-west-1 latency spiked to ~${Math.round(L.publicMs*ANOMALY.factor)}ms</b> for roughly 4 hours. The signature — latency up, throughput flat, every other region steady — is upstream transit congestion on the public path, not an application change. ${euw.attached?`Since attaching over Direct Connect this session, eu-west-1 rides the private envelope (${L.privateMs}ms to its on-ramp) where transit events like this cannot reach it.`:'eu-west-1 still rides public transit — Direct Connect · Equinix DC2 already terminates near it; attaching removes exposure to exactly this class of event.'}`;
+  }};
 
 function latencySeries(key,N){
   const item=regionList().find(x=>x.key===key); if(!item)return [];
@@ -35,29 +49,34 @@ function latencySeries(key,N){
   const sessionIdx=_.sessionAttached.indexOf(key); // -1 if not this session
   const stepAt=sessionIdx>=0?Math.floor(N*0.82):-1;
   const pts=[];
-  // the PUBLIC baseline for a region is its discovered latency
-  const pubBase=wasAttachedAtLoad?34:r.lat||34;
+  // both baselines are the region's own derived figures - the private envelope
+  // is its RTT to the on-ramp, the public baseline is that over public transit
+  const L=_lat(r.id);
+  const privBase=L.privateMs, pubBase=L.publicMs;
   for(let i=0;i<N;i++){
     let target,variance;
     const isPrivate=wasAttachedAtLoad||(stepAt>=0&&i>=stepAt);
-    if(isPrivate){target=PRIVATE_LAT;variance=1.6;}
+    if(isPrivate){target=privBase;variance=1.6;}
     else {target=pubBase;variance=pubBase*0.18;}
     let v=target+(rng()-0.5)*2*variance+Math.sin(i/N*6.28*2)*variance*0.4;
     if(ANOMALY.key===key&&!isPrivate){
       const d=Math.abs(i/N-ANOMALY.at);
       if(d<0.04)v*=ANOMALY.factor-(d/0.04)*(ANOMALY.factor-1);
     }
-    pts.push(Math.max(8,Math.round(v*10)/10));
+    // floor of 1ms, not 8: a region sitting a few miles from its on-ramp
+    // derives a 3ms envelope, and an 8ms clamp would have flattened the whole
+    // private series onto a figure its own tail (and Connect) contradicts.
+    pts.push(Math.max(1,Math.round(v*10)/10));
   }
-  // live failure sim spikes the tail
+  /* the TAIL is today's live reading, and it is exact: the chart a viewer
+     opens from Connect's "View in Observe" link must land on the number the
+     tile they clicked was showing. */
   const impact=CC.simImpact();
   if(impact&&impact.regionKeys.includes(key)){
     const spike=impact.defense?pubBase*1.6:pubBase*2.6;
     pts[N-2]=Math.round(spike*0.8);pts[N-1]=Math.round(spike);
-  } else if(attachedNow){
-    pts[N-1]=PRIVATE_LAT+Math.round((rng()-0.5)*3);
   } else {
-    pts[N-1]=r.lat; // charts agree with the tree
+    pts[N-1]=attachedNow?privBase:pubBase;
   }
   return pts;
 }
@@ -128,7 +147,8 @@ function egressSeries(N){
 function telemetry(N){
   return {
     regions:regionList().map(x=>({key:x.key,name:x.region.name,cloudName:x.cloud.name,color:x.cloud.color,
-      attached:x.region.attached,lat:x.region.lat,ai:x.region.ai,
+      // the region's live figure on the path it is actually on — never the raw seed
+      attached:x.region.attached,lat:x.region.attached?_lat(x.region.id).privateMs:_lat(x.region.id).publicMs,ai:x.region.ai,
       latency:latencySeries(x.key,N),throughput:throughputSeries(x.key,N),loss:lossSeries(x.key,N)})),
     egress:egressSeries(N),
     anomaly:ANOMALY,
@@ -141,14 +161,24 @@ function obsSummary(){
   const rl=regionList();
   const att=rl.filter(x=>x.region.attached);
   const pub=rl.filter(x=>!x.region.attached);
-  const worst=pub.slice().sort((a,b)=>b.region.lat-a.region.lat)[0];
+  const worst=pub.slice().sort((a,b)=>_lat(b.region.id).publicMs-_lat(a.region.id).publicMs)[0];
   const e=CC.egress();
   const impact=CC.simImpact();
   const parts=[];
   if(impact){
     parts.push(`<b>Active incident (simulated):</b> ${impact.onramp.name} is down — ${impact.vpcIds.length} VPCs ${impact.defense?'failed over to public transit and are running degraded with no SLA':'are blackholed with Dynamic Defense off'}. Latency on the affected paths is spiking in the charts below.`);
   }
-  parts.push(`${att.length} of ${rl.length} regions ride the private envelope (~${PRIVATE_LAT}ms, low variance). ${pub.length?`${pub.length} still depend on public transit${worst?` — <b>${worst.region.name}</b> is the outlier at ${worst.region.lat}ms P95`:''}.`:'Nothing depends on public transit.'}`);
+  /* The envelope used to read "~12ms" — a bare literal sitting beside Connect
+     cards showing the same private regions at 3, 29, 33 and 120ms. It is now
+     the actual spread of those regions' figures, and it SAYS what the figure
+     measures (RTT to the on-ramp), so the sentence can be checked against the
+     tile one click away instead of contradicting it. */
+  const envMs=att.map(x=>_lat(x.region.id).privateMs).sort((a,b)=>a-b);
+  const envelope=envMs.length?(envMs[0]===envMs[envMs.length-1]
+    ?`${envMs[0]}ms`:`${envMs[0]}–${envMs[envMs.length-1]}ms`):null;
+  parts.push(`${envelope
+    ?`${att.length} of ${rl.length} regions ride the private envelope — ${envelope} to the on-ramp serving each.`
+    :`None of the ${rl.length} regions ride the private envelope yet.`} ${pub.length?`${pub.length} still depend on public transit${worst?` — <b>${worst.region.name}</b> is the outlier at ${_lat(worst.region.id).publicMs}ms on the public path`:''}.`:'Nothing depends on public transit.'}`);
   parts.push(`Egress is running ${'$'+(e.total/1000).toFixed(1)}k/mo${e.pub?` with ${'$'+(e.pub/1000).toFixed(1)}k still on public rates`:' — fully on committed private pricing'}${e.savings?`; private-path savings hold at ${'$'+(e.savings/1000).toFixed(1)}k/mo`:''}.`);
   const euw=regions.aws.find(r=>r.id==='euw1');
   parts.push(`One anomaly in the window: a transit-congestion spike on eu-west-1${euw.attached?' — before it attached; the private path is immune to that event class':' — it remains exposed to that event class until attached'}.`);

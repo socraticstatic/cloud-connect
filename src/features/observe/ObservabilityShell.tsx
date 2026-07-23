@@ -108,7 +108,7 @@ export function ObservabilityShell({ binding }: { binding: ObservabilityBinding 
         </div>
 
         {/* briefing rail */}
-        <aside className="rounded-2xl border border-fw-secondary bg-fw-wash p-4 space-y-3">
+        <aside data-testid="briefing" className="rounded-2xl border border-fw-secondary bg-fw-wash p-4 space-y-3">
           <div className="text-figma-xs uppercase tracking-wide text-fw-bodyLight">{binding.layer === 'ai' ? 'Fabric briefing' : 'Network briefing'}</div>
           <div className="space-y-2 text-figma-sm text-fw-body">
             {brief.narrative.map((b, i) => (

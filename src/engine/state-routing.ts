@@ -13,6 +13,31 @@ const {onramps,regions,vpcs,clouds}=CC;
 const PUBLIC_EGRESS=0.09, PRIVATE_EGRESS=0.02;
 const FAILOVER={attMs:1800, nativeMs:47000};   // representative; sub-2s vs tens of seconds
 
+/* ---- THE latency derivation (option 1: one surface, everything downstream) ----
+
+   Cloud Connect used to carry three latency vocabularies for one estate:
+   `fabricModel().latencyMs` on /discover, Connect's Performance tile and the
+   PathChoice cards; the raw seed `r.lat` (and `r.lat*1.7`) on every
+   /naas/observe flow row; and a bare `~12ms` literal in the network briefing.
+   us-east-1 read 3ms on Connect and 12ms on its AT&T-controlled flow row one
+   click away — the same private path into the same region, two figures.
+
+   The alternative was to keep the flow figure seed-derived and LABEL the two
+   apart. It does not hold: once a flow is steered onto the AT&T path, the
+   flow's latency and the region's private-path latency are the same object at
+   the same granularity. No label dissolves 3 vs 12. So every latency now
+   derives from `_regionLatencyMs` and nothing else:
+
+     private (AT&T) path  = the region's fabric RTT to the on-ramp serving it
+     public path          = the same figure x PUBLIC_TRANSIT_FACTOR
+
+   The two agree exactly where they measure the same thing and differ only
+   where the PATH differs — which every table already names in its Path column.
+   Deriving the public figure from the private one (rather than from an
+   unrelated seed) also guarantees public > private everywhere, so the
+   advisor's "steer here, −Nms" can never recommend a slower path. */
+const PUBLIC_TRANSIT_FACTOR=1.7;
+
 const steered={};          // rowId -> pathId (operator override)
 const failedPaths=new Set();// pathIds knocked out by failover sim
 let lastFailover=null;     // {rowId, from, to, attMs, nativeMs}
@@ -24,21 +49,25 @@ const DST_LABEL={'ai-endpoints':'AI endpoints','internet':'public internet','sto
 // vpc id -> {cid, rid, lat, attached}
 function vpcLoc(){
   const m={};
-  clouds.forEach(c=>(regions[c.id]||[]).forEach(r=>(vpcs[r.id]||[]).forEach(v=>{m[v.id]={cid:c.id,rid:r.id,lat:r.lat,attached:r.attached};})));
+  clouds.forEach(c=>(regions[c.id]||[]).forEach(r=>(vpcs[r.id]||[]).forEach(v=>{m[v.id]={cid:c.id,rid:r.id,attached:r.attached};})));
   return m;
 }
 function rampsFor(cid,rid){ return onramps.filter(o=>o.targets.some(([c,r])=>c===cid&&r===rid)); }
 function regionAttached(cid,rid){const r=(regions[cid]||[]).find(x=>x.id===rid);return !!(r&&r.attached);}
 
-// candidate paths for a flow rooted in cloud/region (lat = region latency)
-function pathsForRegion(cid,rid,lat){
+/* candidate paths for a flow rooted in cloud/region. Both latencies come off
+   `regionLatency` — the same derivation Connect's Performance tile, the
+   PathChoice cards and Discover's Latency tile render — so an AT&T row on
+   /naas/observe states the region's figure exactly, not a second opinion. */
+function pathsForRegion(cid,rid){
+  const L=_latencyPair(cid,rid);
   const paths=[{id:'public',label:'Hyperscaler-native',sub:'public internet',via:null,mechanism:'public',
-    latencyMs:Math.round(lat*1.7),egressPerGb:PUBLIC_EGRESS,attControlled:false,diversityGroup:'public',available:true}];
+    latencyMs:L.publicMs,egressPerGb:PUBLIC_EGRESS,attControlled:false,diversityGroup:'public',available:true}];
   rampsFor(cid,rid).forEach(o=>{
     const id='att-'+o.id;
     paths.push({id,label:'AT&T mid-mile',sub:o.name,via:o.id,
       mechanism:o.active?'native-route':'overlay',
-      latencyMs:lat,egressPerGb:PRIVATE_EGRESS,attControlled:true,diversityGroup:o.site.name,
+      latencyMs:L.privateMs,egressPerGb:PRIVATE_EGRESS,attControlled:true,diversityGroup:o.site.name,
       available:o.active && !failedPaths.has(id)});
   });
   return paths;
@@ -61,35 +90,61 @@ function isDiverse(row){
   return groups.size>=2;
 }
 
-// explicit cloud-to-cloud flows (U3) - flows() does not model dst=cloud.
-// The steerable hop is the mid-mile (AT&T backbone) vs the public internet.
+/* explicit cloud-to-cloud flows (U3) - flows() does not model dst=cloud.
+   The steerable hop is the mid-mile (AT&T backbone) vs the public internet.
+
+   Endpoints are REGION IDS, not a sentence. The label, the destination cloud
+   the scene graph draws into, and both path latencies all derive from the
+   pair, so nothing is stated twice and nothing is parsed back out of prose.
+   (The scene graph used to recover the far end with /Azure/.test(label) and
+   fall through to `c-oci` — so "AWS us-east-1 ↔ CoreWeave" drew an edge into
+   the Oracle Cloud node, and "Azure West US 2 ↔ Nebius" drew one out of AWS.)
+
+   `pops` are the AT&T backbone PoPs that can carry the pair; the path id stays
+   att-iad / att-dal because `failedPaths` and the failover log key on it. */
+const C2C_PAIRS=[
+  {id:'c2c-aws-azure',a:['aws','use1'],b:['azure','wus2'],gbps:6.3,pops:['nb1','nb2']},
+  {id:'c2c-aws-gcp',a:['aws','use1'],b:['gcp','usc1'],gbps:2.4,pops:['nb1','nb2']},
+  {id:'c2c-aws-cw',a:['aws','use1'],b:['cw','cwe'],gbps:4.1,pops:['nb2'],dci:'GPU inference DCI'},
+  {id:'c2c-azure-neb',a:['azure','wus2'],b:['neb','nbe'],gbps:2.9,pops:['nb2'],dci:'classified GPU DCI'},
+];
+const POP_PATH_ID={nb1:'att-iad',nb2:'att-dal'};
+
 function cloudToCloud(){
-  // two diverse AT&T backbone PoPs (Ashburn / Dallas) -> real multi-path
-  // diversity and a failover that reroutes to the diverse path, not to public.
-  const c2cPaths=()=>[
-    {id:'public',label:'Public internet',sub:'hyperscaler-native peering',via:null,mechanism:'public',
-      latencyMs:43,egressPerGb:PUBLIC_EGRESS,attControlled:false,diversityGroup:'public',available:true},
-    {id:'att-iad',label:'AT&T mid-mile',sub:'backbone · Ashburn PoP',via:'nb1',mechanism:'native-route',
-      latencyMs:18,egressPerGb:PRIVATE_EGRESS,attControlled:true,diversityGroup:'Ashburn',available:!failedPaths.has('att-iad')},
-    {id:'att-dal',label:'AT&T mid-mile',sub:'backbone · Dallas PoP',via:'nb2',mechanism:'native-route',
-      latencyMs:22,egressPerGb:PRIVATE_EGRESS,attControlled:true,diversityGroup:'Dallas',available:!failedPaths.has('att-dal')},
-  ];
   // AI-cloud DCI pairs: the backbone GPU path exists only once the GPU
   // on-ramp (nb2, which attaches CoreWeave + Nebius) is up - so east-west
   // reconciles with Discovery attach the same way north-south does.
   const gpuUp=onramps.find(o=>o.id==='nb2').active;
-  const dciPaths=()=>[
-    {id:'public',label:'Public internet',sub:'GPU-cloud public peering',via:null,mechanism:'public',
-      latencyMs:51,egressPerGb:PUBLIC_EGRESS,attControlled:false,diversityGroup:'public',available:true},
-    {id:'att-dal',label:'AT&T mid-mile',sub:'backbone · Dallas PoP · GPU DCI',via:'nb2',mechanism:'native-route',
-      latencyMs:24,egressPerGb:PRIVATE_EGRESS,attControlled:true,diversityGroup:'Dallas',available:gpuUp&&!failedPaths.has('att-dal')},
-  ];
-  return [
-    {id:'c2c-aws-azure',kind:'c2c',label:'AWS us-east-1 ↔ Azure West US 2',gbps:6.3,viaPublic:true,paths:c2cPaths()},
-    {id:'c2c-aws-gcp',kind:'c2c',label:'AWS us-east-1 ↔ Google Cloud us-central1',gbps:2.4,viaPublic:true,paths:c2cPaths()},
-    {id:'c2c-aws-cw',kind:'c2c',label:'AWS us-east-1 ↔ CoreWeave (GPU inference DCI)',gbps:4.1,viaPublic:!gpuUp,paths:dciPaths()},
-    {id:'c2c-azure-neb',kind:'c2c',label:'Azure West US 2 ↔ Nebius (classified GPU DCI)',gbps:2.9,viaPublic:!gpuUp,paths:dciPaths()},
-  ];
+  return C2C_PAIRS.map(pair=>{
+    const A=_findRegion(pair.a[1]), B=_findRegion(pair.b[1]);
+    const label=`${A.cloud.name} ${A.r.name} ↔ ${B.cloud.name} ${B.r.name}`+(pair.dci?` (${pair.dci})`:'');
+    /* Sorted shortest-first, because `currentPath` and `routeAdvisor` both take
+       "the first available AT&T path" — so the reroute and the recommendation
+       land on the best one. A pair's SECOND PoP is a detour by construction (a
+       diverse path leaves the direct line; that is what diversity costs). */
+    const att=pair.pops.map(popId=>{
+      const o=onramps.find(x=>x.id===popId);
+      const id=POP_PATH_ID[popId];
+      const city=o.site.name.split(' · ').pop();
+      return {id,label:'AT&T mid-mile',sub:`backbone · ${city} PoP`+(pair.dci?' · GPU DCI':''),
+        via:popId,mechanism:'native-route',latencyMs:_pairRttMs(A.r,B.r,o),
+        egressPerGb:PRIVATE_EGRESS,attControlled:true,diversityGroup:city,
+        available:(pair.dci?gpuUp:true)&&!failedPaths.has(id)};
+    }).sort((x,y)=>x.latencyMs-y.latencyMs);
+    /* East-west is priced by the SAME rule as north-south: the public figure is
+       the best AT&T route for this pair times PUBLIC_TRANSIT_FACTOR, not an
+       independent great circle. Measuring the two ends with different geometry
+       is what let the GPU DCI row read "AT&T-controlled · 59ms" beside "Public
+       internet · 12ms" — the on-ramp that reaches CoreWeave is in Dallas and
+       the region is in New Jersey, so the fabric route is a long way round and
+       a straight-line public figure beat it on the same row. */
+    const best=att.length?att[0].latencyMs:_pairRttMs(A.r,B.r,null);
+    const paths=[{id:'public',label:'Public internet',sub:pair.dci?'GPU-cloud public peering':'hyperscaler-native peering',
+      via:null,mechanism:'public',latencyMs:Math.round(best*PUBLIC_TRANSIT_FACTOR),
+      egressPerGb:PUBLIC_EGRESS,attControlled:false,diversityGroup:'public',available:true},...att];
+    return {id:pair.id,kind:'c2c',label,gbps:pair.gbps,srcCloud:pair.a[0],dstCloud:pair.b[0],
+      viaPublic:pair.dci?!gpuUp:true,paths};
+  });
 }
 
 // the curated, steerable flow set
@@ -101,15 +156,15 @@ function routeFlows(){
     if(f.dst==='intra-tag')return; // mesh handled conceptually; keep the list focused
     const l=loc[f.srcVpc]; if(!l)return;
     const key=f.srcTag+'|'+f.dst;
-    const a=agg[key]||(agg[key]={tag:f.srcTag,dst:f.dst,gbps:0,viaPublic:false,best:0,cid:l.cid,rid:l.rid,lat:l.lat});
+    const a=agg[key]||(agg[key]={tag:f.srcTag,dst:f.dst,gbps:0,viaPublic:false,best:0,cid:l.cid,rid:l.rid});
     a.gbps+=f.gbps; a.viaPublic=a.viaPublic||f.viaPublic;
-    if(f.gbps>a.best){a.best=f.gbps;a.cid=l.cid;a.rid=l.rid;a.lat=l.lat;}
+    if(f.gbps>a.best){a.best=f.gbps;a.cid=l.cid;a.rid=l.rid;}
   });
   const rows=Object.values(agg)
     .filter(a=>a.gbps>=1.5)                 // significant flows only
     .sort((x,y)=>y.gbps-x.gbps)
     .map(a=>{
-      const paths=pathsForRegion(a.cid,a.rid,a.lat);
+      const paths=pathsForRegion(a.cid,a.rid);
       // default follows the representative region's actual attachment (consistent
       // with Discovery: attached region => already on the AT&T private path).
       const viaPublic=!regionAttached(a.cid,a.rid);
@@ -227,10 +282,11 @@ function sceneGraph(){
       gbps:f.gbps,label:f.label,latencyMs:f.current.latencyMs});
   });
   c2c.forEach(f=>{
-    const m=f.label.match(/↔\s*(.+)$/);
-    const dstCloud=/Azure/.test(f.label)?'c-azure':/Google/.test(f.label)?'c-gcp':'c-oci';
+    // Both ends come off the row's own endpoint ids. Reading them back out of
+    // the label (/Azure/ ... else 'c-oci') drew the CoreWeave DCI edge into
+    // Oracle Cloud and drew the Azure↔Nebius edge out of AWS.
     const via=popForPath(f.current);
-    edges.push({id:'edge-'+f.id,flowId:f.id,from:'c-aws',via,to:dstCloud,kindC2C:true,
+    edges.push({id:'edge-'+f.id,flowId:f.id,from:'c-'+f.srcCloud,via,to:'c-'+f.dstCloud,kindC2C:true,
       cls:f.current.attControlled?'controlled':'public',gbps:f.gbps,label:f.label,latencyMs:f.current.latencyMs});
   });
   return {nodes,edges};
@@ -277,7 +333,20 @@ function _airMiles(aLat,aLon,bLat,bLon){
   const h=Math.sin(dLat/2)**2+Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLon/2)**2;
   return 2*R*Math.asin(Math.min(1,Math.sqrt(h)));
 }
-function _estRttMs(aLat,aLon,bLat,bLon){return Math.round(3+_airMiles(aLat,aLon,bLat,bLon)*1.4*2/124);}
+function _rttForMiles(miles){return Math.round(3+miles*1.4*2/124);}
+function _estRttMs(aLat,aLon,bLat,bLon){return _rttForMiles(_airMiles(aLat,aLon,bLat,bLon));}
+
+/* RTT between two cloud REGIONS over the AT&T backbone: region → PoP → region.
+   `pop` null is the degenerate case (a pair with no PoP at all) and falls back
+   to the direct great circle with the public penalty applied. */
+function _pairRttMs(rA,rB,pop){
+  if(!rA.geo||!rB.geo)return null;
+  if(pop&&pop.site&&typeof pop.site.lat==='number'){
+    return _rttForMiles(_airMiles(rA.geo[0],rA.geo[1],pop.site.lat,pop.site.lon)
+                       +_airMiles(pop.site.lat,pop.site.lon,rB.geo[0],rB.geo[1]));
+  }
+  return Math.round(_rttForMiles(_airMiles(rA.geo[0],rA.geo[1],rB.geo[0],rB.geo[1]))*PUBLIC_TRANSIT_FACTOR);
+}
 
 // parse the first-mile transport product off an EDGE_NODES label
 // ("HQ · Dallas · AVPN" -> "AVPN"; "Internet" -> null)
@@ -303,17 +372,39 @@ function _regionShape(cid,cloud,r){
      either way. The type already carries 'none' for exactly this state. */
   const reliability = active.length>=2 ? 'dual' : active.length===1 ? 'single' : 'none';
   const path = active.length>=1 ? 'private' : 'public';
-  // latency: nearest active on-ramp site -> region.geo; fall back to any capturing
-  // on-ramp, then to the seeded region.lat when no geometry is available.
-  let latencyMs=r.lat;
-  const cand=(active.length?active:ramps).filter(o=>o.site&&typeof o.site.lat==='number');
-  if(r.geo&&cand.length){
-    latencyMs=Math.min(...cand.map(o=>_estRttMs(o.site.lat,o.site.lon,r.geo[0],r.geo[1])));
-  }
   return {
     cloudId:cid, regionId:r.id, name:r.name, cloudName:cloud.name, attached:!!r.attached,
-    reliability, path, latencyMs, onrampIds:ramps.map(o=>o.id),
+    reliability, path, latencyMs:_regionLatencyMs(cid,r), onrampIds:ramps.map(o=>o.id),
   };
+}
+
+/* The region's fabric RTT: nearest ACTIVE on-ramp site -> region.geo; fall back
+   to any capturing on-ramp (what it would be once provisioned), then to the
+   seeded region.lat when no geometry is available. This is the ONE figure —
+   `_regionShape` (Connect, Discover), `pathsForRegion` (every /naas/observe
+   flow row), `latencySeries` and the latency-SLO rule all read it. */
+function _regionLatencyMs(cid,r){
+  const ramps=rampsFor(cid,r.id);
+  const active=ramps.filter(o=>o.active);
+  const cand=(active.length?active:ramps).filter(o=>o.site&&typeof o.site.lat==='number');
+  if(r.geo&&cand.length)return Math.min(...cand.map(o=>_estRttMs(o.site.lat,o.site.lon,r.geo[0],r.geo[1])));
+  return r.lat;
+}
+/* Both figures a region can display, keyed by cloud+region (the internal form
+   `pathsForRegion` already holds both ids). */
+function _latencyPair(cid,rid){
+  const r=(regions[cid]||[]).find(x=>x.id===rid);
+  if(!r)return {privateMs:null,publicMs:null};
+  const privateMs=_regionLatencyMs(cid,r);
+  return {privateMs, publicMs:Math.round(privateMs*PUBLIC_TRANSIT_FACTOR)};
+}
+/* Public entry point: what latency does this region state, on each path?
+   `privateMs` is the figure Connect / Discover render; `publicMs` is what the
+   same region costs over public transit. Everything outside this file that
+   needs a latency reads this — nothing re-derives it, and nothing types one. */
+function regionLatency(regionId){
+  const f=_findRegion(regionId);
+  return f?_latencyPair(f.cid,regionId):null;
 }
 
 function fabricModel(){
@@ -349,5 +440,6 @@ function provisionRegion(regionId,opts){
   return shape;
 }
 
-Object.assign(CC,{routeFlows,steerFlow,clearSteer,routingKpis,routingFailover,routingRestore,routeHistory,sceneGraph,routeAdvisor,fabricModel,provisionRegion});
+Object.assign(CC,{routeFlows,steerFlow,clearSteer,routingKpis,routingFailover,routingRestore,routeHistory,sceneGraph,routeAdvisor,fabricModel,provisionRegion,
+  regionLatency,PUBLIC_TRANSIT_FACTOR});
 })(window.CC);
