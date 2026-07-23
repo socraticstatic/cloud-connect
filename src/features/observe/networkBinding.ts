@@ -296,5 +296,6 @@ export function networkBinding(cc: CloudControl): ObservabilityBinding {
     groupByOptions: () => GROUP_BY_OPTIONS,
     records: (groupBy: string) => buildRecords(cc, groupBy),
     briefing: () => buildBriefing(cc),
+    moments: () => cc.windowMoments(),
   };
 }

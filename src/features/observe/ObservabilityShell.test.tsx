@@ -62,3 +62,60 @@ describe('ObservabilityShell', () => {
   });
 
 });
+
+describe('ObservabilityShell — time machine', () => {
+  const tmBinding: ObservabilityBinding = {
+    ...fake,
+    flowSeries: () => [
+      { t: '−3h', v: 10 }, { t: '−2h', v: 20 }, { t: '−1h', v: 208 }, { t: 'now', v: 12 },
+    ],
+    moments: () => [{ at: 0.66, key: 'anomaly', label: 'Transit congestion · eu-west-1' }],
+  };
+
+  it('defaults to live: green chip, scrubber at the tail, hint readout', () => {
+    render(<ObservabilityShell binding={tmBinding} />);
+    expect(screen.getByText('Live')).toBeInTheDocument();
+    expect(screen.getByTestId('tm-scrubber')).toHaveValue('3');
+    expect(screen.getByTestId('tm-readout').textContent).toContain('Live edge');
+  });
+
+  it('scrubbing states the drawn series value verbatim and names a moment in reach', () => {
+    render(<ObservabilityShell binding={tmBinding} />);
+    fireEvent.change(screen.getByTestId('tm-scrubber'), { target: { value: '2' } });
+    const readout = screen.getByTestId('tm-readout').textContent!;
+    expect(readout).toContain('−1h');
+    expect(readout).toContain('208');
+    expect(readout).toContain('Transit congestion · eu-west-1');
+    expect(screen.getByText(/Reviewing −1h/)).toBeInTheDocument();
+  });
+
+  it('a moment outside reach is not named', () => {
+    render(<ObservabilityShell binding={tmBinding} />);
+    fireEvent.change(screen.getByTestId('tm-scrubber'), { target: { value: '0' } });
+    expect(screen.getByTestId('tm-readout').textContent).not.toContain('Transit congestion');
+  });
+
+  it('markers render at the binding moments; Back to live restores the live chip', () => {
+    render(<ObservabilityShell binding={tmBinding} />);
+    const marker = screen.getByTestId('tm-moment');
+    expect(marker.getAttribute('title')).toBe('Transit congestion · eu-west-1');
+    fireEvent.change(screen.getByTestId('tm-scrubber'), { target: { value: '1' } });
+    fireEvent.click(screen.getByTestId('tm-live'));
+    expect(screen.getByText('Live')).toBeInTheDocument();
+    expect(screen.getByTestId('tm-readout').textContent).toContain('Live edge');
+  });
+
+  it('an all-zero window renders no scrubber', () => {
+    const empty: ObservabilityBinding = { ...fake, flowSeries: () => [{ t: 't0', v: 0 }] };
+    render(<ObservabilityShell binding={empty} />);
+    expect(screen.queryByTestId('tm-scrubber')).toBeNull();
+  });
+
+  it('a binding without moments still scrubs, markerless', () => {
+    const markerless: ObservabilityBinding = { ...tmBinding, moments: undefined };
+    render(<ObservabilityShell binding={markerless} />);
+    fireEvent.change(screen.getByTestId('tm-scrubber'), { target: { value: '1' } });
+    expect(screen.getByTestId('tm-readout').textContent).toContain('20');
+    expect(screen.queryByTestId('tm-moment')).toBeNull();
+  });
+});

@@ -22,18 +22,45 @@ export function ObservabilityShell({ binding }: { binding: ObservabilityBinding 
   const groups = binding.groupByOptions();
   const [tab, setTab] = useState(tabs[0]?.id ?? '');
   const [groupBy, setGroupBy] = useState(groups[0]?.id ?? 'none');
+  // The time machine: null = live; an index reviews that instant of the
+  // window. The readout restates the drawn series value verbatim — the
+  // scrubber never re-derives a figure (see the spec's honesty invariants).
+  const [cursor, setCursor] = useState<number | null>(null);
   const kpis = binding.kpis();
   const rows = binding.records(groupBy);
   const series = binding.flowSeries(tab);
   const brief = binding.briefing();
+  const moments = binding.moments?.() ?? [];
+  const hasSeries = series.length > 0 && !series.every(p => p.v === 0);
+  const reviewing = cursor !== null && hasSeries;
+  const at = reviewing ? Math.min(cursor, series.length - 1) : null;
+  const tabLabel = tabs.find(t => t.id === tab)?.label ?? tab;
+  // A moment "reaches" the cursor when it sits within 6% of the window.
+  const nearMoment = at !== null && series.length > 1
+    ? moments.find(m => Math.abs(m.at - at / (series.length - 1)) < 0.06) ?? null
+    : null;
 
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center gap-3">
         <h1 className="text-figma-2xl font-semibold text-fw-heading">{binding.title}</h1>
-        <span className="inline-flex items-center gap-1.5 text-figma-xs font-medium text-fw-success">
-          <span className="h-2 w-2 rounded-full bg-fw-success" /> Live
-        </span>
+        {reviewing ? (
+          <span className="inline-flex items-center gap-2 text-figma-xs font-medium text-fw-link">
+            <span className="h-2 w-2 rounded-full bg-fw-active" /> Reviewing {series[at!].t}
+            <button
+              type="button"
+              data-testid="tm-live"
+              onClick={() => setCursor(null)}
+              className="h-6 px-2.5 rounded-full border border-fw-secondary bg-fw-base text-figma-xs font-medium text-fw-body hover:border-fw-active hover:text-fw-link"
+            >
+              Back to live
+            </button>
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 text-figma-xs font-medium text-fw-success">
+            <span className="h-2 w-2 rounded-full bg-fw-success" /> Live
+          </span>
+        )}
       </div>
 
       {/* KPI strip */}
@@ -73,9 +100,63 @@ export function ObservabilityShell({ binding }: { binding: ObservabilityBinding 
                   {series.map((p, i) => {
                     const max = Math.max(...series.map(s => s.v), 1);
                     const h = (p.v / max) * 36;
-                    return <rect key={i} x={i * 10 + 1} y={40 - h} width="8" height={h} rx="1" fill="#009FDB" />;
+                    const isCursor = at === i;
+                    return (
+                      <rect
+                        key={i}
+                        x={i * 10 + 1}
+                        y={40 - h}
+                        width="8"
+                        height={h}
+                        rx="1"
+                        fill={isCursor ? '#0057B8' : '#009FDB'}
+                        opacity={reviewing && !isCursor ? 0.45 : 1}
+                      />
+                    );
                   })}
                 </svg>
+              )}
+
+              {/* The time machine: scrub the window the charts already draw.
+                  Markers sit only where the engine placed a moment. */}
+              {hasSeries && (
+                <div className="mt-3">
+                  <div className="relative">
+                    <input
+                      type="range"
+                      data-testid="tm-scrubber"
+                      aria-label="Review the window"
+                      min={0}
+                      max={series.length - 1}
+                      step={1}
+                      value={at ?? series.length - 1}
+                      onChange={e => setCursor(Number(e.target.value))}
+                      className="w-full accent-fw-ctaPrimary"
+                    />
+                    {series.length > 1 && moments.map(m => (
+                      <span
+                        key={m.key}
+                        data-testid="tm-moment"
+                        title={m.label}
+                        className="absolute -top-1 h-2 w-2 rounded-full bg-fw-heading/60 pointer-events-none"
+                        style={{ left: `calc(${Math.min(Math.max(m.at, 0), 1) * 100}% - 4px)` }}
+                      />
+                    ))}
+                  </div>
+                  <p
+                    data-testid="tm-readout"
+                    aria-live="polite"
+                    className="mt-1 text-figma-xs text-fw-bodyLight tabular-nums"
+                  >
+                    {reviewing
+                      ? <>
+                          <span className="font-semibold text-fw-heading">{series[at!].t}</span>
+                          {' · '}{series[at!].v}{' · '}{tabLabel}
+                          {nearMoment && <span className="text-fw-link font-medium"> — {nearMoment.label}</span>}
+                        </>
+                      : 'Live edge — drag to review the window.'}
+                  </p>
+                </div>
               )}
             </div>
           </div>
