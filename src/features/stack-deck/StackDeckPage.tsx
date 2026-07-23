@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Printer, ChevronDown } from 'lucide-react';
 import { AttIcon } from '../../components/icons/AttIcon';
+import { PersonasView } from './PersonasView';
 
 /**
  * /stack — the layer-first IA concept deck.
@@ -560,6 +561,8 @@ function AfterBar() {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export function StackDeckPage() {
+  // Two audiences, one deck: the concept, and the people it was shaped for.
+  const [view, setView] = useState<'concept' | 'personas'>('concept');
   return (
     <div style={{ fontFamily: "'ATT Aleck Sans', system-ui, sans-serif", paddingBottom: 48, background: '#ffffff' }}>
       <style>{`
@@ -581,12 +584,32 @@ export function StackDeckPage() {
             The Stack · layer-first IA
           </span>
         </div>
+        <nav aria-label="Deck views" className="flex items-center gap-1 rounded-full p-1"
+          style={{ background: '#f8fafb', border: '1px solid #dcdfe3' }}>
+          {([['concept', 'The concept'], ['personas', 'Personas']] as const).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              data-testid={`deck-tab-${key}`}
+              aria-pressed={view === key}
+              onClick={() => { setView(key); window.scrollTo(0, 0); }}
+              className="px-4 py-1 rounded-full text-[13px] font-semibold transition-colors"
+              style={view === key
+                ? { background: '#0057b8', color: '#ffffff' }
+                : { background: 'transparent', color: '#454b52' }}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
         <button onClick={() => window.print()}
           className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[13px] font-medium"
           style={{ background: '#f8fafb', color: '#454b52', border: '1px solid #dcdfe3' }}>
           <Printer size={14} /> Export PDF
         </button>
       </header>
+
+      {view === 'personas' ? <PersonasView /> : <>
 
       {/* ── COVER ── */}
       <section className="sd-section" style={{ background: '#001a3d', minHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
@@ -783,6 +806,8 @@ export function StackDeckPage() {
           </a>
         </div>
       </section>
+
+      </>}
     </div>
   );
 }

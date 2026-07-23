@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, fireEvent } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { StackDeckPage } from './StackDeckPage';
 
@@ -66,5 +66,35 @@ describe('StackDeckPage', () => {
   it('has the Export PDF button in the header', () => {
     render(<StackDeckPage />);
     expect(screen.getByRole('button', { name: /export pdf/i })).toBeInTheDocument();
+  });
+});
+
+describe('StackDeckPage — the Personas tab', () => {
+  it('defaults to the concept; the tab swaps to six persona cards and back', () => {
+    render(<StackDeckPage />);
+    expect(screen.getByTestId('deck-tab-concept')).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByTestId('deck-tab-personas'));
+    expect(screen.getByRole('heading', { name: /Six roles/ })).toBeInTheDocument();
+    const cards = screen.getAllByTestId(/^persona-(architect|planner|netops|cloudeng|aianalyst|finops)$/);
+    expect(cards).toHaveLength(6);
+    for (const name of [
+      'Network Architect', 'Network Planner', 'NetOps Engineer',
+      'Cloud Network Engineer', 'AI Platform Analyst', 'FinOps Analyst',
+    ]) {
+      expect(screen.getByRole('heading', { name })).toBeInTheDocument();
+    }
+    // Every card carries its footprint on the deck's own table.
+    expect(screen.getAllByTestId('persona-footprint')).toHaveLength(6);
+    fireEvent.click(screen.getByTestId('deck-tab-concept'));
+    expect(screen.getByRole('heading', { name: /A verb is not a destination/ })).toBeInTheDocument();
+  });
+
+  it('persona links stay inside the live app', () => {
+    render(<StackDeckPage />);
+    fireEvent.click(screen.getByTestId('deck-tab-personas'));
+    const links = screen.getAllByRole('link').map(a => a.getAttribute('href'));
+    for (const href of links) {
+      expect(href).toBe('#/discover');
+    }
   });
 });
