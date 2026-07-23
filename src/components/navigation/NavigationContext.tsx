@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Settings, Bell, User, HelpCircle } from 'lucide-react';
 import { AttIcon } from '../icons/AttIcon';
-import { NAV_DISCOVER, NAV_DOMAINS, type CuratedNavItem } from './navItems';
+import { NAV_DISCOVER, NAV_LAYERS, type CuratedNavItem } from './navItems';
 
 interface NavigationSection {
   id: string;
@@ -87,7 +87,7 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
 
   // Define navigation sections with their items. Discover sits alone above
   // both domains; each domain is its own collapsible section, mirroring
-  // NAV_DOMAINS rather than re-flattening it.
+  // NAV_LAYERS rather than re-flattening it.
   const navigationSections: NavigationSection[] = [
     {
       id: 'main',
@@ -95,7 +95,7 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
       icon: <Settings className="h-5 w-5" />,
       items: [toSectionItem(NAV_DISCOVER)]
     },
-    ...NAV_DOMAINS.map(domain => ({
+    ...NAV_LAYERS.map(domain => ({
       id: domain.key,
       title: domain.label,
       icon: <AttIcon name={domain.items[0].icon} className="h-5 w-5" />,

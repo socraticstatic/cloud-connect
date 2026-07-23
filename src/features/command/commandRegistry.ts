@@ -1,5 +1,5 @@
 import type { CloudControl } from '../../engine';
-import { NAV_DISCOVER, NAV_DOMAINS } from '../../components/navigation/navItems';
+import { NAV_DISCOVER, NAV_LAYERS } from '../../components/navigation/navItems';
 
 export type CommandKind = 'nav' | 'attach' | 'enforce' | 'undo';
 
@@ -16,7 +16,7 @@ interface Section {
 }
 
 /**
- * Every routed section of the curated nav, derived from NAV_DOMAINS so the
+ * Every routed section of the curated nav, derived from NAV_LAYERS so the
  * palette cannot drift from the nav.
  *
  * NaaS and the AI Fabric carry the SAME four verb labels, so a bare "Go to
@@ -26,7 +26,7 @@ interface Section {
  */
 const SECTIONS: Section[] = [
   { path: NAV_DISCOVER.to, label: NAV_DISCOVER.label },
-  ...NAV_DOMAINS.flatMap(domain =>
+  ...NAV_LAYERS.flatMap(domain =>
     domain.items.map(item => ({
       path: item.to,
       label: `${domain.label} · ${item.label}`,

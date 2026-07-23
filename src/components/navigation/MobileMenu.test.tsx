@@ -4,7 +4,7 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '../../contexts/AuthContext';
 import { MobileMenu } from './MobileMenu';
-import { NAV_DOMAINS } from './navItems';
+import { NAV_LAYERS } from './navItems';
 
 // Mock framer-motion. The nav item list only renders once the panel's
 // onAnimationComplete callback fires, so the mocked motion.div calls it on
@@ -126,7 +126,7 @@ describe('MobileMenu', () => {
 
     const seen = new Map<string, string[]>();
 
-    for (const domain of NAV_DOMAINS) {
+    for (const domain of NAV_LAYERS) {
       const group = screen.getByRole('group', { name: domain.label });
       const buttons = within(group).getAllByRole('button');
       expect(buttons.map(b => b.getAttribute('data-nav-label'))).toEqual(

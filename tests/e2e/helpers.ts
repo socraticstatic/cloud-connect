@@ -39,3 +39,21 @@ export async function switchRole(page: Page, role: 'user' | 'admin' | 'super-adm
   await page.evaluate((r) => (window as any).__setRole(r), role);
   await page.waitForTimeout(400);
 }
+
+/**
+ * Layer-first nav: open a layer's dropdown in the main bar and follow one of
+ * its verbs. The verbs live only inside the panel, so this is the one honest
+ * way a pointer user reaches them.
+ */
+export async function openLayerVerb(
+  page: Page,
+  layer: 'NaaS' | 'AI Fabric',
+  verb: 'Connect' | 'Govern' | 'Observe' | 'Cost',
+) {
+  const nav = page.getByLabel('Main navigation');
+  await nav.getByRole('button', { name: layer, exact: true }).click();
+  // A menuitem's accessible name is its label plus its description line, so
+  // match on the leading verb, never exact.
+  await nav.getByRole('menu', { name: layer })
+    .getByRole('menuitem', { name: new RegExp(`^${verb}\\b`) }).click();
+}

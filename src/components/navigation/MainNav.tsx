@@ -10,7 +10,9 @@ import { TenantSelector } from './TenantSelector';
 import { TourLauncher } from '../../features/tour/TourLauncher';
 import { CommandPalette } from '../../features/command/CommandPalette';
 import { UndoControl } from '../../features/undo/UndoControl';
-import { NAV_DISCOVER, NAV_DOMAINS, NAV_ITEMS, isNavRouteActive } from './navItems';
+import { NAV_DISCOVER, NAV_LAYERS, NAV_ITEMS, isNavRouteActive } from './navItems';
+import { LayerMenu } from './LayerMenu';
+import { CreateMenu } from './CreateMenu';
 import { Button } from '../common/Button';
 import { useStore } from '../../store/useStore';
 import { usePermissions } from '../../hooks/usePermission';
@@ -70,7 +72,7 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
   });
 
   // A caller-supplied `items` list is still rendered as one flat row — it has
-  // no domains to group by. The curated nav renders NAV_DOMAINS instead.
+  // no domains to group by. The curated nav renders NAV_LAYERS instead.
   const usingCuratedNav = items.length === 0;
   const navItems = usingCuratedNav ? NAV_ITEMS.map(toNavItem) : items;
 
@@ -210,40 +212,18 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
 
             {/* Desktop Navigation.
 
-                Curated nav: Discover sits alone, then NaaS and AI Fabric each
-                render as a labelled group of the same four verbs. The two
-                domains carry IDENTICAL labels (Connect/Govern/Observe/Cost),
-                so the group label is load-bearing, not decoration — it is the
-                accessible name of the group each link belongs to. */}
+                Curated nav, layer-first: Discover, then one dropdown per
+                layer of the stack. The verbs (Connect/Govern/Observe/Cost)
+                appear only INSIDE their layer's panel, so no label in the
+                bar ever repeats — enter through the layer, act through the
+                lifecycle (spec: 2026-07-23-layer-first-ia-design.md). */}
             <div className="hidden min-[1280px]:flex min-[1280px]:items-center min-[1280px]:h-full ml-6">
               {usingCuratedNav ? (
-                <div className="flex items-end h-full pb-2.5 gap-4 min-[1440px]:gap-5 min-[1680px]:gap-7">
-                  <div className="flex flex-col">
-                    {/* Spacer matching a domain label's line box, so Discover's
-                        link sits on the same baseline as the verbs beside it. */}
-                    <span className="h-4" aria-hidden="true" />
-                    {renderNavLink(toNavItem(NAV_DISCOVER))}
-                  </div>
-
-                  {NAV_DOMAINS.map(domain => (
-                    <div key={domain.key} className="flex items-end gap-4 min-[1440px]:gap-5">
-                      <span className="w-px h-8 bg-fw-secondary" aria-hidden="true" />
-                      <div
-                        role="group"
-                        aria-labelledby={`nav-domain-${domain.key}`}
-                        className="flex flex-col"
-                      >
-                        <span
-                          id={`nav-domain-${domain.key}`}
-                          className="h-4 text-[10px] leading-4 font-semibold uppercase tracking-[0.1em] text-fw-bodyLight whitespace-nowrap"
-                        >
-                          {domain.label}
-                        </span>
-                        <div className="flex items-end gap-3 min-[1440px]:gap-4">
-                          {domain.items.map(item => renderNavLink(toNavItem(item), true))}
-                        </div>
-                      </div>
-                    </div>
+                <div className="flex items-stretch h-full gap-4 min-[1440px]:gap-6">
+                  {renderNavLink(toNavItem(NAV_DISCOVER))}
+                  <span className="w-px self-center h-8 bg-fw-secondary" aria-hidden="true" />
+                  {NAV_LAYERS.map(layer => (
+                    <LayerMenu key={layer.key} layer={layer} />
                   ))}
                 </div>
               ) : (
@@ -277,6 +257,10 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
           <div className="flex items-center gap-1 xl:gap-1.5 flex-shrink-0 pr-2">
             {!isMenuOpen && !isMobile && (
               <>
+                {/* Create is the one verb that outranks the layers — as a
+                    global action, never an address. Each entry names its
+                    layer and lands on that layer's Connect page. */}
+                <CreateMenu />
                 <SearchBar onSearch={onSearch} />
                 <div className="h-5 w-px bg-fw-secondary hidden xl:block mx-0.5" />
                 <UndoControl />

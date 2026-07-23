@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { seedAuth } from '../tests/e2e/helpers';
+import { seedAuth, openLayerVerb } from '../tests/e2e/helpers';
 
 /**
  * The NaaS / AI Fabric split, walked as a person walks it.
@@ -177,16 +177,15 @@ test('AI Fabric states the same token spend on Cost and on Observe', async ({ pa
   });
   expect(metering, 'the estate must actually be metering for this to mean anything').toBe(true);
 
-  const aiGroup = page.getByLabel('Main navigation').getByRole('group', { name: 'AI Fabric' });
 
-  await aiGroup.getByRole('link', { name: 'Cost', exact: true }).click();
+  await openLayerVerb(page, 'AI Fabric', 'Cost');
   const costTile = page.getByTestId('ai-cost-totals').filter({ hasText: 'Spend today' });
   await expect(costTile).toBeVisible();
   const onCostScreen = (await costTile.innerText()).match(/\$[\d.]+k?/)?.[0];
   expect(onCostScreen, 'no spend figure on the Cost screen').toBeTruthy();
   expect(onCostScreen).not.toBe('$0.00');
 
-  await aiGroup.getByRole('link', { name: 'Observe', exact: true }).click();
+  await openLayerVerb(page, 'AI Fabric', 'Observe');
   const kpi = page.getByTestId('kpi-tile').filter({ hasText: /^Cost/ }).first();
   await expect(kpi).toBeVisible();
   const onObserveScreen = (await kpi.innerText()).match(/\$[\d.]+k?/)?.[0];
@@ -226,8 +225,7 @@ test('the AI money screens track the meters instead of freezing at mount', async
   });
   expect(attachedTag, 'nothing is attached, so nothing can be metered live').toBeTruthy();
 
-  const aiGroup = page.getByLabel('Main navigation').getByRole('group', { name: 'AI Fabric' });
-  await aiGroup.getByRole('link', { name: 'Observe', exact: true }).click();
+  await openLayerVerb(page, 'AI Fabric', 'Observe');
 
   const kpi = page.getByTestId('kpi-tile').filter({ hasText: /^Cost/ }).first();
   await expect(kpi).toBeVisible();
@@ -251,7 +249,7 @@ test('the AI money screens track the meters instead of freezing at mount', async
   );
   const after = (await kpi.innerText()).match(/\$[\d.]+k?/)?.[0];
 
-  await aiGroup.getByRole('link', { name: 'Cost', exact: true }).click();
+  await openLayerVerb(page, 'AI Fabric', 'Cost');
   const costTile = page.getByTestId('ai-cost-totals').filter({ hasText: 'Spend today' });
   await expect(costTile).toBeVisible();
   const onCostScreen = (await costTile.innerText()).match(/\$[\d.]+k?/)?.[0];
@@ -309,8 +307,7 @@ test('AI Cost never sends a viewer to a Connect screen with nothing to attach', 
   expect(state.catalogReady, 'every model endpoint is attached').toBe(state.catalogTotal);
   expect(state.meterReady, 'while meter-readiness still lags').toBeLessThan(state.identities);
 
-  const aiGroup = page.getByLabel('Main navigation').getByRole('group', { name: 'AI Fabric' });
-  await aiGroup.getByRole('link', { name: 'Cost', exact: true }).click();
+  await openLayerVerb(page, 'AI Fabric', 'Cost');
 
   const summary = page.getByText(/route to a model endpoint/);
   await expect(summary).toBeVisible();
@@ -320,7 +317,7 @@ test('AI Cost never sends a viewer to a Connect screen with nothing to attach', 
   await expect(page.getByRole('link', { name: /Attach them in AI Fabric/ })).toHaveCount(0);
 
   // And the screen it would have sent them to says there is nothing to do.
-  await aiGroup.getByRole('link', { name: 'Connect', exact: true }).click();
+  await openLayerVerb(page, 'AI Fabric', 'Connect');
   await expect(
     page.getByText(`${state.catalogReady} / ${state.catalogTotal} governed & ready`),
   ).toBeVisible();

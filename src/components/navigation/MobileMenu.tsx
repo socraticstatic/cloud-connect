@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Bell, HelpCircle } from 'lucide-react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { AttIcon } from '../icons/AttIcon';
-import { NAV_DISCOVER, NAV_DOMAINS, isNavRouteActive, type CuratedNavItem } from './navItems';
+import { NAV_DISCOVER, NAV_LAYERS, isNavRouteActive, type CuratedNavItem } from './navItems';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -226,7 +226,7 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
                       {renderDiscoverItem(NAV_DISCOVER)}
                     </motion.div>
 
-                    {NAV_DOMAINS.map((domain, domainIndex) => (
+                    {NAV_LAYERS.map((domain, domainIndex) => (
                       <motion.div
                         key={domain.key}
                         role="group"
@@ -244,7 +244,7 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
                             carries its own description one line down, so the
                             blurb was the second-least load-bearing text in a
                             drawer that is the ONLY way to reach these screens
-                            below 1280px. NAV_DOMAINS still carries `blurb` —
+                            below 1280px. NAV_LAYERS still carries `blurb` —
                             nothing was deleted from the model. */}
                         <div className="px-2.5 pb-1">
                           <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-fw-bodyLight">
