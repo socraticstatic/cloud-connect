@@ -363,7 +363,7 @@ const LOOP_STEPS = [
   {
     n: 3,
     title: 'Share',
-    body: 'The tray travels as a link. It carries intentions, never figures — the recipient’s engine reprices every move on arrival. A stale link cannot state a stale price.',
+    body: 'The tray travels as a link. It carries intentions, never figures. The recipient’s engine reprices every move on arrival. A stale link cannot state a stale price.',
   },
   {
     n: 4,
@@ -400,8 +400,8 @@ function TwinLoop() {
           </p>
           <p className="text-[14px] font-medium leading-relaxed" style={{ color: '#454b52' }}>
             <b style={{ color: '#1d2329' }}>The time machine.</b> Observe’s window is scrubbable. Markers sit
-            only where the engine placed a moment — the seeded transit-congestion event, a this-session
-            attach, an active failure sim — and the readout restates the drawn value, never a re-derivation.
+            only where the engine placed a moment: the seeded transit-congestion event, a this-session
+            attach, an active failure sim. The readout restates the drawn value, never a re-derivation.
             “What did the stack look like when latency spiked” is answered by name.{' '}
             <a href="#/naas/observe" className="font-semibold hover:underline" style={{ color: '#0057b8' }}>
               Scrub the window →
@@ -415,7 +415,7 @@ function TwinLoop() {
           <p className="text-[14px] font-medium leading-relaxed" style={{ color: '#454b52' }}>
             <b style={{ color: '#1d2329' }}>⌘K intents.</b> Type “cap shared-services 2m” and the palette
             answers with one command, priced in policy vocabulary, that runs against the engine. A typed
-            grammar over the engine’s own tags — free text can never reach a mutation. Attach and steer
+            grammar over the engine’s own tags, so free text can never reach a mutation. Attach and steer
             intents carry the same arrows and savings the twin states, because they are the same derivation.
           </p>
         </div>
@@ -703,7 +703,7 @@ export function StackDeckPage() {
             Design on it. Share it. A human commits.
           </h2>
           <p className="text-[16px] font-medium leading-relaxed max-w-3xl" style={{ color: '#454b52' }}>
-            The stack on Discover is not a diagram — it is a digital twin of the estate,
+            The stack on Discover is not a diagram. It is a digital twin of the estate,
             stating live engine figures per stratum. Terraform gave code review to
             infrastructure; nothing gave it to the network. This does. Five steps, one
             law: every figure, staged or committed, is one derivation stated twice.{' '}

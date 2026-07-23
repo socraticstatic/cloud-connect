@@ -70,23 +70,44 @@ describe('StackDeckPage', () => {
 });
 
 describe('StackDeckPage — the Personas tab', () => {
-  it('defaults to the concept; the tab swaps to six persona cards and back', () => {
+  it('defaults to the concept; the tab swaps to nine persona cards and back', () => {
     render(<StackDeckPage />);
     expect(screen.getByTestId('deck-tab-concept')).toHaveAttribute('aria-pressed', 'true');
     fireEvent.click(screen.getByTestId('deck-tab-personas'));
-    expect(screen.getByRole('heading', { name: /Six roles/ })).toBeInTheDocument();
-    const cards = screen.getAllByTestId(/^persona-(architect|planner|netops|cloudeng|aianalyst|finops)$/);
-    expect(cards).toHaveLength(6);
+    expect(screen.getByRole('heading', { name: /Nine roles/ })).toBeInTheDocument();
+    const cards = screen.getAllByTestId(
+      /^persona-(architect|planner|netops|cloudeng|platformeng|aianalyst|finops|seclead|sponsor)$/,
+    );
+    expect(cards).toHaveLength(9);
     for (const name of [
       'Network Architect', 'Network Planner', 'NetOps Engineer',
-      'Cloud Network Engineer', 'AI Platform Analyst', 'FinOps Analyst',
+      'Cloud Network Engineer', 'Platform Engineer', 'AI Platform Analyst',
+      'FinOps Analyst', 'Security & Compliance Lead', 'Executive Sponsor',
     ]) {
       expect(screen.getByRole('heading', { name })).toBeInTheDocument();
     }
     // Every card carries its footprint on the deck's own table.
-    expect(screen.getAllByTestId('persona-footprint')).toHaveLength(6);
+    expect(screen.getAllByTestId('persona-footprint')).toHaveLength(9);
     fireEvent.click(screen.getByTestId('deck-tab-concept'));
     expect(screen.getByRole('heading', { name: /A verb is not a destination/ })).toBeInTheDocument();
+  });
+
+  it('every persona cites its research source', () => {
+    render(<StackDeckPage />);
+    fireEvent.click(screen.getByTestId('deck-tab-personas'));
+    for (const cite of [/TM Forum NaaS/, /GRC three-lines/, /2026 hiring research/, /NOC function research/]) {
+      expect(screen.getByText(cite)).toBeInTheDocument();
+    }
+  });
+
+  it('the coverage table tiles all nine shapes onto one table', () => {
+    render(<StackDeckPage />);
+    fireEvent.click(screen.getByTestId('deck-tab-personas'));
+    const coverage = screen.getByTestId('persona-coverage');
+    // Every persona's monogram appears somewhere on the tiled table.
+    for (const mono of ['NA', 'NP', 'NO', 'CN', 'PE', 'AI', 'FO', 'SC', 'ES']) {
+      expect(within(coverage).getAllByText(mono).length).toBeGreaterThan(0);
+    }
   });
 
   it('persona links stay inside the live app', () => {
