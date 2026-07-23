@@ -87,6 +87,10 @@ export interface CloudControl {
   // --- telemetry (state-telemetry.js) ---
   telemetry(n: number): any;
   obsSummary(): any;
+  /** Engine-known instants inside the telemetry window (fractions 0..1):
+   *  the seeded anomaly, this-session attaches, an active failure sim.
+   *  Every entry restates a fact the series already draw. */
+  windowMoments(): { at: number; key: string; label: string }[];
   latencySeries?(...args: any[]): any;
   percentiles?(...args: any[]): any;
   topTalkers?(...args: any[]): any;

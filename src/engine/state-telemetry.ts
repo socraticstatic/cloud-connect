@@ -155,6 +155,22 @@ function telemetry(N){
     events:_.hist.map(h=>({label:h.label,posture:h.posture})),
   };
 }
+/* The engine-known instants inside the telemetry window, for the Observe
+   time machine. Every marker restates a fact a series already draws: the
+   seeded anomaly at its own `at`, a this-session attach at the 0.82 step
+   latencySeries applies, an active failure sim at the live tail. Nothing
+   here invents a moment the charts do not show. */
+function windowMoments(){
+  const out=[{at:ANOMALY.at,key:'anomaly',label:ANOMALY.title}];
+  _.sessionAttached.forEach(key=>{
+    const item=regionList().find(x=>x.key===key);
+    if(item)out.push({at:0.82,key:'attach:'+key,label:'Attached this session · '+item.region.name});
+  });
+  const impact=CC.simImpact();
+  if(impact)out.push({at:1,key:'sim',label:'Simulated failure · '+impact.onramp.name});
+  return out;
+}
+
 /* AI narrative over the telemetry - regenerated from state every time */
 function obsSummary(){
   const c=CC.counts();
@@ -204,7 +220,7 @@ function topTalkers(rid){
   });
 }
 
-Object.assign(CC,{telemetry,obsSummary,latencySeries,lossSeries,percentiles,topTalkers});
+Object.assign(CC,{telemetry,obsSummary,latencySeries,lossSeries,percentiles,topTalkers,windowMoments});
 
 /* tokens get a time dimension: spend/day per app (flat zero before the
    substrate exists, ramping once it does) and per-model inference latency
