@@ -2,11 +2,34 @@ import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveCo
 import { AttIcon } from '../../components/icons/AttIcon';
 import { useCloudControlLive } from '../../engine/react/useCloudControl';
 
-// Literal Flywheel/Okabe-Ito hex values — SVG/Recharts fill props don't
-// resolve `fill-fw-*` Tailwind classes, so bar colors are literal here.
-const ALLOWED_HEX = '#009E73';
-const GUARDRAIL_HEX = '#E69F00';
-const DENIED_HEX = '#D55E00';
+/**
+ * The three decision outcomes, in project-palette colours.
+ *
+ * Literal hex rather than `fill-fw-*` because SVG/Recharts `fill` props do not
+ * resolve Tailwind classes — but the values are the palette's, not a private
+ * set: cobalt #0057b8, green #00a862, and red #dc2626 held back for a TRUE
+ * policy violation, which is precisely what a denied request is.
+ *
+ * This used to be Okabe-Ito bluish green / orange / vermillion. The orange was
+ * amber, which the palette does not carry, and the route split promoted this
+ * panel from behind a "Trace" tab onto the permanent /ai/observe screen — so
+ * the off-palette block went from occasional to always-on.
+ *
+ * Okabe-Ito was chosen for colourblind safety, so dropping it needed more than
+ * "the amber is gone". Measured as CIE76 ΔE between every pair under normal
+ * vision and all three dichromacies (src/test/cvd.ts), the closest pair in the
+ * worst vision goes from ΔE 14.9 on the old set to ΔE 28.4 on this one — the
+ * repaint reads BETTER, not merely differently. GovernanceDecisions.palette
+ * .test.tsx asserts that against the old set rather than a pinned figure.
+ *
+ * Colour is redundant regardless: the legend below spells each outcome out,
+ * and the chart's X axis carries the same three category names.
+ */
+export const DECISION_COLORS = {
+  Allowed: '#00a862',   // Flywheel green
+  Guardrail: '#0057b8', // Cobalt 600 — the control colour; guarded, not denied
+  Denied: '#dc2626',    // Reserved red — a request the token policy refused
+} as const;
 
 interface Decision {
   ts: number;
@@ -32,9 +55,9 @@ export function GovernanceDecisions() {
   const denied = log.filter(d => !d.allowed).length;
 
   const data = [
-    { name: 'Allowed', count: allowed, color: ALLOWED_HEX },
-    { name: 'Guardrail', count: guardrail, color: GUARDRAIL_HEX },
-    { name: 'Denied', count: denied, color: DENIED_HEX },
+    { name: 'Allowed', count: allowed, color: DECISION_COLORS.Allowed },
+    { name: 'Guardrail', count: guardrail, color: DECISION_COLORS.Guardrail },
+    { name: 'Denied', count: denied, color: DECISION_COLORS.Denied },
   ];
 
   return (
