@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { CC } from '../../engine';
-import { commandRegistry, type Command } from './commandRegistry';
+import { commandRegistry, parseIntent, type Command } from './commandRegistry';
 
 /**
  * ⌘K / Ctrl+K command palette. Opens over any page, filters the live
@@ -52,10 +52,15 @@ export function CommandPalette() {
   }, [isOpen, navigate, query]);
 
   const filtered = useMemo(() => {
+    // Typed intents match the query by construction — they skip the fuzzy
+    // filter and lead the list.
+    const intents = isOpen ? parseIntent(query, CC) : [];
     const q = query.trim().toLowerCase();
-    if (!q) return commands;
-    return commands.filter(c => c.label.toLowerCase().includes(q));
-  }, [commands, query]);
+    const matches = q
+      ? commands.filter(c => c.label.toLowerCase().includes(q))
+      : commands;
+    return [...intents, ...matches];
+  }, [commands, query, isOpen]);
 
   useEffect(() => {
     setActiveIndex(0);
