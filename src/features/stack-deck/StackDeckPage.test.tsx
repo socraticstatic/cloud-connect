@@ -1,0 +1,58 @@
+import { render, screen, within } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
+import { StackDeckPage } from './StackDeckPage';
+
+/**
+ * /stack renders as a standalone document: no router hooks, plain hash
+ * anchors into the app. Rendered bare, no providers needed.
+ */
+
+const LIVE_ROUTES = [
+  '#/ai/connect', '#/ai/govern', '#/ai/observe', '#/ai/cost',
+  '#/naas/connect', '#/naas/govern', '#/naas/observe', '#/naas/cost',
+];
+
+describe('StackDeckPage', () => {
+  it('renders all seven section headlines', () => {
+    render(<StackDeckPage />);
+    expect(screen.getByRole('heading', { name: /A verb is not a destination/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Four verbs across\. Four layers down/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /One experience over everything AT&T runs/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Five rules route every label/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Eight links\. Four words/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Sticky is three columns riding a fourth/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /The table was always there/ })).toBeInTheDocument();
+  });
+
+  it('draws the full matrix: 16 body cells', () => {
+    render(<StackDeckPage />);
+    expect(screen.getAllByTestId('matrix-cell')).toHaveLength(16);
+  });
+
+  it('live rows link only at the eight real hash routes', () => {
+    render(<StackDeckPage />);
+    const matrix = screen.getByTestId('matrix');
+    const links = within(matrix).getAllByRole('link');
+    expect(links).toHaveLength(8);
+    const hrefs = links.map(a => a.getAttribute('href'));
+    for (const href of hrefs) {
+      expect(LIVE_ROUTES).toContain(href);
+    }
+    // every one of the eight routes is present exactly once
+    expect(new Set(hrefs).size).toBe(8);
+  });
+
+  it('vision rows carry zero links', () => {
+    render(<StackDeckPage />);
+    for (const key of ['cloud', 'transport']) {
+      const row = screen.getByTestId(`matrix-row-${key}`);
+      expect(within(row).queryAllByRole('link')).toHaveLength(0);
+      expect(row.querySelectorAll('a')).toHaveLength(0);
+    }
+  });
+
+  it('has the Export PDF button in the header', () => {
+    render(<StackDeckPage />);
+    expect(screen.getByRole('button', { name: /export pdf/i })).toBeInTheDocument();
+  });
+});
