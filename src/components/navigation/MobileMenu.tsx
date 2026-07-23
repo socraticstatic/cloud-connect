@@ -246,11 +246,25 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
                             drawer that is the ONLY way to reach these screens
                             below 1280px. NAV_LAYERS still carries `blurb` —
                             nothing was deleted from the model. */}
-                        <div className="px-2.5 pb-1">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-fw-bodyLight">
+                        {/* The layer header doubles as its Home link — tap the
+                            layer name to reach its overview. Keeping Home here
+                            rather than as a grid cell preserves the drawer's
+                            everything-above-the-fold guarantee (the verbs stay
+                            a 2-col grid, no extra rows). */}
+                        <button
+                          type="button"
+                          data-nav-home={domain.key}
+                          aria-current={isNavRouteActive(location.pathname, domain.home.to) ? 'page' : undefined}
+                          onClick={() => handleNavigation(domain.home.to)}
+                          className="group w-full flex items-center justify-between px-2.5 pb-1"
+                        >
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-fw-bodyLight group-hover:text-fw-body">
                             {domain.label}
-                          </div>
-                        </div>
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-fw-link">
+                            <AttIcon name="home" className="h-3 w-3" /> Home
+                          </span>
+                        </button>
                         <div className="grid grid-cols-2 gap-1">
                           {domain.items.map(renderVerbItem)}
                         </div>

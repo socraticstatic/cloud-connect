@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { MainNav } from '../../navigation/MainNav';
 import { SubNav } from '../../navigation/SubNav';
-import { StackRail } from '../../navigation/StackRail';
+import { LeftRail } from '../../navigation/LeftRail';
 import { ToastContainer } from '../ToastContainer';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { Menu, X } from 'lucide-react';
@@ -82,10 +82,11 @@ export function DashboardLayout({
       )}
 
       <div className="flex-1 flex">
-        {/* The stack rail — renders only on layer pages (/ai/*, /naas/*),
-            desktop only. A flex sibling, so it can never overlap content. */}
+        {/* The lifecycle rail — the layer's verbs, Home first, down the left.
+            Renders only on layer pages (/ai/*, /naas/*), desktop only. A flex
+            sibling, so it can never overlap content. */}
         <ErrorBoundary>
-          <StackRail />
+          <LeftRail />
         </ErrorBoundary>
 
         {/* Main Content — min-w-0 lets wide children (tables) scroll internally instead of

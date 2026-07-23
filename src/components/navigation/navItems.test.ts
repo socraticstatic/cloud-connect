@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { NAV_LAYERS, NAV_ITEMS, STACK_LAYERS, counterpartPath } from './navItems';
+import { NAV_LAYERS, NAV_ITEMS, STACK_LAYERS, counterpartPath, layerRail, layerForPath } from './navItems';
 
 describe('NAV_LAYERS', () => {
   it('splits NaaS from AI Fabric, each with the same four verbs', () => {
@@ -37,6 +37,33 @@ describe('NAV_LAYERS', () => {
 describe('STACK_LAYERS', () => {
   it('draws in elevation order — AI Fabric on top of the network', () => {
     expect(STACK_LAYERS.map(l => l.key)).toEqual(['ai', 'naas']);
+  });
+});
+
+describe('layerRail', () => {
+  it('leads with Home, then the four verbs, for each layer', () => {
+    for (const layer of NAV_LAYERS) {
+      const rail = layerRail(layer);
+      expect(rail.map(i => i.label)).toEqual(['Home', 'Connect', 'Govern', 'Observe', 'Cost']);
+      expect(rail[0].to).toBe(`/${layer.key}/home`);
+      for (const item of rail) {
+        expect(item.to).toMatch(new RegExp(`^/${layer.key}/`));
+      }
+    }
+  });
+});
+
+describe('layerForPath', () => {
+  it('maps a layer route to its layer, both layers, home and verbs', () => {
+    expect(layerForPath('/naas/home')?.key).toBe('naas');
+    expect(layerForPath('/naas/cost')?.key).toBe('naas');
+    expect(layerForPath('/ai/govern')?.key).toBe('ai');
+    expect(layerForPath('/ai')?.key).toBe('ai');
+  });
+  it('returns null for global routes', () => {
+    expect(layerForPath('/discover')).toBeNull();
+    expect(layerForPath('/stack')).toBeNull();
+    expect(layerForPath('/')).toBeNull();
   });
 });
 

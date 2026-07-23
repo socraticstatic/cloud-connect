@@ -47,6 +47,12 @@ const LazyDiscoverPage = lazy(() =>
   }))
 );
 
+const LazyLayerHomePage = lazy(() =>
+  import('./features/layer-home/LayerHomePage').then(module => ({
+    default: module.LayerHomePage
+  }))
+);
+
 const LazyConnectPage = lazy(() =>
   import('./features/connect/ConnectPage').then(module => ({
     default: module.ConnectPage
@@ -335,7 +341,15 @@ function App() {
                   </Suspense>
                 } />
 
-                {/* NaaS — network as a service. Its four verbs. */}
+                {/* NaaS — network as a service. Home first, then its four verbs.
+                    A bare /naas opens onto Home, never a verb. */}
+                <Route path="/naas" element={<Navigate to="/naas/home" replace />} />
+                <Route path="/naas/home" element={
+                  <Suspense fallback={<LoadingFallback />}>
+                    <LazyLayerHomePage layerKey="naas" />
+                  </Suspense>
+                } />
+
                 <Route path="/naas/connect" element={
                   <Suspense fallback={<LoadingFallback />}>
                     <LazyConnectPage />
@@ -360,7 +374,14 @@ function App() {
                   </Suspense>
                 } />
 
-                {/* AI Fabric — the token layer. The same four verbs. */}
+                {/* AI Fabric — the token layer. Home first, then the same four verbs. */}
+                <Route path="/ai" element={<Navigate to="/ai/home" replace />} />
+                <Route path="/ai/home" element={
+                  <Suspense fallback={<LoadingFallback />}>
+                    <LazyLayerHomePage layerKey="ai" />
+                  </Suspense>
+                } />
+
                 <Route path="/ai/connect" element={
                   <Suspense fallback={<LoadingFallback />}>
                     <LazyAiConnectPage />
@@ -395,7 +416,7 @@ function App() {
                 <Route path="/govern" element={<LegacyRedirect to="/naas/govern" />} />
                 <Route path="/observe" element={<LegacyRedirect to="/naas/observe" />} />
                 <Route path="/cost" element={<LegacyRedirect to="/naas/cost" />} />
-                <Route path="/ai-fabric" element={<LegacyRedirect to="/ai/govern" />} />
+                <Route path="/ai-fabric" element={<LegacyRedirect to="/ai/home" />} />
 
                 <Route path="/netops" element={
                   <Suspense fallback={<LoadingFallback />}>

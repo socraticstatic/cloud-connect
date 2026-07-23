@@ -18,19 +18,18 @@ test('walks both domains with real state changes, plus Tour and ⌘K', async ({ 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page).toHaveTitle(/Cloud Connect/);
   const mainNav = page.getByLabel('Main navigation');
-  // Layer-first: Discover is the only bare link; each layer is a dropdown
-  // whose panel carries its four verbs. No verb label repeats in the bar.
-  await expect(mainNav.getByRole('link', { name: 'Discover', exact: true })).toBeVisible();
+  // Layers across the top: Discover, then a tab per layer. The lifecycle
+  // verbs live in the left rail once you are in a layer.
+  await expect(mainNav.getByRole('tab', { name: 'Discover', exact: true })).toBeVisible();
   for (const layer of ['NaaS', 'AI Fabric']) {
-    const trigger = mainNav.getByRole('button', { name: layer, exact: true });
-    await expect(trigger).toBeVisible();
-    await trigger.click();
-    const menu = mainNav.getByRole('menu', { name: layer });
-    for (const verb of ['Connect', 'Govern', 'Observe', 'Cost']) {
-      await expect(menu.getByRole('menuitem', { name: new RegExp(`^${verb}\\b`) })).toBeVisible();
-    }
-    await trigger.click();
+    await expect(mainNav.getByRole('tab', { name: layer, exact: true })).toBeVisible();
   }
+  await mainNav.getByRole('tab', { name: 'NaaS', exact: true }).click();
+  const rail = page.getByTestId('left-rail');
+  for (const item of ['Home', 'Connect', 'Govern', 'Observe', 'Cost']) {
+    await expect(rail.getByRole('link', { name: item, exact: true })).toBeVisible();
+  }
+  await page.goto('/#/discover', { waitUntil: 'domcontentloaded' });
   // The rebuilt Discover tree exposes Expand/Collapse controls and a real cloud
   // row (AWS) — the old All/Network/AI lens chips were removed in the rebuild.
   for (const ctrl of ['Expand all', 'Collapse all']) {

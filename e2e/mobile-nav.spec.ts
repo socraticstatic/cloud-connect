@@ -209,7 +209,8 @@ for (const vp of [
       await firstVisit(page);
       const fold = await readFold(page);
 
-      // Nine destinations: Discover, plus four verbs in each domain.
+      // Nine verb destinations: Discover, plus four verbs in each layer. (Each
+      // layer's Home is its tappable group header, not a counted grid cell.)
       expect(fold.items).toHaveLength(9);
 
       expect(

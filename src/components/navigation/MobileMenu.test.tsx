@@ -128,8 +128,11 @@ describe('MobileMenu', () => {
 
     for (const domain of NAV_LAYERS) {
       const group = screen.getByRole('group', { name: domain.label });
-      const buttons = within(group).getAllByRole('button');
-      expect(buttons.map(b => b.getAttribute('data-nav-label'))).toEqual(
+      // The grid carries the four verbs (Home is the group header link, not a
+      // grid cell — see the header test below).
+      const verbButtons = within(group).getAllByRole('button')
+        .filter(b => b.hasAttribute('data-nav-to'));
+      expect(verbButtons.map(b => b.getAttribute('data-nav-label'))).toEqual(
         domain.items.map(i => i.label)
       );
 
@@ -153,5 +156,13 @@ describe('MobileMenu', () => {
     // All four labels really do appear in both domains — otherwise the loop
     // above proves nothing about ambiguity.
     for (const [, copies] of seen) expect(copies).toHaveLength(2);
+  });
+
+  it('each layer header is a Home link to that layer overview', () => {
+    renderMobileMenu();
+    for (const domain of NAV_LAYERS) {
+      const home = screen.getByRole('button', { name: new RegExp(`${domain.label}\\s*Home`) });
+      expect(home).toHaveAttribute('data-nav-home', domain.key);
+    }
   });
 });
