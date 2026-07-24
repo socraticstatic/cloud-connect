@@ -84,6 +84,37 @@ export interface RequestRecord {
   reason: string | null;
 }
 
+/** What a standing intent binds to. `id` is null only for estate scope. */
+export interface IntentScope {
+  kind: 'estate' | 'flow' | 'region' | 'tag' | 'identity';
+  id: string | null;
+  label: string;
+}
+
+/** The stored half of a standing intent. Status is never stored. */
+export interface DeclaredIntent {
+  id: string;
+  key: string;
+  scope: IntentScope;
+  mode: 'watch' | 'enforce';
+  declaredAt: number;
+}
+
+/** The derived half, re-read on every intentList() call. */
+export interface IntentReading {
+  status: 'aligned' | 'drifting' | 'violated';
+  evidence: string;
+  moves: { kind: 'attach' | 'steer' | 'fix' | 'enforce' | 'policy'; [k: string]: unknown }[];
+  watch: { events: number; note: string } | null;
+}
+
+export interface IntentCatalogEntry {
+  key: string;
+  label: string;
+  taxonomy: string;
+  scopes(): IntentScope[];
+}
+
 export interface CloudControl {
   // --- core state (state.js) ---
   counts(): CloudControlCounts;
@@ -181,6 +212,16 @@ export interface CloudControl {
   toggleAgent?(id: string): boolean;
   promptTrace?(...args: any[]): any;
   decisionLog?(...args: any[]): RequestRecord[];
+  // --- standing intents (state-intents.ts) ---
+  intentCatalog(): IntentCatalogEntry[];
+  declareIntent(key: string, scope: IntentScope, mode: 'watch' | 'enforce'): DeclaredIntent | null;
+  removeIntent(id: string): boolean;
+  setIntentMode(id: string, mode: 'watch' | 'enforce'): boolean;
+  intentList(): (DeclaredIntent & { reading: IntentReading })[];
+  /** True when an enforce-mode cap-token-spend intent covers this tag —
+   *  the predicate promptTrace's budget gate reads. */
+  intentCapEnforced(tag: string): boolean;
+
   /** Gateway optimization levers the Insights Cost tab reads. Both seeded
    *  false — the warning state is the estate's truth until flipped. */
   gatewayFlags(): { routing: boolean; caching: boolean };

@@ -219,6 +219,12 @@ function snapshot(){
     cp:_.customPolicies.map(p=>({...p})),
     app:CC.settings.requireApproval,
     gw:{..._.gatewayFlags},
+    it:(_.intents||[]).map(i=>({...i,scope:{...i.scope},baseline:{...i.baseline}})),
+    /* Token policies were never snapshotted, so setTokenPolicy was the one
+       mutation Undo silently skipped - an enforce-mode intent's standing
+       control could not reverse with its declaration. Deep-copied per tag;
+       restore() rebuilds in place (state-console closes over the object). */
+    tpol:_.tokenPolicies?JSON.parse(JSON.stringify(_.tokenPolicies)):null,
   };
 }
 /* The estate is not a fixed shape. rescanAccount() pushes a newly DISCOVERED
@@ -256,6 +262,15 @@ function restore(s){
   if(s.cp){_.customPolicies.length=0;s.cp.forEach(p=>_.customPolicies.push({...p}));}
   if(s.app!==undefined)CC.settings.requireApproval=s.app;
   if(s.gw)Object.assign(_.gatewayFlags,s.gw);
+  if(s.tpol&&_.tokenPolicies){
+    Object.keys(_.tokenPolicies).forEach(k=>{if(!(k in s.tpol))delete _.tokenPolicies[k];});
+    Object.entries(s.tpol).forEach(([k,p])=>{_.tokenPolicies[k]=Object.assign(_.tokenPolicies[k]||{},p);});
+  }
+  // rebuild in place - state-intents.ts closes over this exact array
+  if(s.it&&_.intents){
+    _.intents.length=0;
+    s.it.forEach(i=>_.intents.push({...i,scope:{...i.scope},baseline:{...i.baseline}}));
+  }
   // rebuild in place - state-groups.js closes over this exact object
   if(s.gr&&_.groups){
     Object.keys(_.groups).forEach(k=>{delete _.groups[k];});

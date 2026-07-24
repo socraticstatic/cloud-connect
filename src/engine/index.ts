@@ -11,6 +11,7 @@ import './state-routing';
 import './state-apps';
 import './state-billing';
 import './state-console';
+import './state-intents';
 import './state-findings';
 import './state-share';
 import './state-actions';
