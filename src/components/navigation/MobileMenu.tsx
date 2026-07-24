@@ -108,8 +108,24 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
    *  one name, and below 1280px this drawer is the only place either can be
    *  reached. The description is what tells them apart; deleting it would have
    *  fit the fold in one line of diff and made the drawer unreadable. */
+  /* A label that appears in more than one group keeps its description — it
+     is the only thing telling "Connect" from "Connect". A label unique across
+     the drawer (the AI gateway sections) renders compact, one line, which is
+     what keeps a five-item group above the fold. */
+  const duplicateLabels = (() => {
+    const counts = new Map<string, number>();
+    for (const layer of NAV_LAYERS) {
+      for (const item of layerDestinations(layer)) {
+        if (item.to === layer.home.to) continue;
+        counts.set(item.label, (counts.get(item.label) ?? 0) + 1);
+      }
+    }
+    return new Set([...counts.entries()].filter(([, n]) => n > 1).map(([l]) => l));
+  })();
+
   const renderVerbItem = (item: CuratedNavItem) => {
     const active = isActive(item);
+    const ambiguous = duplicateLabels.has(item.label);
     return (
       <button
         key={item.to}
@@ -118,15 +134,27 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
         data-nav-to={item.to}
         data-nav-label={item.label}
         className={`
-          h-full flex flex-col items-start px-2.5 py-1.5 rounded-lg text-left transition-colors
+          h-full flex flex-col items-start px-2.5 rounded-lg text-left transition-colors
+          ${ambiguous ? 'py-1.5' : 'py-1'}
           ${active ? 'bg-fw-accent text-fw-link font-medium' : 'text-fw-body hover:bg-fw-neutral'}
         `}
       >
         <span className="text-figma-sm font-semibold">{item.label}</span>
-        <span className="text-figma-xs leading-4 text-fw-bodyLight">{item.description}</span>
+        {ambiguous && (
+          <span className="text-figma-xs leading-4 text-fw-bodyLight">{item.description}</span>
+        )}
       </button>
     );
   };
+
+  /* Grid rows take the height of their tallest cell, so two-line (ambiguous)
+     items are packed together ahead of the compact ones — one mixed row
+     wastes a compact item's whole height. Stable within each class, so the
+     rail's own order survives inside each. */
+  const packForFold = (items: CuratedNavItem[]) => [
+    ...items.filter(i => duplicateLabels.has(i.label)),
+    ...items.filter(i => !duplicateLabels.has(i.label)),
+  ];
 
   // Portalled straight to document.body (same pattern OverflowMenu uses).
   // `fixed` descendants resolve against the nearest ancestor that
@@ -270,9 +298,9 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
                             Keys) is still reachable below 1024px. Home stays
                             on the group header. */}
                         <div className="grid grid-cols-2 gap-1">
-                          {layerDestinations(domain)
-                            .filter(item => item.to !== domain.home.to)
-                            .map(renderVerbItem)}
+                          {packForFold(
+                            layerDestinations(domain).filter(item => item.to !== domain.home.to),
+                          ).map(renderVerbItem)}
                         </div>
                       </motion.div>
                     ))}

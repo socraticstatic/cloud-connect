@@ -30,8 +30,10 @@ test('Discover stack → layer rail → top-tab layer switch', async ({ page }) 
   // Switch layers up top: the AI Fabric tab lands on its Home.
   await page.getByLabel('Main navigation').getByRole('tab', { name: 'AI Fabric', exact: true }).click();
   await expect(page).toHaveURL(/#\/ai\/home/);
-  // And the rail is now the AI Fabric lifecycle.
-  await expect(page.getByTestId('left-rail').getByText('AI Fabric')).toBeVisible();
+  // And the rail is now the AI gateway's — its Home item, unambiguous by
+  // testid ("AI Fabric" appears as both the rail header and the home item).
+  await expect(page.getByTestId('left-rail').getByTestId('rail-home'))
+    .toHaveAttribute('href', '#/ai/home');
 });
 
 test('the concept deck explains the table and links only into live rows', async ({ page }) => {

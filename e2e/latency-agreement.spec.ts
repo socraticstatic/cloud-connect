@@ -55,7 +55,8 @@ async function discoverLatency(page: Page, cloudName: RegExp, regionName: string
   if (!(await row.isVisible().catch(() => false))) {
     await page.getByRole('button', { name: cloudName }).first().click();
   }
-  await expect(row).toBeVisible();
+  // Reveal-stagger animation + full-suite CPU load can exceed the default 5s.
+  await expect(row).toBeVisible({ timeout: 15000 });
   const text = (await row.innerText()).replace(/\s+/g, ' ');
   const m = /(\d+)ms/.exec(text);
   expect(m, `no latency on the ${regionName} row: "${text}"`).not.toBeNull();
@@ -161,7 +162,7 @@ test('every region states one figure across Connect, Discover and Observe — on
     if (!(await row.isVisible().catch(() => false))) {
       await page.getByRole('button', { name: region.cloudName, exact: true }).first().click();
     }
-    await expect(row).toBeVisible();
+    await expect(row).toBeVisible({ timeout: 15000 });
     const tile = (await row.innerText()).replace(/\s+/g, ' ');
     const m = /(\d+)ms LATENCY · (FABRIC|PUBLIC)/i.exec(tile);
     expect(m, `${region.name}: no labelled latency tile on Discover: "${tile}"`).not.toBeNull();

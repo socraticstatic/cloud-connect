@@ -77,6 +77,11 @@ export const NAV_LAYERS: NavLayer[] = [
         items: [
           { label: 'AI Fabric', to: '/ai/home', icon: 'home', description: 'The token layer at a glance' },
           { label: 'Insights', to: '/ai/observe', icon: 'high-meter', description: 'Traffic, savings and requests' },
+          /* Interim, until phase 3 of the gateway plan rehomes their content
+             (Connect folds into Providers, Cost becomes Insights' Cost tab):
+             live screens stay reachable — a rail must never orphan a route. */
+          { label: 'Connect', to: '/ai/connect', icon: 'cable', description: 'Attach model endpoints and neoclouds' },
+          { label: 'Cost', to: '/ai/cost', icon: 'bill', description: 'Token budgets and spend' },
         ],
       },
       {

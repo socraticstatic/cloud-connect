@@ -128,9 +128,18 @@ describe('MobileMenu', () => {
 
     for (const domain of NAV_LAYERS) {
       const group = screen.getByRole('group', { name: domain.label });
-      const expected = layerDestinations(domain).filter(i => i.to !== domain.home.to);
-      // The grid carries the layer's rail destinations (Home is the group
-      // header link, not a grid cell — see the header test below).
+      const raw = layerDestinations(domain).filter(i => i.to !== domain.home.to);
+      // The drawer packs two-line (cross-group duplicate) labels ahead of the
+      // compact ones so no grid row mixes heights — same partition the
+      // component applies (see packForFold in MobileMenu.tsx).
+      const dupes = new Set(
+        raw.map(i => i.label).filter(label =>
+          NAV_LAYERS.filter(l =>
+            layerDestinations(l).some(i => i.to !== l.home.to && i.label === label),
+          ).length > 1,
+        ),
+      );
+      const expected = [...raw.filter(i => dupes.has(i.label)), ...raw.filter(i => !dupes.has(i.label))];
       const buttons = within(group).getAllByRole('button')
         .filter(b => b.hasAttribute('data-nav-to'));
       expect(buttons.map(b => b.getAttribute('data-nav-label'))).toEqual(
@@ -141,16 +150,22 @@ describe('MobileMenu', () => {
         const button = within(group).getByRole('button', {
           name: new RegExp(`^${item.label}`),
         });
-        // The destination, and the copy that tells it from any twin label.
         expect(button).toHaveAttribute('data-nav-to', item.to);
-        expect(button).toHaveTextContent(item.description);
 
-        const copy = (button.textContent ?? '').replace(item.label, '').trim();
-        expect(copy.length, `${domain.label} · ${item.label} shows only its label`).toBeGreaterThan(0);
-
-        const prior = seen.get(item.label) ?? [];
-        expect(prior, `${item.label} reads identically in two groups`).not.toContain(copy);
-        seen.set(item.label, [...prior, copy]);
+        // A label that repeats across groups MUST carry its description —
+        // that copy is the only thing telling the twins apart. A unique
+        // label renders compact (no description), which is what keeps a
+        // five-item group above the drawer fold.
+        const isDuplicate = NAV_LAYERS.filter(l =>
+          layerDestinations(l).some(i => i.to !== l.home.to && i.label === item.label),
+        ).length > 1;
+        if (isDuplicate) {
+          expect(button).toHaveTextContent(item.description);
+          const copy = (button.textContent ?? '').replace(item.label, '').trim();
+          const prior = seen.get(item.label) ?? [];
+          expect(prior, `${item.label} reads identically in two groups`).not.toContain(copy);
+          seen.set(item.label, [...prior, copy]);
+        }
       }
     }
   });

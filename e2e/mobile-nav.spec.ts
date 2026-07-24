@@ -58,12 +58,15 @@ test('neither domain is reachable from the horizontal nav, but the hamburger dra
   await expect(ai).toBeVisible();
   for (const verb of ['Connect', 'Govern', 'Observe', 'Cost']) {
     await expect(naas.getByRole('button', { name: new RegExp(`^${verb}`) })).toBeVisible();
-    await expect(ai.getByRole('button', { name: new RegExp(`^${verb}`) })).toBeVisible();
+  }
+  // The AI group speaks the gateway vocabulary.
+  for (const section of ['Insights', 'Policies', 'Teams & limits', 'Providers', 'Virtual keys']) {
+    await expect(ai.getByRole('button', { name: new RegExp(`^${section}`) })).toBeVisible();
   }
 
-  await ai.getByRole('button', { name: /^Govern/ }).click();
+  await ai.getByRole('button', { name: /^Policies/ }).click();
 
-  // The route changed — to the AI Fabric's Govern, not NaaS's.
+  // The route changed — to the AI Fabric's Govern surface, not NaaS's.
   await expect(page).toHaveURL(/#\/ai\/govern/);
   await expect(page.getByRole('heading', { name: /AI Fabric · Govern/i })).toBeVisible();
 
@@ -209,9 +212,13 @@ for (const vp of [
       await firstVisit(page);
       const fold = await readFold(page);
 
-      // Nine verb destinations: Discover, plus four verbs in each layer. (Each
-      // layer's Home is its tappable group header, not a counted grid cell.)
-      expect(fold.items).toHaveLength(9);
+      // Twelve destinations: Discover, NaaS's four verbs, and the AI
+      // gateway's seven (five sections plus the interim Connect and Cost,
+      // which leave when phase 3 rehomes their content). Each layer's Home
+      // is its tappable group header, not a counted grid cell. AI items with
+      // labels unique in the drawer render compact — no description line —
+      // which is what keeps seven of them above the fold.
+      expect(fold.items).toHaveLength(12);
 
       expect(
         fold.overflow,
@@ -229,23 +236,33 @@ for (const vp of [
       }
     });
 
-    test('the two identically-labelled links still say which is which', async ({ page }) => {
+    test('no label is ambiguous: twins carry distinct copy, uniques stand alone', async ({ page }) => {
       await firstVisit(page);
       const fold = await readFold(page);
 
-      for (const verb of ['Connect', 'Govern', 'Observe', 'Cost']) {
-        const pair = fold.items.filter(i => i.label === verb);
-        expect(pair, `expected ${verb} in both domains`).toHaveLength(2);
-
-        // Each carries copy beyond the bare label...
-        for (const item of pair) {
+      // Since the AI layer adopted the gateway sections, no label repeats
+      // across groups — but the rule this test guards is general: ANY label
+      // that appears in two groups must carry copy that tells them apart.
+      const byLabel = new Map<string, typeof fold.items>();
+      for (const item of fold.items) {
+        byLabel.set(item.label, [...(byLabel.get(item.label) ?? []), item]);
+      }
+      for (const [label, items] of byLabel) {
+        if (items.length < 2) continue;
+        for (const item of items) {
           expect(
-            item.text.replace(verb, '').trim().length,
-            `${item.group} · ${verb} shows nothing but its label`,
+            item.text.replace(label, '').trim().length,
+            `${item.group} · ${label} shows nothing but its ambiguous label`,
           ).toBeGreaterThan(0);
         }
-        // ...and it is not the same copy in both domains.
-        expect(pair[0].text, `both ${verb} links read identically`).not.toBe(pair[1].text);
+        const texts = new Set(items.map(i => i.text));
+        expect(texts.size, `"${label}" reads identically in two groups`).toBe(items.length);
+      }
+
+      // And the NaaS verbs specifically still say what they act on.
+      for (const verb of ['Connect', 'Govern', 'Observe', 'Cost']) {
+        const naas = fold.items.find(i => i.label === verb && i.group === 'NaaS');
+        expect(naas, `NaaS · ${verb} missing from the drawer`).toBeTruthy();
       }
     });
   });

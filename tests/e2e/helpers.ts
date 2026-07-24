@@ -50,6 +50,12 @@ export async function openLayerVerb(
   layer: 'NaaS' | 'AI Fabric',
   verb: 'Home' | 'Connect' | 'Govern' | 'Observe' | 'Cost',
 ) {
+  // The AI layer's rail speaks the gateway vocabulary: its Observe surface
+  // is labelled Insights, its Govern surface Policies. Same routes.
+  const label =
+    layer === 'AI Fabric'
+      ? ({ Observe: 'Insights', Govern: 'Policies' } as Record<string, string>)[verb] ?? verb
+      : verb;
   await page.getByLabel('Main navigation').getByRole('tab', { name: layer, exact: true }).click();
-  await page.getByTestId('left-rail').getByRole('link', { name: verb, exact: true }).click();
+  await page.getByTestId('left-rail').getByRole('link', { name: label, exact: true }).click();
 }
