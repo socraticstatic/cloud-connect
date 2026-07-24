@@ -24,15 +24,20 @@ const scopeFor = (key: string, pick?: (s: { kind: string; id: string | null; lab
 };
 
 describe('the catalog', () => {
-  it('carries exactly the six grounded intents, each with engine-known scopes', () => {
-    expect(catalogKeys().sort()).toEqual([
+  it('carries the founding six among the full eighteen, each with engine-known scopes', () => {
+    // The full-taxonomy count and category coverage are pinned in
+    // state-intents.catalog.test.ts; this file guards the founding six.
+    expect(catalogKeys()).toHaveLength(18);
+    for (const key of [
       'cap-token-spend',
       'data-sensitivity',
       'minimize-latency',
       'path-diversity',
       'private-inference',
       'route-by-cost',
-    ]);
+    ]) {
+      expect(catalogKeys()).toContain(key);
+    }
     for (const entry of CC.intentCatalog()) {
       const scopes = entry.scopes();
       expect(scopes.length, `${entry.key} offers no scopes`).toBeGreaterThan(0);

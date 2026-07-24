@@ -108,11 +108,34 @@ function ensurePayoffRule(): void {
  * would have made the payoff arrive after Cost and the AI Fabric had already
  * closed the story.
  *
+ * Four beats meet the surfaces shipped this week, each threaded where the
+ * arc already carries its subject rather than bolted onto the end:
+ *
+ * - `assessment` sits right after the Discover opener, because "measure for
+ *   14 days first" is the answer to the question the scan raises.
+ * - `intents` follows the naming beat on Discover: you named what you have,
+ *   now declare what must stay true of it. The standing-intents band is the
+ *   surface.
+ * - `andi` closes the Discover leg. The intents band's own empty state says
+ *   "tell Andi the outcome you want", so the beat that introduces Andi is
+ *   the one that follows it. The toggle lives in the top bar, which renders
+ *   on every route, so the beat stays on /discover and changes no section.
+ * - `insights` opens the AI leg, before the token-policy close: evidence
+ *   first, then governance, mirroring the NaaS half of the arc.
+ *
  * Each step's `targetSelector` is a `data-tour` attribute added to the
- * relevant component, and each `route` is the HashRouter path for that
+ * relevant component, or an existing stable `data-testid` other specs
+ * already hold in place, and each `route` is the HashRouter path for that
  * section. `ProductTour` is route-agnostic — the consuming `TourLauncher`
  * navigates on `onStepChange` before the spotlight looks for the target on
  * the new page.
+ *
+ * SKIP MECHANISM. A step may carry `when`; `activeCloudConnectTour()`
+ * evaluates it once per launch and leaves the step out of that run when it
+ * returns false. It exists for the one anchor that can legitimately be
+ * absent — the assessment banner — because a beat whose target is missing
+ * renders a flat overlay with nothing spotlighted, which reads as a broken
+ * tour. Steps without `when` always run.
  *
  * A step's target is only spotlighted if it's already in the DOM. Govern's
  * tab is therefore carried in the route (`?tab=groups`) rather than left to
@@ -122,7 +145,20 @@ function ensurePayoffRule(): void {
  * Any figure a beat SPEAKS is a thunk, evaluated when the beat is shown, so
  * it reads the estate as the beats before it left it.
  */
-export const cloudConnectTour: (TourStep & { route: string })[] = [
+export type CloudConnectTourStep = TourStep & {
+  route: string;
+  /** Skip predicate, read once per launch by `activeCloudConnectTour`. */
+  when?: () => boolean;
+};
+
+/** The steps a launch actually runs: every step whose `when` is absent or
+ *  true at the moment the tour opens. Evaluated per launch, not per module
+ *  load, because the estate (and the DOM) move between rehearsals. */
+export function activeCloudConnectTour(): CloudConnectTourStep[] {
+  return cloudConnectTour.filter(s => !s.when || s.when());
+}
+
+export const cloudConnectTour: CloudConnectTourStep[] = [
   {
     id: 'discover',
     title: 'Discover the estate',
