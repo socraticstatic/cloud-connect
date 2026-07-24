@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Check, Link2, Plus, Sparkles } from 'lucide-react';
 import { AttIcon } from '../../components/icons/AttIcon';
-import { IntentThreads } from './IntentThreads';
+import { IntentThreads, IntentThreadOverlay } from './IntentThreads';
 import { STACK_LAYERS, type NavLayer } from '../../components/navigation/navItems';
 import { useCloudControlLive } from '../../engine/react/useCloudControl';
 import { fmtTokens, fmtUsd } from '../ai-fabric/aiSpend';
@@ -118,6 +118,7 @@ export function StackPanel() {
   // engine handle itself; every derivation below re-runs on each engine
   // version, live ticks included.
   const cc = useCloudControlLive(c => c);
+  const panelRef = useRef<HTMLElement>(null);
   const [ai, naas] = STACK_LAYERS;
   const [designing, setDesigning] = useState(false);
   const [staged, setStaged] = useState<StagedMove[]>([]);
@@ -252,10 +253,14 @@ export function StackPanel() {
 
   return (
     <section
+      ref={panelRef}
       aria-label="The network stack"
       data-testid="stack-panel"
-      className="rounded-2xl border border-fw-secondary bg-fw-base p-4 sm:p-5"
+      className="relative rounded-2xl border border-fw-secondary bg-fw-base p-4 sm:p-5"
     >
+      {/* The woven threads: each declared intent drawn into the strata it
+          constrains. Renders above the padding gutter, under nothing. */}
+      <IntentThreadOverlay containerRef={panelRef} />
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 mb-3">
         <div>
           <h2 className="text-figma-base font-bold text-fw-heading tracking-[-0.02em]">The stack</h2>

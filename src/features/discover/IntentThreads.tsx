@@ -1,3 +1,4 @@
+import { useEffect, useState, type RefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { useCloudControlLive, useCloudControlActions } from '../../engine/react/useCloudControl';
@@ -17,7 +18,7 @@ import { toggleAndi } from '../andi/AndiPanel';
 
 /** Which strata a catalog key constrains - the same keys StackPanel's
  *  bands carry (stack-band-ai / -cloud / -naas / -transport). */
-const THREADS: Record<string, string[]> = {
+export const THREADS: Record<string, string[]> = {
   'minimize-latency': ['naas', 'transport'],
   'path-diversity': ['naas', 'transport'],
   'route-by-cost': ['naas', 'transport'],
@@ -37,6 +38,94 @@ const EDGE: Record<string, string> = {
   drifting: 'border-l-fw-gray-400',
   violated: 'border-l-fw-red-600',
 };
+
+/* Stroke per status - the same palette the row badges speak. */
+const STROKE: Record<string, string> = {
+  aligned: '#2d7e24',
+  drifting: '#878c94',
+  violated: '#c70032',
+};
+
+/**
+ * The woven half of the metaphor: one curve per (intent, stratum) pair,
+ * drawn down the panel's left gutter from the intent's row into each band
+ * it constrains. Geometry is measured off the live DOM (rows and bands are
+ * siblings under the panel), re-measured on engine changes and resize.
+ * Decoration only: aria-hidden, pointer-events none, and the status facts
+ * it encodes are stated in the rows themselves. Violated threads pulse;
+ * the global reduced-motion rule suppresses the pulse.
+ */
+export function IntentThreadOverlay({ containerRef }: { containerRef: RefObject<HTMLElement> }) {
+  const intents = useCloudControlLive(cc => cc.intentList());
+  const [paths, setPaths] = useState<{ key: string; d: string; status: string }[]>([]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const measure = () => {
+      const cRect = container.getBoundingClientRect();
+      const next: { key: string; d: string; status: string }[] = [];
+      for (const i of intents) {
+        const row = container.querySelector(`[data-testid="intent-row-${i.id}"]`);
+        if (!row) continue;
+        const r = row.getBoundingClientRect();
+        const x0 = r.left - cRect.left;
+        const y0 = r.top - cRect.top + r.height / 2;
+        for (const band of THREADS[i.key] ?? []) {
+          const el = container.querySelector(`[data-testid="stack-band-${band}"]`);
+          if (!el) continue;
+          const b = el.getBoundingClientRect();
+          const x1 = b.left - cRect.left;
+          const y1 = b.top - cRect.top + Math.min(28, b.height / 2);
+          // Out the row's left edge, down the gutter, into the band's edge.
+          const gutter = Math.max(4, x0 - 14);
+          next.push({
+            key: `${i.id}-${band}`,
+            status: i.reading.status,
+            d: `M ${x0} ${y0} C ${gutter} ${y0}, ${gutter} ${y0}, ${gutter} ${(y0 + y1) / 2} L ${gutter} ${y1 - 12} C ${gutter} ${y1}, ${gutter} ${y1}, ${x1} ${y1}`,
+          });
+        }
+      }
+      setPaths(next);
+    };
+
+    // After layout settles; again on resize and on any engine re-render.
+    const raf = requestAnimationFrame(measure);
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    ro?.observe(container);
+    window.addEventListener('resize', measure);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro?.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [containerRef, intents]);
+
+  if (!paths.length) return null;
+  return (
+    <svg
+      data-testid="intent-thread-overlay"
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
+    >
+      {paths.map(p => (
+        <path
+          key={p.key}
+          data-testid={`thread-${p.key}`}
+          data-status={p.status}
+          d={p.d}
+          fill="none"
+          stroke={STROKE[p.status] ?? STROKE.drifting}
+          strokeWidth={p.status === 'violated' ? 2.5 : 1.5}
+          strokeOpacity={p.status === 'aligned' ? 0.35 : 0.65}
+          strokeLinecap="round"
+          className={p.status === 'violated' ? 'animate-pulse' : undefined}
+        />
+      ))}
+    </svg>
+  );
+}
 
 export function IntentThreads() {
   const intents = useCloudControlLive(cc => cc.intentList());

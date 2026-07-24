@@ -30,6 +30,8 @@ interface Persona {
   footprint: [number, number, number, number][];
   day: string[];
   builtForThem: string[];
+  /** The standing intents this role declares · labels from the shipped six-entry catalog only. */
+  intents: string[];
   tension: string;
 }
 
@@ -54,6 +56,7 @@ const PERSONAS: Persona[] = [
       'Walks cost trade-offs with finance in figures both sides can check.',
     ],
     builtForThem: ['Design mode', 'Proposal links', 'Undo as rollback'],
+    intents: ['Minimize latency', 'Keep this flow diverse'],
     tension: 'Their diagrams used to age out the day they shipped. The twin is the diagram, live.',
   },
   {
@@ -76,6 +79,7 @@ const PERSONAS: Persona[] = [
       'Turns the advisor’s draft into next quarter’s plan, move by priced move.',
     ],
     builtForThem: ['The advisor draft', 'Arbitrage · still on the table', 'Staged deltas'],
+    intents: ['Route by cost'],
     tension: 'Planning used to mean a spreadsheet nobody else could audit. Now the plan is a link.',
   },
   {
@@ -98,6 +102,7 @@ const PERSONAS: Persona[] = [
       'Runs failure sims before the failure runs them.',
     ],
     builtForThem: ['The time machine', 'Failure simulation', 'One latency vocabulary'],
+    intents: ['Keep this flow diverse', 'Minimize latency'],
     tension: 'The postmortem question was always "what did it look like right before." Now they scrub to it.',
   },
   {
@@ -120,6 +125,7 @@ const PERSONAS: Persona[] = [
       'Types the attach into ⌘K when they already know what they want.',
     ],
     builtForThem: ['Attach flows', 'The stack rail', '⌘K attach intents'],
+    intents: ['Minimize latency'],
     tension: 'Their world is the seam between clouds and the network. The stack finally draws the seam.',
   },
   {
@@ -142,6 +148,7 @@ const PERSONAS: Persona[] = [
       'Reads the same figures in the portal their pipeline saw in the response.',
     ],
     builtForThem: ['⌘K intents as the grammar', 'One engine behind portal and API', 'Share links as fixtures'],
+    intents: ['Minimize latency', 'Keep this flow diverse'],
     tension: 'Every other layer of their stack became an API years ago. The network was the holdout.',
   },
   {
@@ -164,6 +171,7 @@ const PERSONAS: Persona[] = [
       'Traces an agent’s decisions when spend moves without a deploy.',
     ],
     builtForThem: ['Token budgets & guardrails', '⌘K cap intents', 'Prompt traces'],
+    intents: ['Cap token spend', 'Keep AI inference off the public internet'],
     tension: 'AI spend was a bill that arrived. Now it is a meter they steer.',
   },
   {
@@ -186,6 +194,7 @@ const PERSONAS: Persona[] = [
       'Sends the quarter’s savings case as a proposal link finance can open.',
     ],
     builtForThem: ['Egress split', 'Steer to save', 'Proposals as the business case'],
+    intents: ['Route by cost', 'Cap token spend'],
     tension: 'The savings deck used to be screenshots. Now the numbers reprice themselves on open.',
   },
   {
@@ -208,6 +217,7 @@ const PERSONAS: Persona[] = [
       'Pulls the decision log when audit asks who changed what.',
     ],
     builtForThem: ['The Govern column, whole', 'Proposal review', 'Decision & activity logs'],
+    intents: ['Route by data sensitivity', 'Keep AI inference off the public internet'],
     tension: 'Approval used to mean trusting the requester’s summary. Now the change prices itself.',
   },
   {
@@ -230,6 +240,7 @@ const PERSONAS: Persona[] = [
       'Forwards a proposal link instead of scheduling a meeting about it.',
     ],
     builtForThem: ['Discover as the single pane', 'The /stack deck', 'Posture & savings figures'],
+    intents: ['Route by cost'],
     tension: 'They used to buy the network on trust. The table lets them read it.',
   },
 ];
@@ -405,6 +416,14 @@ export function PersonasView() {
                         {f}
                       </span>
                     ))}
+                  </div>
+                  <div className="mt-4" data-testid="persona-intents">
+                    <p className="text-[9.5px] font-bold tracking-[0.06em] uppercase" style={{ color: '#009fdb' }}>
+                      Intents they declare
+                    </p>
+                    <p className="text-[12px] font-medium leading-relaxed mt-1" style={{ color: '#454b52' }}>
+                      {p.intents.join(' · ')}
+                    </p>
                   </div>
                 </div>
                 <div className="px-5 py-3" style={{ background: '#f8fafb', borderTop: '1px solid #f0f1f2' }}>

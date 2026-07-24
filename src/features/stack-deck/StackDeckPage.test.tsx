@@ -13,13 +13,14 @@ const LIVE_ROUTES = [
 ];
 
 describe('StackDeckPage', () => {
-  it('renders all eight section headlines', () => {
+  it('renders all nine section headlines', () => {
     render(<StackDeckPage />);
     expect(screen.getByRole('heading', { name: /A verb is not a destination/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Four verbs across\. Four layers down/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /One experience over everything AT&T runs/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Design on it\. Share it\. A human commits/ })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Seven rules route every label/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Declare the outcome\. Watch it hold/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Eight rules route every label/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Eight links\. Four words/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Sticky is three columns riding a fourth/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /The table was always there/ })).toBeInTheDocument();
@@ -34,6 +35,37 @@ describe('StackDeckPage', () => {
     expect(screen.getByText(/⌘K intents\./)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Open the twin/ })).toHaveAttribute('href', '#/discover');
     expect(screen.getByRole('link', { name: /Scrub the window/ })).toHaveAttribute('href', '#/naas/observe');
+  });
+
+  it('the ⌘K intents card says the grammar also declares standing intents', () => {
+    render(<StackDeckPage />);
+    expect(screen.getByText(/The same grammar now declares standing intents/)).toBeInTheDocument();
+    // the example phrase appears in the ⌘K card and again in the Declare beat
+    expect(screen.getAllByText(/keep ai private/).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('the standing-intents section walks the five-beat lifecycle', () => {
+    render(<StackDeckPage />);
+    for (const beat of ['Declare', 'Watch', 'Enforce', 'Drift', 'Synchronize']) {
+      expect(screen.getByText(beat, { exact: true })).toBeInTheDocument();
+    }
+    // the vocabulary is the shipped one: derived status, three-valued
+    expect(screen.getByText(/aligned, drifting, or violated/)).toBeInTheDocument();
+    expect(screen.getByText(/The machine stages, never commits/)).toBeInTheDocument();
+    // the section links into the live threads, like every other live claim
+    expect(screen.getByRole('link', { name: /Watch the promises hold/ })).toHaveAttribute('href', '#/discover');
+  });
+
+  it('the 14-day assessment beat is the front door and links the live route', () => {
+    render(<StackDeckPage />);
+    expect(screen.getByText(/The 14-day assessment\./)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Start the assessment/ })).toHaveAttribute('href', '#/assessment');
+  });
+
+  it('the rules include the intent corollary: status derived, never stored', () => {
+    render(<StackDeckPage />);
+    expect(screen.getByText('A promise has a status')).toBeInTheDocument();
+    expect(screen.getByText(/derived on every read, never stored/)).toBeInTheDocument();
   });
 
   it('draws the full matrix: 16 body cells', () => {
@@ -107,6 +139,33 @@ describe('StackDeckPage — the Personas tab', () => {
     // Every persona's monogram appears somewhere on the tiled table.
     for (const mono of ['NA', 'NP', 'NO', 'CN', 'PE', 'AI', 'FO', 'SC', 'ES']) {
       expect(within(coverage).getAllByText(mono).length).toBeGreaterThan(0);
+    }
+  });
+
+  it('every persona declares 1-3 intents, drawn only from the shipped six-entry catalog', () => {
+    render(<StackDeckPage />);
+    fireEvent.click(screen.getByTestId('deck-tab-personas'));
+    const CATALOG_LABELS = [
+      'Minimize latency',
+      'Keep this flow diverse',
+      'Route by cost',
+      'Route by data sensitivity',
+      'Keep AI inference off the public internet',
+      'Cap token spend',
+    ];
+    const rows = screen.getAllByTestId('persona-intents');
+    expect(rows).toHaveLength(9);
+    for (const row of rows) {
+      const labels = (row.textContent ?? '')
+        .replace('Intents they declare', '')
+        .split('·')
+        .map(s => s.trim())
+        .filter(Boolean);
+      expect(labels.length).toBeGreaterThanOrEqual(1);
+      expect(labels.length).toBeLessThanOrEqual(3);
+      for (const label of labels) {
+        expect(CATALOG_LABELS).toContain(label);
+      }
     }
   });
 

@@ -50,6 +50,9 @@ test('the concept deck explains the table and links only into live rows', async 
   const LIVE = new Set([
     ...['connect', 'govern', 'observe', 'cost'].flatMap(v => [`#/ai/${v}`, `#/naas/${v}`]),
     '#/discover',
+    // The standing-intents section links the threads; the front-door card
+    // links the 14-day funnel. Both are live routes (App.tsx).
+    '#/assessment',
   ]);
   const hrefs = await page.locator('a[href^="#/"]').evaluateAll(as =>
     as.map(a => a.getAttribute('href')),
