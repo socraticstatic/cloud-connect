@@ -415,10 +415,76 @@ function TwinLoop() {
           <p className="text-[14px] font-medium leading-relaxed" style={{ color: '#454b52' }}>
             <b style={{ color: '#1d2329' }}>⌘K intents.</b> Type “cap shared-services 2m” and the palette
             answers with one command, priced in policy vocabulary, that runs against the engine. A typed
-            grammar over the engine’s own tags, so free text can never reach a mutation. Attach and steer
-            intents carry the same arrows and savings the twin states, because they are the same derivation.
+            grammar over the engine’s own tags, so free text can never reach a mutation. The same grammar
+            now declares standing intents: type “keep ai private” and the sentence becomes a promise the
+            estate keeps checking. Attach and steer intents carry the same arrows and savings the twin
+            states, because they are the same derivation.
           </p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Standing intents: the declared-outcome lifecycle ────────────────────────
+
+const INTENT_STEPS = [
+  {
+    n: 1,
+    title: 'Declare',
+    body: 'One sentence to Andi, “keep ai private”, becomes a standing promise with a scope. Every new promise starts in watch mode. Consent comes before control.',
+  },
+  {
+    n: 2,
+    title: 'Watch',
+    body: 'A watch intent evaluates and counts. It changes nothing. A cap in watch mode records the requests it would have denied, so the decision to enforce is made on evidence.',
+  },
+  {
+    n: 3,
+    title: 'Enforce',
+    body: 'A separate toggle, visible on the row. In enforce mode the budget gate really denies: a capped tag at its limit gets a recorded denial with the reason stated.',
+  },
+  {
+    n: 4,
+    title: 'Drift',
+    body: 'Status is re-derived on every read: aligned, drifting, or violated, each with one engine-grounded sentence of evidence. Nothing stores a stale verdict.',
+  },
+  {
+    n: 5,
+    title: 'Synchronize',
+    body: 'A violated promise carries its compiled repair, priced in the twin’s own vocabulary. Synchronize stages it into the tray. The machine stages, never commits.',
+  },
+];
+
+function IntentLifecycle() {
+  return (
+    <div className="mt-10 space-y-3">
+      {INTENT_STEPS.map(s => (
+        <div key={s.n} className="grid grid-cols-12 gap-4 rounded-2xl px-6 py-5 items-start"
+          style={{ background: '#f8fafb', border: '1px solid #dcdfe3' }}>
+          <div className="col-span-1 flex items-center justify-center h-8 w-8 rounded-full text-[14px] font-bold"
+            style={{ background: '#0057b8', color: '#ffffff' }}>{s.n}</div>
+          <div className="col-span-3 text-[16px] font-bold tracking-[-0.02em] pt-1" style={{ color: '#1d2329' }}>
+            {s.title}
+          </div>
+          <p className="col-span-8 text-[14px] font-medium leading-relaxed pt-1" style={{ color: '#454b52' }}>
+            {s.body}
+          </p>
+        </div>
+      ))}
+      <div className="rounded-2xl px-6 py-5 mt-3" style={{ background: '#f8fafb', border: '1px solid #dcdfe3' }}>
+        <p className="text-[11px] font-bold uppercase tracking-[0.06em] mb-2" style={{ color: '#009fdb' }}>
+          And before the first promise
+        </p>
+        <p className="text-[14px] font-medium leading-relaxed" style={{ color: '#454b52' }}>
+          <b style={{ color: '#1d2329' }}>The 14-day assessment.</b> The gateway watches for 14 days
+          and reports what AI traffic is costing and risking, before anyone commits to anything.
+          Every counter is a live derivation. The report never states a number the portal’s own
+          screens would deny. Measure first. Declare second.{' '}
+          <a href="#/assessment" className="font-semibold hover:underline" style={{ color: '#0057b8' }}>
+            Start the assessment →
+          </a>
+        </p>
       </div>
     </div>
   );
@@ -461,6 +527,11 @@ const RULES = [
     when: 'A decision needs a second pair of eyes',
     then: 'The tray travels as a link, and the recipient’s engine reprices it.',
     example: 'Share proposal → Opened from a proposal link · Commit',
+  },
+  {
+    when: 'A promise has a status',
+    then: 'It is derived on every read, never stored.',
+    example: 'aligned / drifting / violated, each with an evidence sentence',
   },
 ];
 
@@ -715,23 +786,43 @@ export function StackDeckPage() {
         </div>
       </section>
 
-      {/* ── 5 · THE RULES ── */}
+      {/* ── 5 · STANDING INTENTS ── */}
+      <section className="sd-section" style={{ background: '#ffffff' }}>
+        <div className="max-w-5xl mx-auto px-16 py-20">
+          <SectionLabel>Standing intents</SectionLabel>
+          <h2 className="text-[40px] font-bold tracking-[-0.03em] leading-tight mb-4" style={{ color: '#1d2329' }}>
+            Declare the outcome. Watch it hold.
+          </h2>
+          <p className="text-[16px] font-medium leading-relaxed max-w-3xl" style={{ color: '#454b52' }}>
+            The twin reviews one change. A standing intent reviews the estate, on every read.
+            The industry matured fulfillment: every vendor compiles a declared intent into
+            configuration. The assurance loop never closed: nothing kept checking that the
+            promise still held. This product closes it live, on the Discover cross-section.{' '}
+            <a href="#/discover" className="font-semibold hover:underline" style={{ color: '#0057b8' }}>
+              Watch the promises hold →
+            </a>
+          </p>
+          <IntentLifecycle />
+        </div>
+      </section>
+
+      {/* ── 6 · THE RULES ── */}
       <section className="sd-section" style={{ background: '#ffffff' }}>
         <div className="max-w-5xl mx-auto px-16 py-20">
           <SectionLabel>The rules</SectionLabel>
           <h2 className="text-[40px] font-bold tracking-[-0.03em] leading-tight mb-4" style={{ color: '#1d2329' }}>
-            Seven rules route every label.
+            Eight rules route every label.
           </h2>
           <p className="text-[16px] font-medium leading-relaxed max-w-3xl" style={{ color: '#454b52' }}>
-            The whole IA reduces to seven when/then pairs. Everything on the bar,
-            in the rail, behind "+ Create", in the advisor's chip and on a
-            proposal link follows from them.
+            The whole IA reduces to eight when/then pairs. Everything on the bar,
+            in the rail, behind "+ Create", in the advisor's chip, on a
+            proposal link and on an intent row follows from them.
           </p>
           <IaRules />
         </div>
       </section>
 
-      {/* ── 5 · BEFORE / AFTER ── */}
+      {/* ── 7 · BEFORE / AFTER ── */}
       <section className="sd-section" style={{ background: '#ffffff' }}>
         <div className="max-w-5xl mx-auto px-16 py-20">
           <SectionLabel>Before · after</SectionLabel>
@@ -758,7 +849,7 @@ export function StackDeckPage() {
         </div>
       </section>
 
-      {/* ── 6 · WHAT MAKES US STICKY ── */}
+      {/* ── 8 · WHAT MAKES US STICKY ── */}
       <section className="sd-section" style={{ background: '#ffffff' }}>
         <div className="max-w-5xl mx-auto px-16 py-20">
           <SectionLabel>What makes us sticky</SectionLabel>
@@ -792,7 +883,7 @@ export function StackDeckPage() {
         </div>
       </section>
 
-      {/* ── 7 · CLOSE ── */}
+      {/* ── 9 · CLOSE ── */}
       <section className="sd-section" style={{ background: '#001435' }}>
         <div className="max-w-5xl mx-auto px-16 py-24 text-center">
           <p className="text-[13px] font-medium tracking-[0.12em] uppercase mb-8" style={{ color: '#009fdb' }}>

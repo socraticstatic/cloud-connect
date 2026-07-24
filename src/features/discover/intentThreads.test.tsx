@@ -1,8 +1,9 @@
+import { useRef } from 'react';
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { CC } from '../../engine';
-import { IntentThreads } from './IntentThreads';
+import { IntentThreads, IntentThreadOverlay, THREADS } from './IntentThreads';
 
 /* Navigation is asserted by destination, not by router internals. */
 const mockNavigate = vi.fn();
@@ -75,6 +76,37 @@ describe('IntentThreads', () => {
     expect(CC.intentList()[0].mode).toBe('watch');
     CC.undo(); // the declaration
     expect(CC.intentList()).toHaveLength(0);
+  });
+
+  it('the overlay weaves one thread per intent-and-stratum pair, status carried', async () => {
+    const declared = CC.declareIntent(
+      'private-inference',
+      { kind: 'estate', id: 'ai', label: 'The token layer' },
+      'watch',
+    )!;
+    // A harness standing in for StackPanel: the rows, the band anchors the
+    // overlay measures against, and the overlay itself under one container.
+    function Harness() {
+      const ref = useRef<HTMLDivElement>(null);
+      return (
+        <div ref={ref} style={{ position: 'relative' }}>
+          <IntentThreads />
+          <div data-testid="stack-band-ai" />
+          <div data-testid="stack-band-naas" />
+          <IntentThreadOverlay containerRef={ref} />
+        </div>
+      );
+    }
+    render(<MemoryRouter><Harness /></MemoryRouter>);
+    await waitFor(() => {
+      expect(screen.getByTestId('intent-thread-overlay')).toBeInTheDocument();
+    });
+    for (const band of THREADS['private-inference']) {
+      const path = screen.getByTestId(`thread-${declared.id}-${band}`);
+      expect(path).toHaveAttribute('data-status', 'violated');
+      // Violated threads pulse; the global reduced-motion rule suppresses it.
+      expect(path.classList.contains('animate-pulse')).toBe(true);
+    }
   });
 
   it('an aligned intent renders quiet - no pulse class on its dot', () => {

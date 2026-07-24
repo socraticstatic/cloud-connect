@@ -13,13 +13,14 @@ const LIVE_ROUTES = [
 ];
 
 describe('StackDeckPage', () => {
-  it('renders all eight section headlines', () => {
+  it('renders all nine section headlines', () => {
     render(<StackDeckPage />);
     expect(screen.getByRole('heading', { name: /A verb is not a destination/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Four verbs across\. Four layers down/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /One experience over everything AT&T runs/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Design on it\. Share it\. A human commits/ })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Seven rules route every label/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Declare the outcome\. Watch it hold/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Eight rules route every label/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Eight links\. Four words/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Sticky is three columns riding a fourth/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /The table was always there/ })).toBeInTheDocument();
@@ -34,6 +35,36 @@ describe('StackDeckPage', () => {
     expect(screen.getByText(/⌘K intents\./)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Open the twin/ })).toHaveAttribute('href', '#/discover');
     expect(screen.getByRole('link', { name: /Scrub the window/ })).toHaveAttribute('href', '#/naas/observe');
+  });
+
+  it('the ⌘K intents card says the grammar also declares standing intents', () => {
+    render(<StackDeckPage />);
+    expect(screen.getByText(/The same grammar\s+now declares standing intents/)).toBeInTheDocument();
+    expect(screen.getByText(/keep ai private/)).toBeInTheDocument();
+  });
+
+  it('the standing-intents section walks the five-beat lifecycle', () => {
+    render(<StackDeckPage />);
+    for (const beat of ['Declare', 'Watch', 'Enforce', 'Drift', 'Synchronize']) {
+      expect(screen.getByText(beat, { exact: true })).toBeInTheDocument();
+    }
+    // the vocabulary is the shipped one: derived status, three-valued
+    expect(screen.getByText(/aligned, drifting, or violated/)).toBeInTheDocument();
+    expect(screen.getByText(/The machine stages, never commits/)).toBeInTheDocument();
+    // the section links into the live threads, like every other live claim
+    expect(screen.getByRole('link', { name: /Watch the promises hold/ })).toHaveAttribute('href', '#/discover');
+  });
+
+  it('the 14-day assessment beat is the front door and links the live route', () => {
+    render(<StackDeckPage />);
+    expect(screen.getByText(/The 14-day assessment\./)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Start the assessment/ })).toHaveAttribute('href', '#/assessment');
+  });
+
+  it('the rules include the intent corollary: status derived, never stored', () => {
+    render(<StackDeckPage />);
+    expect(screen.getByText('A promise has a status')).toBeInTheDocument();
+    expect(screen.getByText(/derived on every read, never stored/)).toBeInTheDocument();
   });
 
   it('draws the full matrix: 16 body cells', () => {
