@@ -290,7 +290,7 @@ export function estateDomains(cc: CloudControl): EstateDomain[] {
         { key: 'agents', label: 'Agents', value: agents.length },
         { key: 'aiExposed', label: 'Exposed endpoints', value: aiExposed },
       ],
-      cta: { label: 'Attach and govern these in AI Fabric · Connect', to: '/ai/connect' },
+      cta: { label: 'Attach and govern these in AI Fabric · Providers', to: '/ai/providers' },
     },
   ];
 }

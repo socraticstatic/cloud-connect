@@ -41,7 +41,7 @@ describe('LeftRail', () => {
     expect(within(rail).getByText('Governance')).toBeInTheDocument();
     const hrefs = within(rail).getAllByRole('link').map(a => a.getAttribute('href'));
     expect(hrefs).toEqual([
-      '/ai/home', '/ai/observe', '/ai/connect', '/ai/cost',
+      '/ai/home', '/ai/observe',
       '/ai/govern', '/ai/teams', '/ai/providers', '/ai/keys',
     ]);
     expect(within(rail).getByText('Insights')).toBeInTheDocument();

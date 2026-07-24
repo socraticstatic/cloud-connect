@@ -1,0 +1,238 @@
+import type { CloudControl, RequestRecord } from '../../../engine/types';
+import {
+  aiSpendTotals,
+  fmtTokens,
+  fmtUsd,
+  routeLabel,
+  statesRealMoney,
+  tagModelMap,
+  EXTERNAL_MODEL_ID,
+  type ModelRoutePath,
+} from '../aiSpend';
+
+/**
+ * The Insights screen's read side: the KPI strip and the requests table.
+ *
+ * Everything derives from the engine at call time. The KPI figures are the
+ * SAME figures the sibling screens state - token money via aiSpendTotals,
+ * TTFT over the full modelCatalog population (the population is the catalog
+ * /ai/providers renders, never the meter-ready subset - see
+ * observe/kpiPopulations.test.ts for why), request counts off
+ * decisionLog(). The requests table renders recorded decisions only:
+ * an entry without a tag predates the request-detail extension and has no
+ * row to render, so it is skipped, never padded.
+ */
+
+interface ModelCatalogEntry {
+  id: string;
+  name: string;
+  cloud: string | null;
+  p50: number;
+  price: number;
+}
+
+export interface InsightKpi {
+  key: 'tokens' | 'cost' | 'ttft' | 'requests' | 'blocked';
+  title: string;
+  value: string;
+  unit?: string;
+  sub: string;
+  subTone: 'neutral' | 'savings';
+}
+
+const SERIES_POINTS = 24;
+
+function percentile95(values: number[]): number {
+  if (!values.length) return 0;
+  const sorted = values.slice().sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.floor(0.95 * sorted.length))];
+}
+
+export function insightKpis(cc: CloudControl): InsightKpi[] {
+  const totals = aiSpendTotals(cc);
+  const catalog = cc.modelCatalog() as ModelCatalogEntry[];
+  const log = (cc.decisionLog?.() ?? []) as RequestRecord[];
+  const denied = log.filter(d => !d.allowed);
+
+  const ttftPoints = catalog.flatMap(
+    m => cc.modelLatencySeries(m.id, SERIES_POINTS) as number[],
+  );
+  const ttft = percentile95(ttftPoints.length ? ttftPoints : catalog.map(m => m.p50));
+
+  const savingsReal = statesRealMoney(totals.savings);
+  const savingsPct =
+    totals.spendIfExternal > 0
+      ? Math.round((totals.savings / totals.spendIfExternal) * 100)
+      : 0;
+
+  return [
+    {
+      key: 'tokens',
+      title: 'Tokens',
+      value: fmtTokens(totals.tokensToday),
+      sub:
+        totals.ungovernedTokensToday > 0
+          ? `${fmtTokens(totals.governedTokensToday)} governed · ${fmtTokens(totals.ungovernedTokensToday)} public`
+          : 'all on governed paths',
+      subTone: 'neutral',
+    },
+    {
+      key: 'cost',
+      title: 'Cost',
+      value: fmtUsd(totals.spendToday),
+      sub: savingsReal ? `Savings ${fmtUsd(totals.savings)} (${savingsPct}%)` : '/today',
+      subTone: savingsReal ? 'savings' : 'neutral',
+    },
+    {
+      key: 'ttft',
+      title: 'TTFT (p95 latency)',
+      value: String(Math.round(ttft)),
+      unit: 'ms',
+      sub: `P95 across ${catalog.length} models`,
+      subTone: 'neutral',
+    },
+    {
+      key: 'requests',
+      title: 'Requests',
+      value: String(log.length),
+      sub: 'total today',
+      subTone: 'neutral',
+    },
+    {
+      key: 'blocked',
+      title: 'Blocked requests',
+      value: String(denied.length),
+      /* This estate's denials are all token-policy denials - recordDecision
+         quotes the trace's own DENIED sentence. No other denial kind exists,
+         so no other kind is claimed. */
+      sub: denied.length === 1 ? '1 policy denial' : `${denied.length} policy denials`,
+      subTone: 'neutral',
+    },
+  ];
+}
+
+export interface InsightRequestRow {
+  id: string;
+  ts: number;
+  time: string;
+  status: number;
+  ok: boolean;
+  identity: string;
+  model: string;
+  provider: string;
+  route: string;
+  tokens: number;
+  cost: number;
+  costSaved: number;
+  /** costSaved as a share of what the external model would have charged. */
+  savedPct: number;
+  ttftMs: number;
+  reason: string | null;
+}
+
+export function providerName(cloud: string | null): string {
+  if (cloud === 'cw') return 'CoreWeave';
+  if (cloud === 'neb') return 'Nebius';
+  return 'OpenAI (external)';
+}
+
+export function requestRows(cc: CloudControl): InsightRequestRow[] {
+  const log = (cc.decisionLog?.() ?? []) as RequestRecord[];
+  const catalog = cc.modelCatalog() as ModelCatalogEntry[];
+  const external = catalog.find(m => m.id === EXTERNAL_MODEL_ID);
+  const externalPrice = external?.price ?? 0;
+
+  return log
+    .map((d, i) => ({ d, i }))
+    .filter(({ d }) => d.tag !== null && d.modelId !== null)
+    .map(({ d, i }) => {
+      const model = catalog.find(m => m.id === d.modelId);
+      const price = model?.price ?? 0;
+      const cost = (d.tokens / 1_000_000) * price;
+      const external$ = (d.tokens / 1_000_000) * externalPrice;
+      const costSaved = Math.max(0, external$ - cost);
+      return {
+        id: `${d.ts}-${i}`,
+        ts: d.ts,
+        time: new Date(d.ts).toLocaleTimeString('en-US', { hour12: false }),
+        status: d.allowed ? 200 : 403,
+        ok: d.allowed,
+        identity: d.tag as string,
+        model: model?.name ?? (d.modelId as string),
+        provider: providerName(model?.cloud ?? null),
+        route: routeLabel(d.path as ModelRoutePath),
+        tokens: d.tokens,
+        cost,
+        costSaved,
+        savedPct: external$ > 0 ? Math.round((costSaved / external$) * 100) : 0,
+        ttftMs: d.ttftMs,
+        reason: d.reason,
+      };
+    })
+    .reverse();
+}
+
+export interface RequestFilters {
+  q: string;
+  provider: string;
+  model: string;
+  identity: string;
+  path: string;
+  status: string;
+}
+
+export const EMPTY_FILTERS: RequestFilters = {
+  q: '',
+  provider: 'all',
+  model: 'all',
+  identity: 'all',
+  path: 'all',
+  status: 'all',
+};
+
+const uniq = (xs: string[]) => Array.from(new Set(xs));
+
+export function filterOptions(rows: InsightRequestRow[]) {
+  return {
+    provider: uniq(rows.map(r => r.provider)),
+    model: uniq(rows.map(r => r.model)),
+    identity: uniq(rows.map(r => r.identity)),
+    path: uniq(rows.map(r => r.route)),
+    status: uniq(rows.map(r => String(r.status))),
+  };
+}
+
+export function applyFilters(
+  rows: InsightRequestRow[],
+  f: RequestFilters,
+): InsightRequestRow[] {
+  const q = f.q.trim().toLowerCase();
+  return rows.filter(r => {
+    if (f.provider !== 'all' && r.provider !== f.provider) return false;
+    if (f.model !== 'all' && r.model !== f.model) return false;
+    if (f.identity !== 'all' && r.identity !== f.identity) return false;
+    if (f.path !== 'all' && r.route !== f.path) return false;
+    if (f.status !== 'all' && String(r.status) !== f.status) return false;
+    if (q && !`${r.identity} ${r.model}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+const CHIP_LABELS: Record<Exclude<keyof RequestFilters, 'q'>, string> = {
+  provider: 'Provider',
+  model: 'Model',
+  identity: 'Identity',
+  path: 'Path',
+  status: 'Status',
+};
+
+export function activeChips(
+  f: RequestFilters,
+): { key: keyof RequestFilters; label: string; value: string }[] {
+  const chips: { key: keyof RequestFilters; label: string; value: string }[] = [];
+  (Object.keys(CHIP_LABELS) as (keyof typeof CHIP_LABELS)[]).forEach(k => {
+    if (f[k] !== 'all') chips.push({ key: k, label: CHIP_LABELS[k], value: f[k] });
+  });
+  if (f.q.trim()) chips.push({ key: 'q', label: 'Search', value: f.q.trim() });
+  return chips;
+}

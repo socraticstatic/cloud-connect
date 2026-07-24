@@ -12,7 +12,7 @@ import { usePermissions } from '../../hooks/usePermission';
  */
 const CREATABLES = [
   { label: 'Connection', detail: 'Attach a cloud or site to the fabric', layerKey: 'naas' as const, to: '/naas/connect' },
-  { label: 'Model endpoint', detail: 'Attach a model endpoint or neocloud', layerKey: 'ai' as const, to: '/ai/connect' },
+  { label: 'Model endpoint', detail: 'Attach a model endpoint or neocloud', layerKey: 'ai' as const, to: '/ai/providers' },
 ];
 
 export function CreateMenu() {

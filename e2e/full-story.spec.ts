@@ -81,7 +81,7 @@ test('walks both domains with real state changes, plus Tour and ⌘K', async ({ 
   await expect(page.getByTestId('kpi-tile').first()).toBeVisible();
 
   // --- AI Fabric · Observe: classified -> external model is DENIED ---
-  await page.goto('/#/ai/observe', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/ai/observe?tab=security', { waitUntil: 'domcontentloaded' }); // the prompt trace lives on the Security tab since the Insights rebuild
   await page.getByRole('button', { name: 'Trace', exact: true }).last().click();
   await expect(page.getByText(/denied/i).first()).toBeVisible();
 

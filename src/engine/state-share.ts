@@ -132,6 +132,10 @@ function payloadObject(){
       return {id:g.id,label:g.label,kind:g.kind,members:g.members,predicates:g.predicates,desc:g.desc,custom:true};
     }),
   };
+  // Gateway levers travel only when flipped - a pristine engine must keep
+  // minting an empty payload (see the emptiness check in serialize()).
+  const gwOn=Object.keys(_.gatewayFlags||{}).filter(k=>_.gatewayFlags[k]);
+  if(gwOn.length)d.gw=gwOn;
   if(!d.r.length)delete d.r;
   if(!d.tp.length)delete d.tp;
   if(!d.groups.length)delete d.groups;
@@ -142,7 +146,7 @@ function encodePayload(d){
 }
 function serialize(){
   const d=payloadObject();
-  if(!d.o.length&&!d.f.length&&!d.p.length&&!d.r&&!d.tp&&!d.s&&!d.groups)return '';
+  if(!d.o.length&&!d.f.length&&!d.p.length&&!d.r&&!d.tp&&!d.s&&!d.groups&&!d.gw)return '';
   return encodePayload(d);
 }
 function shareUrl(){
@@ -190,6 +194,7 @@ function applyShareData(raw){
       const p=(_.tokenPolicies||{})[x.t];
       if(p)Object.assign(p,{scope:x.s||p.scope,budget:x.b||p.budget,guardrail:!!x.g,enforced:!!x.e});
     });
+    (d.gw||[]).forEach(k=>{if(_.gatewayFlags&&k in _.gatewayFlags)_.gatewayFlags[k]=true;});
     if(d.s){const o=onramps.find(x=>x.id===d.s);if(o&&o.active)sim.onrampId=d.s;}
     // addGroup no-ops (returns null) when the id already exists, so replaying
     // a payload against an estate that already has the group - the common

@@ -8,7 +8,7 @@ test('AI Fabric prompt trace denies classified->external, NetOps live incident t
   // token layer. The prompt trace used to sit behind a "Trace" tab on the one
   // AI Fabric page; the domain split put it on the AI Fabric's own Observe
   // screen, rendered directly with no tab in front of it. ---
-  await page.goto('/#/ai/observe', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/ai/observe?tab=security', { waitUntil: 'domcontentloaded' }); // the prompt trace lives on the Security tab since the Insights rebuild
 
   // component defaults to classified-helion tag + gpt-class (external) model —
   // just run the trace with the defaults.

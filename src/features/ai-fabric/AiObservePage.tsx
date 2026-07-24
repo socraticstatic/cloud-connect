@@ -1,39 +1,23 @@
 import { AiDomainPage } from './AiDomainPage';
-import { useCloudControlLive } from '../../engine/react/useCloudControl';
-import { ObservabilityShell } from '../observe/ObservabilityShell';
-import { aiBinding } from '../observe/aiBinding';
-import { PromptTrace } from './PromptTrace';
-import { GovernanceDecisions } from './GovernanceDecisions';
+import { InsightsPage } from './insights/InsightsPage';
 
 /**
- * AI Fabric · Observe. Three blocks moved here whole from the old single-page
- * AI Fabric screen: the observability shell (its Observability tab) plus the
- * prompt trace and the decision log (its Trace tab).
+ * AI Fabric · Observe, rebuilt as the gateway's Insights screen (Figma NAAS
+ * AI, phase 3): KPI strip, traffic-flow sankey, Performance / Savings /
+ * Security tabs, and the filterable request log. Insights IS this layer's
+ * Observe surface - the rail item labeled Insights routes here.
  *
- * Order matters and is not cosmetic: GovernanceDecisions' empty state reads
- * "run a trace above to populate this view", so PromptTrace has to render
- * above it or that sentence stops being true.
- *
- * The binding is subscribed LIVE (telemetry `hits` included, unlike the
- * default hook). Two reasons, one of them a defect: this screen's own
- * description promises "live meters", and its Cost/Savings KPIs state the
- * same `aiSpend` derivation the /ai/cost screen states. Frozen at their
- * respective mount instants, the two screens disagreed by a tick whenever a
- * viewer crossed between them.
+ * The old shell's prompt trace and decision log did not leave: they render
+ * on the Security tab, trace above log, because the log's empty state still
+ * reads "run a trace above to populate this view".
  */
 export function AiObservePage() {
-  const observability = useCloudControlLive(aiBinding);
-
   return (
     <AiDomainPage
       verb="Observe"
-      description="Observability for the token layer: live meters across every identity, then one request walked hop by hop and the decision log those traces write."
+      description="The token layer, watched: live gateway figures, where every dollar of AI spend flows, and each request judged at the gate."
     >
-      <div className="space-y-4">
-        <ObservabilityShell binding={observability} />
-        <PromptTrace />
-        <GovernanceDecisions />
-      </div>
+      <InsightsPage />
     </AiDomainPage>
   );
 }

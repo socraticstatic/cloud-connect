@@ -97,15 +97,9 @@ const LazyCostPage = lazy(() =>
 
 // The AI Fabric is its own domain now, carrying the same four verbs as NaaS.
 // What used to be one tabbed page (AiFabricPage) is four screens, each holding
-// blocks that page already had: model catalog → Connect, token policies +
-// agents → Govern, observability shell + prompt trace + decision log →
-// Observe, token budgets → Cost.
-const LazyAiConnectPage = lazy(() =>
-  import('./features/ai-fabric/AiConnectPage').then(module => ({
-    default: module.AiConnectPage
-  }))
-);
-
+// blocks that page already had: token policies + agents → Govern, the
+// Insights screen → Observe. Connect and Cost folded into Providers and
+// the Insights Savings tab in phase 3; their routes redirect below.
 const LazyAiGovernPage = lazy(() =>
   import('./features/ai-fabric/AiGovernPage').then(module => ({
     default: module.AiGovernPage
@@ -115,12 +109,6 @@ const LazyAiGovernPage = lazy(() =>
 const LazyAiObservePage = lazy(() =>
   import('./features/ai-fabric/AiObservePage').then(module => ({
     default: module.AiObservePage
-  }))
-);
-
-const LazyAiCostPage = lazy(() =>
-  import('./features/ai-fabric/AiCostPage').then(module => ({
-    default: module.AiCostPage
   }))
 );
 
@@ -416,11 +404,11 @@ function App() {
                   </Suspense>
                 } />
 
-                <Route path="/ai/connect" element={
-                  <Suspense fallback={<LoadingFallback />}>
-                    <LazyAiConnectPage />
-                  </Suspense>
-                } />
+                {/* Phase 3 folded these two screens into their gateway homes:
+                    Connect's model catalog lives on Providers, Cost is the
+                    Insights Savings tab. The routes stay alive as redirects -
+                    shared links and the mobile drawer's verbs still land. */}
+                <Route path="/ai/connect" element={<Navigate to="/ai/providers" replace />} />
 
                 <Route path="/ai/govern" element={
                   <Suspense fallback={<LoadingFallback />}>
@@ -434,11 +422,7 @@ function App() {
                   </Suspense>
                 } />
 
-                <Route path="/ai/cost" element={
-                  <Suspense fallback={<LoadingFallback />}>
-                    <LazyAiCostPage />
-                  </Suspense>
-                } />
+                <Route path="/ai/cost" element={<Navigate to="/ai/observe?tab=savings" replace />} />
 
                 {/* The flat verb routes this nav used to ship, and the single
                     /ai-fabric page that has been split into the four above.
