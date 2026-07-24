@@ -195,3 +195,29 @@ describe('Closed (day 15)', () => {
     expect(CC.assessment().stage).toBe('not-started');
   });
 });
+
+describe('the report bridges into standing intents', () => {
+  it('a finding declares its intent in watch mode, and reads as declared after', async () => {
+    const { fireEvent, within } = await import('@testing-library/react');
+    // Reach the report stage on a clean machine.
+    while (CC.assessment().stage !== 'not-started') { if (!CC.undo()) break; }
+    CC.intentList().forEach(i => CC.removeIntent(i.id));
+    CC.startAssessment();
+    CC.advanceAssessment(14);
+
+    const view = render(<MemoryRouter><AssessmentPage /></MemoryRouter>);
+    const finding = view.getByTestId('finding-invisible');
+    fireEvent.click(within(finding).getByTestId('bridge-declare-private-inference'));
+
+    const declared = CC.intentList().find(i => i.key === 'private-inference');
+    expect(declared).toBeTruthy();
+    expect(declared!.mode).toBe('watch');
+    expect(within(finding).getByTestId('bridge-declared-private-inference'))
+      .toHaveTextContent(/watch mode/);
+
+    // Unwind: the declaration, the advance, the start.
+    CC.removeIntent(declared!.id);
+    while (CC.assessment().stage !== 'not-started') { if (!CC.undo()) break; }
+    view.unmount();
+  });
+});

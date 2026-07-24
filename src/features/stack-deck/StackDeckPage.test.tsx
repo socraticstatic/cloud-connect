@@ -39,8 +39,9 @@ describe('StackDeckPage', () => {
 
   it('the ⌘K intents card says the grammar also declares standing intents', () => {
     render(<StackDeckPage />);
-    expect(screen.getByText(/The same grammar\s+now declares standing intents/)).toBeInTheDocument();
-    expect(screen.getByText(/keep ai private/)).toBeInTheDocument();
+    expect(screen.getByText(/The same grammar now declares standing intents/)).toBeInTheDocument();
+    // the example phrase appears in the ⌘K card and again in the Declare beat
+    expect(screen.getAllByText(/keep ai private/).length).toBeGreaterThanOrEqual(2);
   });
 
   it('the standing-intents section walks the five-beat lifecycle', () => {
@@ -138,6 +139,33 @@ describe('StackDeckPage — the Personas tab', () => {
     // Every persona's monogram appears somewhere on the tiled table.
     for (const mono of ['NA', 'NP', 'NO', 'CN', 'PE', 'AI', 'FO', 'SC', 'ES']) {
       expect(within(coverage).getAllByText(mono).length).toBeGreaterThan(0);
+    }
+  });
+
+  it('every persona declares 1-3 intents, drawn only from the shipped six-entry catalog', () => {
+    render(<StackDeckPage />);
+    fireEvent.click(screen.getByTestId('deck-tab-personas'));
+    const CATALOG_LABELS = [
+      'Minimize latency',
+      'Keep this flow diverse',
+      'Route by cost',
+      'Route by data sensitivity',
+      'Keep AI inference off the public internet',
+      'Cap token spend',
+    ];
+    const rows = screen.getAllByTestId('persona-intents');
+    expect(rows).toHaveLength(9);
+    for (const row of rows) {
+      const labels = (row.textContent ?? '')
+        .replace('Intents they declare', '')
+        .split('·')
+        .map(s => s.trim())
+        .filter(Boolean);
+      expect(labels.length).toBeGreaterThanOrEqual(1);
+      expect(labels.length).toBeLessThanOrEqual(3);
+      for (const label of labels) {
+        expect(CATALOG_LABELS).toContain(label);
+      }
     }
   });
 

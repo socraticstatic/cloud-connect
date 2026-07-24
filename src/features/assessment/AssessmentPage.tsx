@@ -4,6 +4,48 @@ import { AttIcon } from '../../components/icons/AttIcon';
 import { CC } from '../../engine';
 import { useCloudControlLive } from '../../engine/react/useCloudControl';
 import { aiSpendTotals, fmtTokens, fmtUsd, statesRealMoney } from '../ai-fabric/aiSpend';
+import type { IntentScope } from '../../engine/types';
+
+/**
+ * The bridge from finding to promise. Each report finding names the
+ * standing intent that would hold what the assessment measured, and
+ * declares it in watch mode on click - the same declaration Andi's
+ * grammar makes. Already-declared reads as the fact it is, with the
+ * thread on Discover one link away.
+ */
+function DeclareIntentBridge({
+  intentKey,
+  scope,
+  invitation,
+}: {
+  intentKey: string;
+  scope: IntentScope;
+  invitation: string;
+}) {
+  const declared = useCloudControlLive(cc =>
+    cc.intentList().find(i => i.key === intentKey && i.scope.id === scope.id) ?? null,
+  );
+  if (declared) {
+    return (
+      <p className="mt-2 text-[13px] text-fw-body" data-testid={`bridge-declared-${intentKey}`}>
+        Standing intent declared · {declared.mode} mode · {declared.reading.status}.{' '}
+        <Link to="/discover" className="font-bold text-fw-link hover:underline">
+          See its thread on Discover
+        </Link>
+      </p>
+    );
+  }
+  return (
+    <button
+      type="button"
+      data-testid={`bridge-declare-${intentKey}`}
+      onClick={() => CC.declareIntent(intentKey, scope, 'watch')}
+      className="as-no-print mt-2 rounded-full border border-fw-secondary px-4 py-1.5 text-[13px] font-bold text-fw-body hover:border-fw-active hover:text-fw-link"
+    >
+      {invitation}
+    </button>
+  );
+}
 
 /**
  * /assessment - the 14-day AI visibility assessment funnel.
@@ -464,6 +506,11 @@ export function AssessmentPage() {
                     Insights states the same share
                   </Link>
                 </p>
+                <DeclareIntentBridge
+                  intentKey="private-inference"
+                  scope={{ kind: 'estate', id: 'ai', label: 'The token layer' }}
+                  invitation="Declare the intent: keep AI inference off the public internet"
+                />
               </DetectionRow>
               <DetectionRow testid="finding-spend" summary="Most of your AI spend is avoidable">
                 {recoverableLine ? (
@@ -490,6 +537,11 @@ export function AssessmentPage() {
                     The Savings tab states the same figure
                   </Link>
                 </p>
+                <DeclareIntentBridge
+                  intentKey="route-by-cost"
+                  scope={{ kind: 'estate', id: null, label: 'Every flow' }}
+                  invitation="Declare the intent: route by cost"
+                />
               </DetectionRow>
               <DetectionRow
                 testid="finding-security"
@@ -505,6 +557,11 @@ export function AssessmentPage() {
                     NaaS Observe states the same violations
                   </Link>
                 </p>
+                <DeclareIntentBridge
+                  intentKey="data-sensitivity"
+                  scope={{ kind: 'tag', id: 'classified-helion', label: 'classified-helion' }}
+                  invitation="Declare the intent: route classified traffic by sensitivity"
+                />
               </DetectionRow>
             </section>
 
