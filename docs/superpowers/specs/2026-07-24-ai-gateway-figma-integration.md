@@ -130,6 +130,41 @@ Day-14 report (findings + downloadable) → Day-15 closed. This is a demo/land
 narrative; wire counters to the engine's discovery model so the report figures
 are real. Print/share-ready like the Intent deck.
 
+## Complete-review addendum (every frame, 2026-07-24)
+
+The four "insights | Performance" frames are four STATES of one screen, and
+they matter to the build:
+- **Performance tab** (`1:4324`): a regional **incident strip** on top (three
+  latency events, each narrated with driver + mitigation, carrying "Ask Andi"
+  and — on the config-caused one — **"Rollback"**), then latency-routing
+  savings ("120 hrs", p50 −33% / p95 −39%, Direct vs With-routing bars), then
+  provider cost share.
+- **Cost tab, warning state** (`1:3498`): savings cards footed by alerts
+  ("Routing policy not configured → Set policy", "Caching disabled → Enable
+  Caching"), annual budget line with over-budget October, team driver cards,
+  provider share.
+- **Cost tab, achieved state** (`1:4674`): the SAME cards after adoption —
+  green footers ("AT&T AI Gateway saved you $1,500 by selecting cost
+  effective models"), "Cost spike detection" label over the team cards.
+  Build both states; the engine's policy flags pick which renders.
+- **Dark theme** (`1:3911`): a full dark variant of Insights — matches the
+  Make file's stated aesthetic. Treat as future theming, not phase scope.
+
+**Sankey, frame-fidelity spec** (`1:5149`): title "Traffic flow" + provider
+legend (AWS Bedrock, Anthropic, OpenAI, Self-hosted, Other) + expand control;
+four columns — Identity (User/Agent), Source (Ingress site), Fabric route
+(Egress path), Provider/Model (Destination); every node = vertical cobalt bar
++ label + $ value; ~5 nodes per column with "Other" catch-alls; ribbons in
+pale blue-grey, the SELECTED path highlighted cyan end-to-end; hover tooltip
+"Event path" with Cost, green "Saved", and the four hops named. (The frame
+carries two typos — "IDENTIDY", "Antropic" — do not copy.)
+
+**Sibling "NAAS AI Project File"** (`figma.com/make/f4tGwwW1c8xsidVepI5eRT`):
+a Figma **Make** prototype, Version 1, effectively empty — one generation
+prompt for a NAAS AI landing page ("deep navy ground, electric cyan accents,
+geometric sans type, animated network topology hero"). Nothing to integrate;
+noted as the intended marketing-page aesthetic.
+
 ## Decisions (Micah, 2026-07-24)
 1. **Insights** — rebuild `/ai/observe` in place. Insights IS the AI layer's
    Observe surface; the rail item labeled "Insights" routes to `/ai/observe`.
