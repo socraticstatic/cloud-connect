@@ -118,21 +118,50 @@ export function AndiPanel() {
                 <div className="space-y-3">
                   {resolve.map(cardItem => (
                     <div
-                      key={cardItem.title}
+                      key={cardItem.move === 'intent' ? cardItem.intentId : cardItem.title}
+                      data-testid={cardItem.move === 'intent' ? `andi-intent-${cardItem.intentId}` : undefined}
                       className="rounded-2xl border border-fw-secondary bg-fw-base p-3 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"
                     >
+                      {cardItem.move === 'intent' && (
+                        <p className={`text-figma-xs font-semibold uppercase tracking-[0.08em] ${cardItem.status === 'violated' ? 'text-fw-red-600' : 'text-fw-bodyLight'}`}>
+                          Intent {cardItem.status}
+                        </p>
+                      )}
                       <p className="text-figma-sm text-fw-body">{cardItem.title}</p>
                       <p className="text-figma-sm text-fw-bodyLight">
                         {cardItem.detail}
                         {cardItem.savingMo !== null && ` · saves ~$${Math.round(cardItem.savingMo).toLocaleString()}/mo`}
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => navigate('/discover?draft=andi')}
-                        className="mt-3 h-8 rounded-lg bg-fw-ctaPrimary px-4 text-figma-sm font-medium text-white hover:bg-fw-ctaPrimaryHover"
-                      >
-                        Draft in the twin
-                      </button>
+                      {cardItem.move === 'intent' ? (
+                        <div className="mt-3 flex items-center gap-2">
+                          {cardItem.hasMoves && (
+                            <button
+                              type="button"
+                              data-testid={`andi-sync-${cardItem.intentId}`}
+                              onClick={() => navigate(`/discover?draft=intent-${cardItem.intentId}`)}
+                              className="h-8 rounded-lg bg-fw-ctaPrimary px-4 text-figma-sm font-medium text-white hover:bg-fw-ctaPrimaryHover"
+                            >
+                              Synchronize
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            data-testid={`andi-mode-${cardItem.intentId}`}
+                            onClick={() => cc.setIntentMode(cardItem.intentId!, cardItem.mode === 'watch' ? 'enforce' : 'watch')}
+                            className="h-8 rounded-lg border border-fw-secondary px-3 text-figma-sm font-medium text-fw-body hover:bg-fw-wash"
+                          >
+                            {cardItem.mode === 'watch' ? 'Enforce' : 'Watch only'}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => navigate('/discover?draft=andi')}
+                          className="mt-3 h-8 rounded-lg bg-fw-ctaPrimary px-4 text-figma-sm font-medium text-white hover:bg-fw-ctaPrimaryHover"
+                        >
+                          Draft in the twin
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>

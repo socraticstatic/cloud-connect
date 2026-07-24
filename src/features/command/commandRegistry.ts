@@ -10,7 +10,8 @@ export type CommandKind =
   | 'undo'
   | 'attach-region'
   | 'steer'
-  | 'cap';
+  | 'cap'
+  | 'declare';
 
 export interface Command {
   id: string;
@@ -143,13 +144,74 @@ export function commandRegistry(
 const CAP_GRAMMAR =
   /^cap\s+(\S+)\s+(?:at\s+)?([\d.]+)\s*([km])?\s*(?:tokens?)?\s*(?:\/?\s*day)?$/i;
 
+/* Declare grammars for standing intents. Same law as CAP: every capture
+   must resolve against an engine-known name via intentCatalog().scopes(),
+   or nothing parses - free text never reaches a mutation. Declarations
+   land in WATCH mode; enforcement is a separate, visible decision. */
+const KEEP_PRIVATE_GRAMMAR = /^keep\s+(.+?)\s+private$/i;
+const DIVERSIFY_GRAMMAR = /^diversify\s+(.+)$/i;
+const MIN_LATENCY_GRAMMAR = /^minimi[sz]e\s+latency\s+(?:for\s+)?(.+)$/i;
+
+/** The one scope whose label (or id) uniquely matches `name`, or null.
+ *  Ambiguity is a non-match: a grammar must never guess between two scopes. */
+function uniqueScope(
+  cc: CloudControl,
+  key: string,
+  name: string,
+): { kind: string; id: string | null; label: string } | null {
+  const entry = cc.intentCatalog?.().find(c => c.key === key);
+  if (!entry) return null;
+  const n = name.trim().toLowerCase();
+  const scopes = entry.scopes();
+  const exact = scopes.filter(s => s.label.toLowerCase() === n || (s.id ?? '').toLowerCase() === n);
+  if (exact.length === 1) return exact[0];
+  const partial = scopes.filter(s => s.label.toLowerCase().includes(n));
+  return partial.length === 1 ? partial[0] : null;
+}
+
+function declareCommand(cc: CloudControl, key: string, scope: { kind: string; id: string | null; label: string }): Command {
+  return {
+    id: `declare:${key}:${scope.id ?? 'estate'}`,
+    label: `Declare intent · ${key.replace(/-/g, ' ')} · ${scope.label} (watch mode)`,
+    kind: 'declare',
+    run: () => cc.declareIntent(key, scope as never, 'watch'),
+  };
+}
+
 /**
  * Typed intent parser for the palette. A query that names an engine-known
  * policy tag and a positive budget yields exactly one runnable command;
  * anything else yields none, so free text cannot mutate the engine.
  */
 export function parseIntent(query: string, cc: CloudControl): Command[] {
-  const match = query.trim().match(CAP_GRAMMAR);
+  const q = query.trim();
+
+  const keep = q.match(KEEP_PRIVATE_GRAMMAR);
+  if (keep) {
+    const name = keep[1];
+    // "keep ai private" / "keep inference private" is the token layer's
+    // estate intent; a sensitivity tag binds data-sensitivity instead.
+    if (/^(ai|inference|ai inference)$/i.test(name)) {
+      const scope = uniqueScope(cc, 'private-inference', 'the token layer');
+      return scope ? [declareCommand(cc, 'private-inference', scope)] : [];
+    }
+    const scope = uniqueScope(cc, 'data-sensitivity', name);
+    return scope ? [declareCommand(cc, 'data-sensitivity', scope)] : [];
+  }
+
+  const div = q.match(DIVERSIFY_GRAMMAR);
+  if (div) {
+    const scope = uniqueScope(cc, 'path-diversity', div[1]);
+    return scope ? [declareCommand(cc, 'path-diversity', scope)] : [];
+  }
+
+  const minLat = q.match(MIN_LATENCY_GRAMMAR);
+  if (minLat) {
+    const scope = uniqueScope(cc, 'minimize-latency', minLat[1]);
+    return scope ? [declareCommand(cc, 'minimize-latency', scope)] : [];
+  }
+
+  const match = q.match(CAP_GRAMMAR);
   if (!match) return [];
 
   const rows: { tag: string }[] =
