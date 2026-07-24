@@ -3,8 +3,9 @@ import type { CloudControl } from '../../engine/types';
 /**
  * The single token-spend derivation for the AI Fabric.
  *
- * Two surfaces state token money: the Cost screen (`/ai/cost`) and the Cost /
- * Savings KPI tiles on the Observe screen (`/ai/observe`, via `aiBinding`).
+ * Two surfaces state token money: the budgets block on Teams & limits
+ * (`/ai/teams`) and the Cost KPI on Insights (`/ai/observe`, via
+ * `insights/insightsFigures`).
  * They read this module rather than each re-deriving the same sum, so the two
  * screens cannot drift into stating different figures for the same estate.
  *

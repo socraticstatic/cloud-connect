@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CC } from '../../engine';
 import { networkBinding } from './networkBinding';
-import { aiBinding } from './aiBinding';
+import { insightKpis } from '../ai-fabric/insights/insightsFigures';
 
 /**
  * A KPI tile is one number standing beside a table and a briefing rail that
@@ -83,7 +83,7 @@ describe('/ai/observe · the TTFT tile and /ai/connect’s catalog', () => {
   const models = () => CC.modelCatalog!() as Model[];
 
   it('counts the same models /ai/connect renders, and says how many', () => {
-    const k = kpi(aiBinding(CC).kpis() as Kpi[], 'ttft');
+    const k = kpi(insightKpis(CC) as unknown as Kpi[], 'ttft');
     expect(k.sub, 'the TTFT tile does not name its population').toMatch(
       new RegExp(`${models().length}\\s+models`),
     );
@@ -93,7 +93,7 @@ describe('/ai/observe · the TTFT tile and /ai/connect’s catalog', () => {
     /* P95 across the catalog's own series cannot sit under the slowest model's
        median. `TTFT 47ms` did, beside `helion-cls-13b … 133ms … Governed ·
        ready`, because it was measuring one model of three. */
-    const shown = Number(kpi(aiBinding(CC).kpis() as Kpi[], 'ttft').value);
+    const shown = Number(kpi(insightKpis(CC) as unknown as Kpi[], 'ttft').value);
     const slowest = Math.max(...models().map(m => m.p50));
     expect(shown, `TTFT ${shown}ms is below the slowest catalog P50 (${slowest}ms)`)
       .toBeGreaterThanOrEqual(slowest);
@@ -104,7 +104,7 @@ describe('/ai/observe · the TTFT tile and /ai/connect’s catalog', () => {
        tour reaches — and TTFT must follow the catalog one, not the meter one. */
     const meterReady = (CC.tokenMeterList!() as { ready: boolean }[]).filter(m => m.ready).length;
     const catalogReady = models().filter(m => m.ready).length;
-    const before = Number(kpi(aiBinding(CC).kpis() as Kpi[], 'ttft').value);
+    const before = Number(kpi(insightKpis(CC) as unknown as Kpi[], 'ttft').value);
 
     // The tour's own Connect beat. It attaches every AI endpoint (so the
     // catalog goes n/n) while leaving both governance fixes unapplied (so the
@@ -119,7 +119,7 @@ describe('/ai/observe · the TTFT tile and /ai/connect’s catalog', () => {
       'the two readiness predicates must disagree here, or this test proves nothing',
     ).toBeLessThan(catalogReadyAfter);
 
-    const after = Number(kpi(aiBinding(CC).kpis() as Kpi[], 'ttft').value);
+    const after = Number(kpi(insightKpis(CC) as unknown as Kpi[], 'ttft').value);
     const slowest = Math.max(...models().map(m => m.p50));
     expect(after, `TTFT ${after}ms is below the slowest catalog P50 (${slowest}ms) after attach`)
       .toBeGreaterThanOrEqual(slowest);

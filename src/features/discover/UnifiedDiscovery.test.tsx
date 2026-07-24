@@ -149,7 +149,7 @@ describe('UnifiedDiscovery drill-down tree', () => {
       const link = within(screen.getByTestId(`estate-${d.key}`)).getByTestId(`estate-cta-${d.key}`);
       expect(link).toHaveAttribute('href', d.cta.to);
     }
-    expect(screen.getByTestId('estate-cta-ai')).toHaveAttribute('href', '/ai/connect');
+    expect(screen.getByTestId('estate-cta-ai')).toHaveAttribute('href', '/ai/providers');
     expect(screen.getByTestId('estate-cta-network')).toHaveAttribute('href', '/naas/connect');
   });
 

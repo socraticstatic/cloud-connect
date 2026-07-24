@@ -7,25 +7,40 @@ import { CC } from '../../engine';
 const wrap = (el: React.ReactElement) => render(<MemoryRouter>{el}</MemoryRouter>);
 
 describe('AI Gateway governance pages', () => {
-  test('Teams & limits lists every token policy with its budget', () => {
+  /* Phase 3 folded the retired /ai/cost budgets block (TokenBudgets) here
+     whole. It lists METERED identities as rows; a policy without a meter
+     (the group-scoped west-workloads) is accounted for in the note instead —
+     the same reconciliation aiFabricSplit.test.tsx pins. */
+  test('Teams & limits accounts for every token policy: metered rows, unmetered named', () => {
     wrap(<AiTeamsPage />);
-    const table = screen.getByTestId('teams-table');
     const policies = CC.tokenPolicyList() as { tag: string; budget: number }[];
+    const metered = new Set((CC.tokenMeterList() as { tag: string }[]).map(m => m.tag));
     expect(policies.length).toBeGreaterThan(0);
     for (const p of policies) {
-      const row = within(table).getByText(p.tag).closest('tr')!;
-      expect(row.textContent).toContain(p.budget.toLocaleString());
+      if (metered.has(p.tag)) {
+        const row = screen.getByRole('row', { name: new RegExp(p.tag) });
+        expect(row.textContent).toContain(p.budget.toLocaleString());
+      } else {
+        expect(
+          screen.getByText(/scopes? a group rather than a metered identity/i),
+        ).toHaveTextContent(p.tag);
+      }
     }
   });
 
+  /* Phase 3 folded the retired /ai/connect catalog (ModelCatalog) here whole. */
   test('Providers lists the model catalog with readiness from the engine', () => {
     wrap(<AiProvidersPage />);
-    const table = screen.getByTestId('providers-table');
     const catalog = CC.modelCatalog() as { name: string; ready: boolean }[];
     expect(catalog.length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(
+        `${catalog.filter(m => m.ready).length} / ${catalog.length} governed & ready`,
+      ),
+    ).toBeInTheDocument();
     for (const m of catalog) {
-      const row = within(table).getByText(m.name).closest('tr')!;
-      expect(row.textContent).toContain(m.ready ? 'Ready' : 'Not attached');
+      const row = screen.getByText(m.name).closest('tr')!;
+      expect(row.textContent).toContain(m.ready ? 'Governed · ready' : 'Not attached');
     }
   });
 

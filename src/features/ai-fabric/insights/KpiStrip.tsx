@@ -6,14 +6,17 @@ import type { InsightKpi } from './insightsFigures';
  * the strip. Alert red is deliberately absent here - the source comp keeps
  * even the Blocked value in heading ink, and so do we.
  */
-export function KpiStrip({ kpis }: { kpis: InsightKpi[] }) {
+export function KpiStrip({ kpis, emphasize }: { kpis: InsightKpi[]; emphasize?: InsightKpi['key'] }) {
   return (
     <div className="grid grid-cols-2 min-[1200px]:grid-cols-5 gap-4">
       {kpis.map(k => (
         <div
           key={k.key}
           data-testid={`kpi-${k.key}`}
-          className="rounded-2xl border border-fw-secondary bg-fw-base p-4 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] flex flex-col justify-center gap-2 min-h-[121px]"
+          data-emphasized={emphasize === k.key ? 'true' : undefined}
+          className={`rounded-2xl border bg-fw-base p-4 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] flex flex-col justify-center gap-2 min-h-[121px] ${
+            emphasize === k.key ? 'border-fw-cobalt-600 ring-1 ring-fw-cobalt-600' : 'border-fw-secondary'
+          }`}
         >
           <p className="text-figma-sm font-medium text-fw-heading px-0.5">{k.title}</p>
           <p className="text-fw-heading leading-10">

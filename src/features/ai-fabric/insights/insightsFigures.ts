@@ -15,8 +15,9 @@ import {
  *
  * Everything derives from the engine at call time. The KPI figures are the
  * SAME figures the sibling screens state - token money via aiSpendTotals,
- * TTFT over the full modelCatalog population (the population note in
- * aiBinding.buildKpis applies here unchanged), request counts off
+ * TTFT over the full modelCatalog population (the population is the catalog
+ * /ai/providers renders, never the meter-ready subset - see
+ * observe/kpiPopulations.test.ts for why), request counts off
  * decisionLog(). The requests table renders recorded decisions only:
  * an entry without a tag predates the request-detail extension and has no
  * row to render, so it is skipped, never padded.

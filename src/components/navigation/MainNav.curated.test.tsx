@@ -49,7 +49,7 @@ describe('MainNav curated Cloud Connect nav — layers on top', () => {
     const menu = screen.getByRole('menu', { name: 'Create' });
     const hrefs = within(menu).getAllByRole('menuitem').map(a => a.getAttribute('href'));
     expect(hrefs).toContain('/naas/connect');
-    expect(hrefs).toContain('/ai/connect');
+    expect(hrefs).toContain('/ai/providers');
   });
 
   test('every curated nav icon name is a valid key in the attIcons registry', () => {
