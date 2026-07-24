@@ -4,7 +4,7 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '../../contexts/AuthContext';
 import { MobileMenu } from './MobileMenu';
-import { NAV_LAYERS } from './navItems';
+import { NAV_LAYERS, layerDestinations } from './navItems';
 
 // Mock framer-motion. The nav item list only renders once the panel's
 // onAnimationComplete callback fires, so the mocked motion.div calls it on
@@ -121,26 +121,27 @@ describe('MobileMenu', () => {
      Deleting the descriptions is the cheap way to fit the fold and it is the
      one fix that breaks the drawer, so it is asserted here as well as in the
      browser. */
-  it('every verb still says which domain it belongs to', () => {
+  it('each drawer group carries every rail destination, each with its own copy', () => {
     renderMobileMenu();
 
     const seen = new Map<string, string[]>();
 
     for (const domain of NAV_LAYERS) {
       const group = screen.getByRole('group', { name: domain.label });
-      // The grid carries the four verbs (Home is the group header link, not a
-      // grid cell — see the header test below).
-      const verbButtons = within(group).getAllByRole('button')
+      const expected = layerDestinations(domain).filter(i => i.to !== domain.home.to);
+      // The grid carries the layer's rail destinations (Home is the group
+      // header link, not a grid cell — see the header test below).
+      const buttons = within(group).getAllByRole('button')
         .filter(b => b.hasAttribute('data-nav-to'));
-      expect(verbButtons.map(b => b.getAttribute('data-nav-label'))).toEqual(
-        domain.items.map(i => i.label)
+      expect(buttons.map(b => b.getAttribute('data-nav-label'))).toEqual(
+        expected.map(i => i.label)
       );
 
-      for (const item of domain.items) {
+      for (const item of expected) {
         const button = within(group).getByRole('button', {
           name: new RegExp(`^${item.label}`),
         });
-        // The destination, and the copy that tells it from its twin.
+        // The destination, and the copy that tells it from any twin label.
         expect(button).toHaveAttribute('data-nav-to', item.to);
         expect(button).toHaveTextContent(item.description);
 
@@ -148,14 +149,10 @@ describe('MobileMenu', () => {
         expect(copy.length, `${domain.label} · ${item.label} shows only its label`).toBeGreaterThan(0);
 
         const prior = seen.get(item.label) ?? [];
-        expect(prior, `${item.label} reads identically in both domains`).not.toContain(copy);
+        expect(prior, `${item.label} reads identically in two groups`).not.toContain(copy);
         seen.set(item.label, [...prior, copy]);
       }
     }
-
-    // All four labels really do appear in both domains — otherwise the loop
-    // above proves nothing about ambiguity.
-    for (const [, copies] of seen) expect(copies).toHaveLength(2);
   });
 
   it('each layer header is a Home link to that layer overview', () => {

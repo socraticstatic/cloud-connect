@@ -37,6 +37,19 @@ import { aiBinding } from '../observe/aiBinding';
   .filter(a => a.enabled)
   .forEach(a => CC.toggleAgent(a.id));
 
+/* Module loading is async under vite-node, so on a loaded runner the engine's
+   3s tick can fire BETWEEN the engine import and this file's module scope -
+   metering tokens before the freeze above lands. Drain anything that slipped
+   in, so "nothing metered yet" states the frozen estate, not the runner's
+   scheduling. */
+{
+  const meters = (CC._ as unknown as { tokenMeters: Record<string, { governed: number; ungoverned: number }> }).tokenMeters;
+  for (const key of Object.keys(meters)) {
+    meters[key].governed = 0;
+    meters[key].ungoverned = 0;
+  }
+}
+
 const tickMeters = () =>
   (CC._ as unknown as { tickTokens: (rng: () => number) => boolean }).tickTokens(() => 0.5);
 const emitHits = () => (CC._ as unknown as { emit: (e: { type: string }) => void }).emit({ type: 'hits' });

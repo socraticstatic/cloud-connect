@@ -53,6 +53,24 @@ const LazyLayerHomePage = lazy(() =>
   }))
 );
 
+const LazyAiTeamsPage = lazy(() =>
+  import('./features/ai-fabric/GatewayGovernancePages').then(module => ({
+    default: module.AiTeamsPage
+  }))
+);
+
+const LazyAiProvidersPage = lazy(() =>
+  import('./features/ai-fabric/GatewayGovernancePages').then(module => ({
+    default: module.AiProvidersPage
+  }))
+);
+
+const LazyAiKeysPage = lazy(() =>
+  import('./features/ai-fabric/GatewayGovernancePages').then(module => ({
+    default: module.AiKeysPage
+  }))
+);
+
 const LazyConnectPage = lazy(() =>
   import('./features/connect/ConnectPage').then(module => ({
     default: module.ConnectPage
@@ -374,8 +392,24 @@ function App() {
                   </Suspense>
                 } />
 
-                {/* AI Fabric — the token layer. Home first, then the same four verbs. */}
+                {/* AI Fabric — the token layer. Home first, then the same four verbs,
+                    plus the AI Gateway governance rail (Teams / Providers / Keys). */}
                 <Route path="/ai" element={<Navigate to="/ai/home" replace />} />
+                <Route path="/ai/teams" element={
+                  <Suspense fallback={<LoadingFallback />}>
+                    <LazyAiTeamsPage />
+                  </Suspense>
+                } />
+                <Route path="/ai/providers" element={
+                  <Suspense fallback={<LoadingFallback />}>
+                    <LazyAiProvidersPage />
+                  </Suspense>
+                } />
+                <Route path="/ai/keys" element={
+                  <Suspense fallback={<LoadingFallback />}>
+                    <LazyAiKeysPage />
+                  </Suspense>
+                } />
                 <Route path="/ai/home" element={
                   <Suspense fallback={<LoadingFallback />}>
                     <LazyLayerHomePage layerKey="ai" />
