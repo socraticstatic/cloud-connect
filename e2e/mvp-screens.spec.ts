@@ -47,14 +47,18 @@ const SCREENS = [
   { route: '/naas/observe', mustSee: /latency|egress|throughput/i },
   // NaaS Cost: arbitrage hero — the two-bill savings band, verified real.
   { route: '/naas/cost', mustSee: /on the AT&T fabric/i },
-  // AI Connect: the model catalog — endpoints, and whether their path attached.
+  // AI Connect: redirects to Providers, which carries the model catalog.
   { route: '/ai/connect', mustSee: /Model catalog/i },
   // AI Govern: token policies, and the agents those policies bind.
   { route: '/ai/govern', mustSee: /Token policies/i },
-  // AI Observe: observability shell + prompt trace + decision log.
-  { route: '/ai/observe', mustSee: /Prompt trace/i },
-  // AI Cost: token budgets, metered against their ceilings.
-  { route: '/ai/cost', mustSee: /Token budgets/i },
+  // AI Observe: the Insights screen — KPI strip, traffic-flow sankey, tabs.
+  { route: '/ai/observe', mustSee: /Traffic flow/i },
+  // AI Cost: redirects to the Insights Savings tab.
+  { route: '/ai/cost', mustSee: /Monthly savings with routing/i },
+  // The gateway pages the rail reaches directly.
+  { route: '/ai/teams', mustSee: /Token budgets/i },
+  { route: '/ai/providers', mustSee: /Model catalog/i },
+  { route: '/ai/keys', mustSee: /scopes?/i },
 ];
 
 for (const s of SCREENS) {

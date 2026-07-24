@@ -71,16 +71,18 @@ test('every AI Fabric verb renders the block that moved onto it', async ({ page 
   await seedAuth(page);
 
   const expected: [string, RegExp][] = [
-    ['/ai/connect', /Model catalog/],
+    ['/ai/providers', /Model catalog/],
     ['/ai/govern', /Token policies/],
-    ['/ai/observe', /Prompt trace/],
-    ['/ai/cost', /Token budgets/],
+    ['/ai/observe', /Traffic flow/],
+    ['/ai/teams', /Token budgets/],
   ];
 
   for (const [route, block] of expected) {
     await page.goto(`/#${route}`, { waitUntil: 'domcontentloaded' });
     const main = page.locator('#main-content');
-    await expect(main.getByRole('heading', { name: /AI Fabric ·/ }).first()).toBeVisible();
+    // The verb screens head "AI Fabric · <verb>"; the gateway pages
+    // (Providers, Teams & limits) head with their own names.
+    await expect(main.getByRole('heading').first()).toBeVisible();
     await expect(main.getByText(block).first()).toBeVisible();
   }
 });
@@ -108,7 +110,7 @@ test('AI Fabric states the same budgets on Govern and on Cost', async ({ page })
     ).toContainText(p.budget.toLocaleString());
   }
 
-  await page.goto('/#/ai/cost', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/ai/teams', { waitUntil: 'domcontentloaded' });
   const metered = await page.evaluate(() =>
     (window as unknown as { CC: { tokenMeterList: () => { tag: string }[] } }).CC
       .tokenMeterList()
@@ -186,7 +188,7 @@ test('AI Fabric states the same token spend on Cost and on Observe', async ({ pa
   expect(onCostScreen).not.toBe('$0.00');
 
   await openLayerVerb(page, 'AI Fabric', 'Observe');
-  const kpi = page.getByTestId('kpi-tile').filter({ hasText: /^Cost/ }).first();
+  const kpi = page.getByTestId('kpi-cost');
   await expect(kpi).toBeVisible();
   const onObserveScreen = (await kpi.innerText()).match(/\$[\d.]+k?/)?.[0];
 
@@ -227,7 +229,7 @@ test('the AI money screens track the meters instead of freezing at mount', async
 
   await openLayerVerb(page, 'AI Fabric', 'Observe');
 
-  const kpi = page.getByTestId('kpi-tile').filter({ hasText: /^Cost/ }).first();
+  const kpi = page.getByTestId('kpi-cost');
   await expect(kpi).toBeVisible();
   const before = (await kpi.innerText()).match(/\$[\d.]+k?/)?.[0];
   expect(before).toBeTruthy();
@@ -355,7 +357,7 @@ test('Discover does not call the AI security gap closed while NaaS Observe still
   );
 
   // Follow the taxonomy link Discover's AI section now carries.
-  await expect(page.getByTestId('estate-cta-ai')).toHaveAttribute('href', /#\/ai\/connect$/);
+  await expect(page.getByTestId('estate-cta-ai')).toHaveAttribute('href', /#\/ai\/providers$/);
 
   // And the flows the sentence points at are on NaaS · Observe, by name.
   await page.goto('/#/naas/observe', { waitUntil: 'domcontentloaded' });

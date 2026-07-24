@@ -212,13 +212,12 @@ for (const vp of [
       await firstVisit(page);
       const fold = await readFold(page);
 
-      // Twelve destinations: Discover, NaaS's four verbs, and the AI
-      // gateway's seven (five sections plus the interim Connect and Cost,
-      // which leave when phase 3 rehomes their content). Each layer's Home
-      // is its tappable group header, not a counted grid cell. AI items with
-      // labels unique in the drawer render compact — no description line —
-      // which is what keeps seven of them above the fold.
-      expect(fold.items).toHaveLength(12);
+      // Ten destinations: Discover, NaaS's four verbs, and the AI gateway's
+      // five (Insights + the Governance group; phase 3 rehomed the interim
+      // Connect and Cost). Each layer's Home is its tappable group header,
+      // not a counted grid cell. AI items with labels unique in the drawer
+      // render compact — no description line.
+      expect(fold.items).toHaveLength(10);
 
       expect(
         fold.overflow,
