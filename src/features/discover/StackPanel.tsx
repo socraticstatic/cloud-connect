@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Check, Link2, Plus, Sparkles } from 'lucide-react';
 import { AttIcon } from '../../components/icons/AttIcon';
+import { IntentThreads } from './IntentThreads';
 import { STACK_LAYERS, type NavLayer } from '../../components/navigation/navItems';
 import { useCloudControlLive } from '../../engine/react/useCloudControl';
 import { fmtTokens, fmtUsd } from '../ai-fabric/aiSpend';
@@ -127,14 +128,28 @@ export function StackPanel() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Andi's "Draft in the twin": ?draft=andi stages the advisor's draft on
-  // arrival, then strips the param so a refresh doesn't re-stage.
+  // arrival; ?draft=intent-<id> stages a standing intent's compiled repair
+  // (Synchronize). Either way the param strips so a refresh cannot re-stage.
   useEffect(() => {
-    if (searchParams.get('draft') !== 'andi') return;
-    const draft = advisorDraft(cc);
-    if (draft.moves.length) {
-      setStaged(draft.moves);
-      setDesigning(true);
-      setProposalNote(`Drafted by Andi · ${draft.moves.length} moves`);
+    const param = searchParams.get('draft');
+    if (!param) return;
+    if (param === 'andi') {
+      const draft = advisorDraft(cc);
+      if (draft.moves.length) {
+        setStaged(draft.moves);
+        setDesigning(true);
+        setProposalNote(`Drafted by Andi · ${draft.moves.length} moves`);
+      }
+    } else if (param.startsWith('intent-')) {
+      // ?draft=intent-int-3 -> the declared intent whose id is int-3.
+      const it = cc.intentList().find(i => i.id === param.slice('intent-'.length));
+      if (it && it.reading.moves.length) {
+        setStaged(it.reading.moves as StagedMove[]);
+        setDesigning(true);
+        setProposalNote(`Synchronize · ${it.scope.label} · ${it.reading.moves.length} move${it.reading.moves.length === 1 ? '' : 's'}`);
+      }
+    } else {
+      return;
     }
     searchParams.delete('draft');
     setSearchParams(searchParams, { replace: true });
@@ -150,11 +165,24 @@ export function StackPanel() {
     if (!carried?.length) return;
     const attaches = attachOpportunities(cc);
     const steers = steerOpportunities(cc);
-    const valid = carried.filter(m =>
-      m.kind === 'attach'
-        ? attaches.some(o => o.regionId === m.regionId)
-        : steers.some(o => o.flowId === m.flowId && o.pathId === m.pathId),
-    );
+    const valid = carried.filter(m => {
+      switch (m.kind) {
+        case 'attach':
+          return attaches.some(o => o.regionId === m.regionId);
+        case 'steer':
+          return steers.some(o => o.flowId === m.flowId && o.pathId === m.pathId);
+        // A fix still applies while unapplied; a policy while its tag is
+        // known; an enforcement while the rule is not already enforced.
+        case 'fix':
+          return m.fixKey in cc.fixes && !cc.fixes[m.fixKey];
+        case 'policy':
+          return (cc.tokenPolicyList?.() ?? []).some((p: { tag: string }) => p.tag === m.tag);
+        case 'enforce':
+          return cc.ruleEnforced ? !cc.ruleEnforced(m.ruleId) : false;
+        default:
+          return false;
+      }
+    });
     const dropped = carried.length - valid.length;
     setProposalNote(
       `Opened from a proposal link · ${valid.length} move${valid.length === 1 ? '' : 's'}` +
@@ -177,12 +205,9 @@ export function StackPanel() {
   const steers = designing ? steerOpportunities(cc) : [];
   const deltas = stagedDeltas(cc, staged);
 
-  const isStaged = (m: StagedMove) =>
-    staged.some(s =>
-      s.kind === 'attach' && m.kind === 'attach'
-        ? s.regionId === m.regionId
-        : s.kind === 'steer' && m.kind === 'steer' && s.flowId === m.flowId && s.pathId === m.pathId,
-    );
+  // Identity by value: two moves are the same move when every field agrees.
+  // Kind-specific comparisons stopped scaling at three kinds.
+  const isStaged = (m: StagedMove) => staged.some(s => JSON.stringify(s) === JSON.stringify(m));
   const toggleMove = (m: StagedMove) =>
     setStaged(prev => (isStaged(m) ? prev.filter(s => JSON.stringify(s) !== JSON.stringify(m)) : [...prev, m]));
 
@@ -273,6 +298,9 @@ export function StackPanel() {
           </Link>
         </div>
       </div>
+
+      {/* The estate's declared promises, threaded into the strata below. */}
+      <IntentThreads />
 
       <div className="space-y-1.5">
         <LiveBand
@@ -406,6 +434,9 @@ export function StackPanel() {
                 {deltas.worstPath &&
                   ` · ${deltas.worstPath.label} ${deltas.worstPath.publicMs}→${deltas.worstPath.privateMs} ms on the fabric`}
                 {deltas.egressSavingMo > 0 && ` · keeps ${money(deltas.egressSavingMo)}/mo of egress`}
+                {deltas.violationsCleared > 0 &&
+                  ` · clears ${deltas.violationsCleared} violation${deltas.violationsCleared === 1 ? '' : 's'}`}
+                {deltas.policyNotes.length > 0 && ` · ${deltas.policyNotes.join(' · ')}`}
                 {deltas.unpricedMoves.length > 0 &&
                   ` · ${deltas.unpricedMoves.join(', ')}: the engine prices no saving yet`}
               </>

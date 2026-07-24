@@ -103,7 +103,14 @@ export interface SteerOpportunity {
 
 export type StagedMove =
   | { kind: 'attach'; regionId: string }
-  | { kind: 'steer'; flowId: string; pathId: string };
+  | { kind: 'steer'; flowId: string; pathId: string }
+  /* Phase: standing intents. Security and AI repairs ride the same tray as
+     attach and steer - a fix, a rule enforcement, or a token-policy patch.
+     Their deltas are stated in their own vocabulary (violations cleared,
+     budget/guardrail changes), never as invented dollars. */
+  | { kind: 'fix'; fixKey: string }
+  | { kind: 'enforce'; ruleId: string }
+  | { kind: 'policy'; tag: string; patch: { scope?: string; budget?: number; guardrail?: boolean; enforced?: boolean } };
 
 export function attachOpportunities(cc: CloudControl): AttachOpportunity[] {
   const fabric = cc.fabricModel();
@@ -163,6 +170,63 @@ export interface StagedDeltas {
   egressSavingMo: number;
   /** Moves whose saving the engine does not price — named, never summed. */
   unpricedMoves: string[];
+  /** Violations the staged fixes/enforcements would clear — projected via
+   *  the engine's own snapshot/restore, the same figure Govern states. */
+  violationsCleared: number;
+  /** One sentence per staged policy patch, in policy vocabulary. */
+  policyNotes: string[];
+}
+
+/** How a fix/enforce/policy move renders in the tray — label + consequence,
+ *  both engine-derived at call time. */
+export function moveLabel(cc: CloudControl, move: StagedMove): { label: string; detail: string } {
+  switch (move.kind) {
+    case 'attach': {
+      const r = cc.fabricModel().regions.find(x => x.regionId === move.regionId);
+      return { label: `Attach ${r?.name ?? move.regionId}`, detail: r ? `${r.publicMs}ms → ${r.privateMs}ms` : '' };
+    }
+    case 'steer': {
+      const f = cc.routeFlows().find(x => x.id === move.flowId);
+      const p = f?.paths.find(x => x.id === move.pathId);
+      return { label: `Steer ${f?.label ?? move.flowId}`, detail: p ? `to ${p.label}` : '' };
+    }
+    case 'fix': {
+      const cleared = projectedViolationsCleared(cc, [move]);
+      return {
+        label: `Apply ${move.fixKey}`,
+        detail: cleared > 0 ? `clears ${cleared} violation${cleared === 1 ? '' : 's'}` : 'a posture control',
+      };
+    }
+    case 'enforce':
+      return { label: `Enforce ${move.ruleId}`, detail: 'policy goes from draft to enforced' };
+    case 'policy': {
+      const parts: string[] = [];
+      if (move.patch.budget !== undefined) parts.push(`budget ${move.patch.budget.toLocaleString()} tokens/day`);
+      if (move.patch.guardrail !== undefined) parts.push(move.patch.guardrail ? 'guardrail on' : 'guardrail off');
+      if (move.patch.enforced !== undefined) parts.push(move.patch.enforced ? 'enforced' : 'draft');
+      if (move.patch.scope !== undefined) parts.push(`scope ${move.patch.scope}`);
+      return { label: `Token policy · ${move.tag}`, detail: parts.join(' · ') };
+    }
+  }
+}
+
+/* The violations delta for staged fixes, measured through the engine's own
+   projection (previewFix = snapshot, apply, count, restore). Summed per fix
+   and clamped at the current total: two fixes clearing overlapping rows must
+   not claim more than the estate holds. Enforce moves carry no projection
+   (the engine offers none), so they state their consequence in words and
+   never join this count — a number the engine cannot stand behind is not
+   stated as one. */
+function projectedViolationsCleared(cc: CloudControl, moves: StagedMove[]): number {
+  const fixes = moves.filter(m => m.kind === 'fix') as { kind: 'fix'; fixKey: string }[];
+  if (!fixes.length) return 0;
+  const before = cc.violations().length;
+  let cleared = 0;
+  for (const m of fixes) {
+    const p = cc.previewFix(m.fixKey);
+    if (p) cleared += Math.max(0, before - p.violations);
+  }
+  return Math.min(cleared, before);
 }
 
 export function stagedDeltas(cc: CloudControl, moves: StagedMove[]): StagedDeltas {
@@ -172,6 +236,7 @@ export function stagedDeltas(cc: CloudControl, moves: StagedMove[]): StagedDelta
   const unpriced: string[] = [];
   let worst: StagedDeltas['worstPath'] = null;
 
+  const policyNotes: string[] = [];
   for (const move of moves) {
     if (move.kind === 'attach') {
       const opp = attaches.find(o => o.regionId === move.regionId);
@@ -181,14 +246,25 @@ export function stagedDeltas(cc: CloudControl, moves: StagedMove[]): StagedDelta
       if (!worst || opp.publicMs > worst.publicMs) {
         worst = { label: opp.label, publicMs: opp.publicMs, privateMs: opp.privateMs };
       }
-    } else {
+    } else if (move.kind === 'steer') {
       const opp = steers.find(o => o.flowId === move.flowId && o.pathId === move.pathId);
       if (!opp) continue;
       if (opp.egressSavingMo !== null) egressSavingMo += opp.egressSavingMo;
       else unpriced.push(opp.label);
+    } else if (move.kind === 'policy' || move.kind === 'enforce') {
+      const { label, detail } = moveLabel(cc, move);
+      policyNotes.push(detail ? `${label}: ${detail}` : label);
     }
+    // fix moves speak through violationsCleared below
   }
-  return { moves: moves.length, worstPath: worst, egressSavingMo, unpricedMoves: unpriced };
+  return {
+    moves: moves.length,
+    worstPath: worst,
+    egressSavingMo,
+    unpricedMoves: unpriced,
+    violationsCleared: projectedViolationsCleared(cc, moves),
+    policyNotes,
+  };
 }
 
 /**
@@ -212,10 +288,25 @@ export function advisorDraft(cc: CloudControl): { moves: StagedMove[]; deltas: S
 export function commitMoves(cc: CloudControl, moves: StagedMove[]): StagedMove[] {
   const failed: StagedMove[] = [];
   for (const move of moves) {
-    const ok =
-      move.kind === 'attach'
-        ? cc.provisionRegion(move.regionId) !== null
-        : cc.steerFlow(move.flowId, move.pathId);
+    let ok: boolean;
+    switch (move.kind) {
+      case 'attach':
+        ok = cc.provisionRegion(move.regionId) !== null;
+        break;
+      case 'steer':
+        ok = cc.steerFlow(move.flowId, move.pathId);
+        break;
+      case 'fix':
+        ok = cc.applyFix(move.fixKey);
+        break;
+      case 'enforce':
+        ok = cc.enforceAny ? cc.enforceAny(move.ruleId) : false;
+        break;
+      case 'policy':
+        cc.setTokenPolicy(move.tag, move.patch);
+        ok = true;
+        break;
+    }
     if (!ok) failed.push(move);
   }
   return failed;

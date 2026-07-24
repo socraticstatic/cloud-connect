@@ -57,8 +57,39 @@ export function andiSuggestions(layerKey: NavLayer['key'] | null): string[] {
   ];
 }
 
-/** Resolve cards: the advisor's engine-priced draft, top moves first. */
-export function andiResolveCards(cc: CloudControl): { title: string; detail: string; savingMo: number | null; move: 'draft' }[] {
+export interface ResolveCard {
+  title: string;
+  detail: string;
+  savingMo: number | null;
+  /** 'draft' opens the advisor draft; an intent card synchronizes itself. */
+  move: 'draft' | 'intent';
+  /** Intent cards only. */
+  intentId?: string;
+  status?: 'drifting' | 'violated';
+  mode?: 'watch' | 'enforce';
+  hasMoves?: boolean;
+}
+
+/** Resolve cards: misaligned standing intents first (the drift queue,
+ *  violated before drifting), then the advisor's engine-priced draft. */
+export function andiResolveCards(cc: CloudControl): ResolveCard[] {
+  const misaligned: ResolveCard[] = (cc.intentList?.() ?? [])
+    .filter(i => i.reading.status !== 'aligned')
+    .sort((a, b) => (a.reading.status === 'violated' ? 0 : 1) - (b.reading.status === 'violated' ? 0 : 1))
+    .map(i => ({
+      title: i.reading.evidence,
+      detail: `${i.scope.label} · ${i.reading.status} · ${i.mode} mode`,
+      savingMo: null,
+      move: 'intent' as const,
+      intentId: i.id,
+      status: i.reading.status as 'drifting' | 'violated',
+      mode: i.mode,
+      hasMoves: i.reading.moves.length > 0,
+    }));
+  return [...misaligned, ...draftCards(cc)];
+}
+
+function draftCards(cc: CloudControl): ResolveCard[] {
   const attaches = attachOpportunities(cc)
     .filter(o => o.bucketSavingMo !== null)
     .sort((a, b) => (b.bucketSavingMo ?? 0) - (a.bucketSavingMo ?? 0))
@@ -136,8 +167,11 @@ export function andiAnswer(
   //     the human commits.
   const intents: Command[] = parseIntent(q, cc);
   if (intents.length > 0) {
+    const declares = intents.every(c => c.kind === 'declare');
     return {
-      text: 'That is an action the engine can run. Confirm to apply — Undo reverts it.',
+      text: declares
+        ? 'That declares a standing intent in watch mode: it evaluates and counts, it changes nothing. Enforce is a separate toggle, and Undo reverts the declaration.'
+        : 'That is an action the engine can run. Confirm to apply — Undo reverts it.',
       actions: intents.map(c => ({ label: c.label, kind: 'run' as const, run: c.run })),
     };
   }

@@ -194,6 +194,18 @@ CC.promptTrace=function(tag,modelId,prompt){
   const rpath=route?route.path:'public';
   const steps=[];
   steps.push({hop:'Workload',detail:`${tag} app issues the request`,ok:true});
+  /* Budget gate. Three conditions, all three or the gate stays open: the
+     policy is enforced, the meter is at or over its ceiling, and an
+     enforce-mode cap-token-spend intent covers this tag (state-intents.ts).
+     A watch-mode intent never gates - it counts what this WOULD have done. */
+  if(pol&&pol.enforced&&CC.intentCapEnforced&&CC.intentCapEnforced(tag)){
+    const meter=CC.tokenMeterList().find(m=>m.tag===tag);
+    if(meter&&meter.pct>=100){
+      const why=`${tag}: token budget exhausted — request DENIED`;
+      recordDecision(false,false,{tag,modelId,tokens:0,ttftMs:0,path:rpath,reason:why});
+      return {blocked:true,steps:[...steps,{hop:'Token policy',detail:why,ok:false}],tokens:0};
+    }
+  }
   // token policy gate
   if(pol){
     const externalModel=modelId==='gpt-class';

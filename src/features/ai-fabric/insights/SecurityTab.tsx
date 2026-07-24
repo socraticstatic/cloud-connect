@@ -25,6 +25,11 @@ export function SecurityTab() {
       reasons: Array.from(new Set(denied.map(r => r.reason).filter(Boolean))) as string[],
       ungovernedTokens: totals.ungovernedTokensToday,
       ungovernedCount: totals.ungovernedCount,
+      /* Watch-mode intents count what enforce would have done - stated
+         here beside the denials that DID happen, same request log. */
+      watchNotes: (cc.intentList?.() ?? [])
+        .filter(i => i.reading.watch && i.reading.watch.events > 0)
+        .map(i => ({ id: i.id, scope: i.scope.label, note: i.reading.watch!.note })),
     };
   });
 
@@ -50,6 +55,11 @@ export function SecurityTab() {
               No denials recorded in this window.
             </p>
           )}
+          {view.watchNotes.map(w => (
+            <p key={w.id} data-testid={`watch-note-${w.id}`} className="mt-2 text-figma-sm text-fw-body">
+              Watching {w.scope}: {w.note}
+            </p>
+          ))}
         </section>
         <section className="rounded-2xl border border-fw-secondary bg-fw-base p-5">
           <h3 className="text-figma-base font-bold text-fw-body tracking-[-0.03em]">Left unguarded</h3>
