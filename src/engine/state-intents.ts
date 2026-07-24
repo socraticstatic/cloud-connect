@@ -233,13 +233,15 @@ function readingFor(intent){
   return r;
 }
 
-CC.declareIntent=function(key,scope,mode){
+/* `silent` is hydrate's flag, like activateOnramp's: a replayed session is
+   not an edit, so it pushes no undo entry and emits nothing. */
+CC.declareIntent=function(key,scope,mode,silent){
   const entry=entryOf(key);
   if(!entry)return null;
   const valid=entry.scopes().some(s=>s.kind===scope.kind&&s.id===scope.id);
   if(!valid)return null;
   if(intents.some(i=>i.key===key&&i.scope.kind===scope.kind&&i.scope.id===scope.id))return null;
-  _.pushUndo('Declare intent '+entry.label);
+  if(!silent)_.pushUndo('Declare intent '+entry.label);
   const meters=CC.tokenMeterList();
   const it={
     id:'int-'+(++intentSeq),
@@ -250,7 +252,7 @@ CC.declareIntent=function(key,scope,mode){
   };
   intents.push(it);
   if(it.mode==='enforce'&&entry.enforceControl)entry.enforceControl(it.scope,true);
-  CC._.emit({type:'policy',label:`Intent declared · ${entry.label} · ${scope.label}`});
+  if(!silent)CC._.emit({type:'policy',label:`Intent declared · ${entry.label} · ${scope.label}`});
   return {...it};
 };
 

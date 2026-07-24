@@ -214,7 +214,8 @@ export interface CloudControl {
   decisionLog?(...args: any[]): RequestRecord[];
   // --- standing intents (state-intents.ts) ---
   intentCatalog(): IntentCatalogEntry[];
-  declareIntent(key: string, scope: IntentScope, mode: 'watch' | 'enforce'): DeclaredIntent | null;
+  /** `silent` is hydrate's flag: a replayed session pushes no undo, emits nothing. */
+  declareIntent(key: string, scope: IntentScope, mode: 'watch' | 'enforce', silent?: boolean): DeclaredIntent | null;
   removeIntent(id: string): boolean;
   setIntentMode(id: string, mode: 'watch' | 'enforce'): boolean;
   intentList(): (DeclaredIntent & { reading: IntentReading })[];
