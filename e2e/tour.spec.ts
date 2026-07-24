@@ -265,6 +265,86 @@ test('pressing only Next never narrates a group that was never named', async ({ 
   expect(closing.text).not.toMatch(/polic\w* (?:that )?you (?:wrote|authored|named|enforced)/i);
 });
 
+/* THIS WEEK'S SURFACES. Four beats joined the arc — the assessment banner,
+   the standing-intents band, Andi's top-bar toggle, and the Insights screen.
+   Each is asserted by POSITION, not just presence: threading them where
+   their subject lives is the point, and a regression that shuffles them to
+   the end would still pass a bare "the beat exists" check. Walked on the
+   Next-only path so every claim these beats speak must hold with no action
+   ever clicked. The per-step spotlight assertion in the walker already
+   proves each new anchor was found on its route. */
+test('the tour meets the assessment, standing intents, Andi, and Insights, each in its place in the arc', async ({ page }) => {
+  await firstVisit(page);
+  const beats = await runTourNextOnly(page);
+
+  const find = (name: string, re: RegExp) => {
+    const i = beats.findIndex(b => re.test(b.title) || re.test(b.text));
+    expect(
+      i,
+      `no beat for ${name}; titles were: ${beats.map(b => b.title).join(' | ')}`,
+    ).toBeGreaterThan(-1);
+    return i;
+  };
+
+  const assessment = find('the assessment', /measure for 14 days/i);
+  const intents = find('standing intents', /standing intent/i);
+  const andi = find('Andi', /^ask in words$/i);
+  const insights = find('Insights', /sankey/i);
+  const connect = find('the connect beat', /NaaS in one click/i);
+
+  // The Discover leg carries all three — met before anything attaches...
+  expect(assessment, 'the assessment beat left the Discover leg').toBeLessThan(connect);
+  expect(intents, 'the intents beat left the Discover leg').toBeLessThan(connect);
+  expect(andi, 'the Andi beat left the Discover leg').toBeLessThan(connect);
+  // ...and in narrative order: measure, then declare, then ask. (The sites
+  // beat sits between the first two; its own placement is guarded above.)
+  expect(assessment).toBeLessThan(intents);
+  expect(intents).toBeLessThan(andi);
+
+  // Insights opens the AI leg: immediately before the token-policy close,
+  // never after it — the closing beat stays the closing beat.
+  expect(insights, 'Insights must sit directly before the close').toBe(beats.length - 2);
+
+  // Copy honesty, spot-checked against the shipped components' own words.
+  expect(beats[assessment].text).toMatch(/nothing is blocked or routed/i);
+  expect(beats[andi].text).toMatch(/drafts, never commits/i);
+  expect(beats[insights].text).toMatch(/derives from the engine/i);
+});
+
+/* THE SAME-ROUTE SCROLL CASE. The sites beat sits at the premises table far
+   down /discover; the intents beat that follows it sits back near the top of
+   the SAME route, so no navigation resets the scroll between them. ProductTour
+   used to re-issue its smooth scrollIntoView from its own scroll listener,
+   each scroll event cancelling the scroll that caused it — the page froze
+   where the previous beat left it and the spotlight sat hundreds of pixels
+   above the viewport. `toBeVisible()` cannot catch that (an off-viewport
+   element still has a box), so this asserts geometry: the spotlight must
+   actually be on screen. */
+test('a beat that shares a route with the beat before it still scrolls its target into view', async ({ page }) => {
+  await firstVisit(page);
+  await page.getByRole('button', { name: TOUR_LAUNCH }).click();
+
+  const title = page.getByTestId('tour-title');
+  await expect(page.getByTestId('tour-progress')).toBeVisible();
+
+  // Walk forward to the intents beat — the beat after the sites beat.
+  while (!/declare a standing intent/i.test((await title.textContent()) ?? '')) {
+    await page.getByRole('button', { name: /^next$/i }).click();
+  }
+
+  // ProductTour scrolls on step entry, then measures at +300ms; give the
+  // smooth scroll room to land before holding it to the geometry.
+  await page.waitForTimeout(900);
+
+  const vh = page.viewportSize()!.height;
+  const box = (await page.getByTestId('tour-spotlight').boundingBox())!;
+  expect(box.y + box.height, 'spotlight sits above the viewport').toBeGreaterThan(0);
+  expect(box.y, 'spotlight sits below the viewport').toBeLessThan(vh);
+  // Not merely clipped at an edge: the majority of the cutout is on screen.
+  const onScreen = Math.min(box.y + box.height, vh) - Math.max(box.y, 0);
+  expect(onScreen / box.height).toBeGreaterThan(0.6);
+});
+
 /* The Discover beat's spotlight is a cutout the size of its anchor. When the
    anchor was the wrapper around all three domain sections it measured 364px
    at 1280x800 and 708px in an 812px-tall viewport — 87% of a phone screen,

@@ -170,6 +170,29 @@ export const cloudConnectTour: CloudConnectTourStep[] = [
     highlightPadding: 12,
   },
   {
+    id: 'assessment',
+    title: 'Measure before you commit',
+    description:
+      'Discovery shows what exists, not what moves. Not sure what you have? Measure for 14 days first: the assessment counts AI traffic in the background, and nothing is blocked or routed while it runs.',
+    route: '/discover',
+    targetSelector: '[data-testid="assessment-banner"]',
+    placement: 'bottom',
+    highlightPadding: 12,
+    // The one anchor that can be absent. Closing the assessment removes the
+    // banner for good (stage 'closed'), and an in-session dismissal hides it
+    // until DiscoverPage remounts. Launching from any other page remounts
+    // Discover on navigate, so a missing banner only means "dismissed" when
+    // the Discover surface is actually rendered right now — the intents band
+    // is its always-present sibling, and /discover is a lazy route, so an
+    // absent band means the page merely has not mounted (or is another page
+    // entirely) and the beat must stay in.
+    when: () => {
+      if ((CC.assessment() as { stage: string }).stage === 'closed') return false;
+      const discoverRendered = !!document.querySelector('[data-testid="intent-threads"]');
+      return !discoverRendered || !!document.querySelector('[data-testid="assessment-banner"]');
+    },
+  },
+  {
     id: 'discover-sites',
     title: 'Name what you found',
     description: () =>
@@ -182,6 +205,29 @@ export const cloudConnectTour: CloudConnectTourStep[] = [
       label: `Group all sites as “${SITES_GROUP_LABEL}”`,
       onClick: ensureSitesGroup,
     },
+  },
+  {
+    id: 'intents',
+    title: 'Declare a standing intent',
+    description:
+      'Declare an outcome and the estate keeps checking it. Tell Andi "keep AI private" or "cap token spend" and it stands here as a promise: aligned, drifting, or violated, re-derived every time you look. When one drifts, Synchronize stages the repair as a draft on the twin. The machine never commits.',
+    route: '/discover',
+    targetSelector: '[data-testid="intent-threads"]',
+    // 'bottom', because the band sits near the top of /discover: a 'top'
+    // tooltip cannot fit above it, and ProductTour's on-screen clamp would
+    // drop it onto the very band the beat is pointing at.
+    placement: 'bottom',
+    highlightPadding: 12,
+  },
+  {
+    id: 'andi',
+    title: 'Ask in words',
+    description:
+      'Andi rides the top bar on every screen. Ask in words and the answer comes from the same engine every figure derives from. Actions come back as proposals you confirm to run: Andi drafts, never commits, and Undo covers every change you accept.',
+    route: '/discover',
+    targetSelector: '[data-testid="andi-toggle"]',
+    placement: 'bottom',
+    highlightPadding: 8,
   },
   {
     id: 'connect',
@@ -281,6 +327,19 @@ export const cloudConnectTour: CloudConnectTourStep[] = [
     route: '/naas/cost',
     targetSelector: '[data-tour="cost-hero"]',
     placement: 'top',
+    highlightPadding: 12,
+  },
+  {
+    id: 'insights',
+    title: 'Every figure, derived live',
+    // Keep the word "group" out of this copy: the e2e position guard
+    // (tour.spec.ts) exempts only the FINAL beat from the groups-thread
+    // placement rule, and this beat sits one before it.
+    description:
+      'The AI layer keeps its own evidence, on one strip: tokens, cost, time to first token, requests, blocked. Every figure derives from the engine at the moment you read it; move the estate and the strip moves. Below, the sankey traces where each dollar flows: identity, to source, to route, to provider.',
+    route: '/ai/observe',
+    targetSelector: '[data-tour="insights-kpis"]',
+    placement: 'bottom',
     highlightPadding: 12,
   },
   {

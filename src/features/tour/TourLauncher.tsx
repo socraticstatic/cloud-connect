@@ -1,9 +1,9 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play } from 'lucide-react';
 import { useTour } from '../../hooks/useTour';
 import { ProductTour, TourStep } from '../../components/tour/ProductTour';
-import { cloudConnectTour } from './cloudConnectTour';
+import { activeCloudConnectTour } from './cloudConnectTour';
 
 /**
  * Launches the guided Cloud Connect tour — Discover -> Connect -> Govern ->
@@ -15,6 +15,17 @@ import { cloudConnectTour } from './cloudConnectTour';
 export function TourLauncher() {
   const { isOpen, startTour, closeTour } = useTour('cloud-connect');
   const navigate = useNavigate();
+
+  /* The steps of THIS run. Recomputed at every launch, not at module load:
+     a step's `when` predicate (the tour's skip mechanism — see
+     cloudConnectTour.ts) reads the estate and the DOM as they are the
+     moment the viewer presses play, and both move between rehearsals. */
+  const [steps, setSteps] = useState<TourStep[]>(activeCloudConnectTour);
+
+  const handleStart = useCallback(() => {
+    setSteps(activeCloudConnectTour());
+    startTour();
+  }, [startTour]);
 
   const handleStepChange = useCallback(
     (step: TourStep) => {
@@ -28,7 +39,7 @@ export function TourLauncher() {
     <>
       <button
         type="button"
-        onClick={startTour}
+        onClick={handleStart}
         aria-label="Start guided tour"
         title="Guided tour"
         className="inline-flex items-center justify-center h-9 w-9 rounded-full text-fw-bodyLight hover:text-fw-body hover:bg-fw-wash transition-colors"
@@ -37,7 +48,7 @@ export function TourLauncher() {
       </button>
 
       <ProductTour
-        steps={cloudConnectTour}
+        steps={steps}
         isOpen={isOpen}
         onClose={closeTour}
         onComplete={closeTour}
