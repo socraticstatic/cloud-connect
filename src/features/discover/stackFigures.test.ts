@@ -112,6 +112,7 @@ describe('stackFigures — staged deltas', () => {
   it('an empty tray states nothing', () => {
     expect(stagedDeltas(CC, [])).toEqual({
       moves: 0, worstPath: null, egressSavingMo: 0, unpricedMoves: [],
+      violationsCleared: 0, policyNotes: [],
     });
   });
 });
