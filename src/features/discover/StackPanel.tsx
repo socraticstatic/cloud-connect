@@ -318,7 +318,7 @@ export function StackPanel() {
         >
           {designing && (
             <p className="mt-2 text-[11px] font-medium text-fw-bodyLight">
-              No stageable moves on this stratum yet — token policy changes live on AI Fabric · Govern.
+              No band chips on this stratum — declare an intent above (try &ldquo;keep ai private&rdquo; in Andi) and its repair stages here, token policy moves included.
             </p>
           )}
         </LiveBand>
