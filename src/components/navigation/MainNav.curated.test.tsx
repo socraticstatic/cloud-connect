@@ -14,10 +14,10 @@ const renderNav = (path = '/discover') =>
   );
 
 describe('MainNav curated Cloud Connect nav — layers on top', () => {
-  test('the top bar carries Discover plus one tab per layer, no verbs', () => {
+  test('the top bar carries the estate pair (Discover, Work) plus one tab per layer, no verbs', () => {
     renderNav();
     const tabs = screen.getAllByRole('tab').map(t => t.textContent?.trim());
-    expect(tabs).toEqual(['Discover', 'NaaS', 'AI Fabric']);
+    expect(tabs).toEqual(['Discover', 'Work', 'NaaS', 'AI Fabric']);
     // Verbs never appear in the top bar — they live in the left rail.
     for (const verb of ['Connect', 'Govern', 'Observe', 'Cost']) {
       expect(screen.queryByRole('tab', { name: verb })).toBeNull();

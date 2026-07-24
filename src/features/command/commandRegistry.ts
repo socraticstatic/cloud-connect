@@ -1,5 +1,5 @@
 import type { CloudControl } from '../../engine';
-import { NAV_DISCOVER, NAV_LAYERS } from '../../components/navigation/navItems';
+import { NAV_DISCOVER, NAV_WORK, NAV_LAYERS } from '../../components/navigation/navItems';
 import { attachOpportunities, steerOpportunities } from '../discover/stackFigures';
 import { fmtTokens } from '../ai-fabric/aiSpend';
 
@@ -36,6 +36,7 @@ interface Section {
  */
 const SECTIONS: Section[] = [
   { path: NAV_DISCOVER.to, label: NAV_DISCOVER.label },
+  { path: NAV_WORK.to, label: NAV_WORK.label },
   ...NAV_LAYERS.flatMap(domain =>
     domain.items.map(item => ({
       path: item.to,

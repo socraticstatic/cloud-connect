@@ -10,7 +10,7 @@ import { TenantSelector } from './TenantSelector';
 import { TourLauncher } from '../../features/tour/TourLauncher';
 import { CommandPalette } from '../../features/command/CommandPalette';
 import { UndoControl } from '../../features/undo/UndoControl';
-import { NAV_DISCOVER, NAV_LAYERS, NAV_ITEMS, isNavRouteActive, layerForPath } from './navItems';
+import { NAV_DISCOVER, NAV_WORK, NAV_LAYERS, NAV_ITEMS, isNavRouteActive, layerForPath } from './navItems';
 import { CreateMenu } from './CreateMenu';
 import { toggleAndi } from '../../features/andi/AndiPanel';
 import { Sparkles } from 'lucide-react';
@@ -249,6 +249,7 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
               {usingCuratedNav ? (
                 <div className="flex items-stretch h-full gap-1" role="tablist" aria-label="Layers">
                   {renderTab(NAV_DISCOVER.label, NAV_DISCOVER.to, isNavRouteActive(location.pathname, '/discover'))}
+                  {renderTab(NAV_WORK.label, NAV_WORK.to, isNavRouteActive(location.pathname, '/work'))}
                   <span className="w-px self-center h-6 bg-fw-secondary mx-2" aria-hidden="true" />
                   {NAV_LAYERS.map(layer =>
                     renderTab(layer.label, layer.home.to, activeLayerKey === layer.key),

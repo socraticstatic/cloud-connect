@@ -304,8 +304,9 @@ export function StackPanel() {
         </div>
       </div>
 
-      {/* The estate's declared promises, threaded into the strata below. */}
-      <IntentThreads />
+      {/* The estate's declared promises, threaded into the strata below.
+          The picture only - the office (declare, mode, remove) is /work. */}
+      <IntentThreads manage={false} />
 
       <div className="space-y-1.5">
         <LiveBand

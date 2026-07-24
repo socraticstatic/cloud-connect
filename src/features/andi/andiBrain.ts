@@ -3,6 +3,7 @@ import type { NavLayer } from '../../components/navigation/navItems';
 import { parseIntent, type Command } from '../command/commandRegistry';
 import { aiSpendRows, aiSpendTotals, fmtTokens, fmtUsd } from '../ai-fabric/aiSpend';
 import { advisorDraft, attachOpportunities, steerOpportunities } from '../discover/stackFigures';
+import { workQueue } from '../work/workQueue';
 
 /**
  * Andi's brain — a router over things the ENGINE can ground, never a
@@ -70,23 +71,28 @@ export interface ResolveCard {
   hasMoves?: boolean;
 }
 
-/** Resolve cards: misaligned standing intents first (the drift queue,
- *  violated before drifting), then the advisor's engine-priced draft. */
+/** Resolve cards: a LENS over the one work queue (workQueue.ts) - the same
+ *  rows /work lists in full. Intent rows lead (the queue already orders
+ *  violated first); the top priced advisor rows follow as draft cards. */
 export function andiResolveCards(cc: CloudControl): ResolveCard[] {
-  const misaligned: ResolveCard[] = (cc.intentList?.() ?? [])
-    .filter(i => i.reading.status !== 'aligned')
-    .sort((a, b) => (a.reading.status === 'violated' ? 0 : 1) - (b.reading.status === 'violated' ? 0 : 1))
-    .map(i => ({
-      title: i.reading.evidence,
-      detail: `${i.scope.label} · ${i.reading.status} · ${i.mode} mode`,
-      savingMo: null,
-      move: 'intent' as const,
-      intentId: i.id,
-      status: i.reading.status as 'drifting' | 'violated',
-      mode: i.mode,
-      hasMoves: i.reading.moves.length > 0,
-    }));
-  return [...misaligned, ...draftCards(cc)];
+  const queue = workQueue(cc);
+  const intents = cc.intentList?.() ?? [];
+  const intentCards: ResolveCard[] = queue
+    .filter(r => r.source === 'intent' && r.intentId)
+    .map(r => {
+      const i = intents.find(x => x.id === r.intentId)!;
+      return {
+        title: r.detail,
+        detail: `${r.label} · ${r.status} · ${i.mode} mode`,
+        savingMo: null,
+        move: 'intent' as const,
+        intentId: r.intentId,
+        status: r.status,
+        mode: i.mode,
+        hasMoves: i.reading.moves.length > 0,
+      };
+    });
+  return [...intentCards, ...draftCards(cc)];
 }
 
 function draftCards(cc: CloudControl): ResolveCard[] {

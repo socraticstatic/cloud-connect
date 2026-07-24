@@ -128,6 +128,12 @@ const LazyOnboardingWizard = lazy(() =>
 
 // /stack — the layer-first IA concept deck. A standalone document (navy
 // cover, print-ready), routed outside DashboardLayout like /onboarding.
+const LazyWorkPage = lazy(() =>
+  import('./features/work/WorkPage').then(module => ({
+    default: module.WorkPage
+  }))
+);
+
 const LazyAssessmentPage = lazy(() =>
   import('./features/assessment/AssessmentPage').then(module => ({
     default: module.AssessmentPage
@@ -354,6 +360,11 @@ function App() {
 
                 <Route path="/aws-handoff" element={<Navigate to="/discover" replace />} />
 
+                <Route path="/work" element={
+                  <Suspense fallback={<LoadingFallback />}>
+                    <LazyWorkPage />
+                  </Suspense>
+                } />
                 <Route path="/discover" element={
                   <Suspense fallback={<LoadingFallback />}>
                     <LazyDiscoverPage />

@@ -39,6 +39,13 @@ const DISCOVER: CuratedNavItem = {
   description: 'One scan — network, cloud and AI workflows',
 };
 
+/** The estate-level office: every task in one queue, every promise managed.
+ *  A sibling of Discover, not of the layers — tasks span both. */
+const WORK: CuratedNavItem = {
+  label: 'Work', to: '/work', icon: 'checklist',
+  description: 'Every task by lifecycle stage, every standing intent',
+};
+
 /**
  * NaaS and the AI Fabric each carry the full verb set. The verbs are the same
  * four everywhere — connect, govern, observe, control cost — because that is
@@ -150,6 +157,9 @@ export function counterpartPath(pathname: string, target: NavLayer['key']): stri
 
 /** Discover, alone above both domains. */
 export const NAV_DISCOVER: CuratedNavItem = DISCOVER;
+
+/** Work, Discover's sibling: the task queue and the intent office. */
+export const NAV_WORK: CuratedNavItem = WORK;
 
 /**
  * The left rail for a layer: Home first, then the four verbs. The rail is the

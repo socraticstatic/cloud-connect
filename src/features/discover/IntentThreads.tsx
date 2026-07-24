@@ -265,7 +265,13 @@ function DeclareMenu() {
   );
 }
 
-export function IntentThreads() {
+/**
+ * Two renders of one list. `manage` (the /work office) carries the picker,
+ * the mode toggles, remove and the watch notes. The picture (Discover)
+ * shows status, evidence and Synchronize, and points at the office - the
+ * cross-section is where promises are SEEN, Work is where they are kept.
+ */
+export function IntentThreads({ manage = true }: { manage?: boolean }) {
   const intents = useCloudControlLive(cc => cc.intentList());
   const actions = useCloudControlActions();
   const navigate = useNavigate();
@@ -282,7 +288,18 @@ export function IntentThreads() {
               {intents.filter(i => i.reading.status === 'aligned').length} of {intents.length} aligned
             </span>
           )}
-          <DeclareMenu />
+          {manage ? (
+            <DeclareMenu />
+          ) : (
+            <button
+              type="button"
+              data-testid="intent-manage-link"
+              onClick={() => navigate('/work')}
+              className="text-figma-xs font-medium text-fw-link hover:underline"
+            >
+              Manage on Work
+            </button>
+          )}
         </span>
       </div>
 
@@ -323,15 +340,17 @@ export function IntentThreads() {
                     {THREADS[i.key]?.map(s => s.toUpperCase()).join(' · ')}
                   </span>
                   <span className="ml-auto flex items-center gap-2">
-                    <button
-                      type="button"
-                      data-testid={`intent-mode-${i.id}`}
-                      onClick={() => actions.setIntentMode(i.id, i.mode === 'watch' ? 'enforce' : 'watch')}
-                      className="h-7 rounded-lg border border-fw-secondary px-2.5 text-figma-xs font-medium text-fw-body hover:bg-fw-wash"
-                      title={i.mode === 'watch' ? 'Watching: evaluates and counts, changes nothing' : 'Enforcing: the standing control is applied'}
-                    >
-                      {i.mode === 'watch' ? 'Watch' : 'Enforce'}
-                    </button>
+                    {manage && (
+                      <button
+                        type="button"
+                        data-testid={`intent-mode-${i.id}`}
+                        onClick={() => actions.setIntentMode(i.id, i.mode === 'watch' ? 'enforce' : 'watch')}
+                        className="h-7 rounded-lg border border-fw-secondary px-2.5 text-figma-xs font-medium text-fw-body hover:bg-fw-wash"
+                        title={i.mode === 'watch' ? 'Watching: evaluates and counts, changes nothing' : 'Enforcing: the standing control is applied'}
+                      >
+                        {i.mode === 'watch' ? 'Watch' : 'Enforce'}
+                      </button>
+                    )}
                     {i.reading.moves.length > 0 && (
                       <button
                         type="button"
@@ -342,19 +361,21 @@ export function IntentThreads() {
                         Synchronize
                       </button>
                     )}
-                    <button
-                      type="button"
-                      data-testid={`intent-remove-${i.id}`}
-                      aria-label={`Remove the ${i.scope.label} intent`}
-                      onClick={() => actions.removeIntent(i.id)}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg text-fw-bodyLight hover:bg-fw-wash hover:text-fw-body"
-                    >
-                      <X className="h-3.5 w-3.5" aria-hidden="true" />
-                    </button>
+                    {manage && (
+                      <button
+                        type="button"
+                        data-testid={`intent-remove-${i.id}`}
+                        aria-label={`Remove the ${i.scope.label} intent`}
+                        onClick={() => actions.removeIntent(i.id)}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg text-fw-bodyLight hover:bg-fw-wash hover:text-fw-body"
+                      >
+                        <X className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    )}
                   </span>
                 </div>
                 <p className="mt-1 text-figma-sm text-fw-body">{i.reading.evidence}</p>
-                {i.reading.watch && (
+                {manage && i.reading.watch && (
                   <p className="mt-1 text-figma-xs text-fw-bodyLight">{i.reading.watch.note}</p>
                 )}
               </li>
