@@ -4,7 +4,7 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from '../../contexts/AuthContext';
 import { MainNav } from './MainNav';
-import { NAV_DISCOVER, NAV_LAYERS } from './navItems';
+import { NAV_DISCOVER, NAV_LAYERS, layerDestinations } from './navItems';
 
 // Mock framer-motion. MobileMenu's nav item list only renders once its
 // panel's onAnimationComplete callback fires (see MobileMenu.test.tsx for
@@ -80,7 +80,7 @@ describe('MainNav', () => {
 
     for (const domain of NAV_LAYERS) {
       const group = within(drawer).getByRole('group', { name: domain.label });
-      for (const item of domain.items) {
+      for (const item of layerDestinations(domain).filter(i => i.to !== domain.home.to)) {
         expect(
           within(group).getByRole('button', { name: new RegExp(`^${item.label}`) }),
         ).toBeInTheDocument();

@@ -79,6 +79,12 @@ function tickTokens(rng){
 }
 /* the rule engine's tickHits drives this on its own cadence */
 _.tickTokens=tickTokens;
+/* The raw store rides `_` for the same reason tickTokens does: a test that
+   freezes the estate needs to drain what a 3s tick metered BEFORE the freeze
+   ran - module loading is async under vite-node, so under a loaded runner the
+   interval can fire between the engine import finishing and a test file's own
+   module scope executing. Nothing in the app reads this. */
+_.tokenMeters=tokenMeters;
 function tokenMeterList(){
   return Object.keys(TOKEN_BUDGETS).map(tag=>{
     const ready=endpointReadyFor(tag);

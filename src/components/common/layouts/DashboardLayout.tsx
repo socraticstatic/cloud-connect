@@ -2,6 +2,7 @@ import { ReactNode, useState, useEffect } from 'react';
 import { MainNav } from '../../navigation/MainNav';
 import { SubNav } from '../../navigation/SubNav';
 import { LeftRail } from '../../navigation/LeftRail';
+import { AndiPanel } from '../../../features/andi/AndiPanel';
 import { ToastContainer } from '../ToastContainer';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { Menu, X } from 'lucide-react';
@@ -98,6 +99,12 @@ export function DashboardLayout({
             </main>
           </ErrorBoundary>
         </div>
+
+        {/* Andi — the assistant panel, docked right, toggled from the top bar.
+            A flex sibling like the rail, so it can never overlap content. */}
+        <ErrorBoundary>
+          <AndiPanel />
+        </ErrorBoundary>
       </div>
     </div>
   );

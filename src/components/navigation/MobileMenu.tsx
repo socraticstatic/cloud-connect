@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Bell, HelpCircle } from 'lucide-react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { AttIcon } from '../icons/AttIcon';
-import { NAV_DISCOVER, NAV_LAYERS, isNavRouteActive, type CuratedNavItem } from './navItems';
+import { NAV_DISCOVER, NAV_LAYERS, isNavRouteActive, layerDestinations, type CuratedNavItem } from './navItems';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -265,8 +265,14 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
                             <AttIcon name="home" className="h-3 w-3" /> Home
                           </span>
                         </button>
+                        {/* Every rail destination, so a section that exists only
+                            on a layer's bespoke rail (AI: Teams, Providers,
+                            Keys) is still reachable below 1024px. Home stays
+                            on the group header. */}
                         <div className="grid grid-cols-2 gap-1">
-                          {domain.items.map(renderVerbItem)}
+                          {layerDestinations(domain)
+                            .filter(item => item.to !== domain.home.to)
+                            .map(renderVerbItem)}
                         </div>
                       </motion.div>
                     ))}

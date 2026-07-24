@@ -169,6 +169,10 @@ export interface CloudControl {
   // --- actions catalog (state-actions.js) ---
   postureCatalog: any[];
 
+  /** Grounded answer engine: an HTML answer computed from live state for a
+   *  recognized question, or null when the engine cannot ground one. */
+  answerFor(text: string): string | null;
+
   // --- share (state-share.js) ---
   shareUrl(): string;
   serialize(): string;

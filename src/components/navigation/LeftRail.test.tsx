@@ -24,12 +24,28 @@ describe('LeftRail', () => {
     expect(within(rail).getByText('NaaS')).toBeInTheDocument();
   });
 
-  test('the current verb is the active item', () => {
-    renderAt('/ai/cost');
+  test('the current verb is the active item (generic rail)', () => {
+    renderAt('/naas/cost');
     const rail = screen.getByTestId('left-rail');
-    expect(within(rail).getByText('AI Fabric')).toBeInTheDocument();
+    expect(within(rail).getByText('NaaS')).toBeInTheDocument();
     const active = rail.querySelector('[aria-current="page"]');
-    expect(active?.getAttribute('href')).toBe('/ai/cost');
+    expect(active?.getAttribute('href')).toBe('/naas/cost');
+  });
+
+  test('the AI layer renders its bespoke gateway rail with the Governance group', () => {
+    renderAt('/ai/teams');
+    const rail = screen.getByTestId('left-rail');
+    // Gateway selector pinned at the top.
+    expect(within(rail).getByTestId('gateway-selector')).toBeInTheDocument();
+    // Grouped sections, not the generic verbs.
+    expect(within(rail).getByText('Governance')).toBeInTheDocument();
+    const hrefs = within(rail).getAllByRole('link').map(a => a.getAttribute('href'));
+    expect(hrefs).toEqual(['/ai/home', '/ai/observe', '/ai/govern', '/ai/teams', '/ai/providers', '/ai/keys']);
+    expect(within(rail).getByText('Insights')).toBeInTheDocument();
+    expect(within(rail).queryByText('Cost')).toBeNull();
+    // The current section is active.
+    const active = rail.querySelector('[aria-current="page"]');
+    expect(active?.getAttribute('href')).toBe('/ai/teams');
   });
 
   test('Home is active on the layer home route', () => {

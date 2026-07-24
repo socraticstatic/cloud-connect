@@ -7,6 +7,13 @@ export interface CuratedNavItem {
   description: string;
 }
 
+/** A titled group of rail items (e.g. the AI Gateway's "Governance"). An
+ *  untitled group renders as bare items. */
+export interface RailSection {
+  title?: string;
+  items: CuratedNavItem[];
+}
+
 export interface NavLayer {
   key: 'naas' | 'ai';
   label: string;
@@ -18,6 +25,13 @@ export interface NavLayer {
    *  the layer up top. A layer opens onto its Home, never onto a verb. */
   home: CuratedNavItem;
   items: CuratedNavItem[];
+  /**
+   * A bespoke rail for the layer, adopted from the AI Gateway design
+   * (spec: 2026-07-24-ai-gateway-figma-integration.md). When present it
+   * REPLACES the generic Home+verbs rail; `home` and `items` stay authoritative
+   * for the top tabs, the drawer, the palette and the stack surfaces.
+   */
+  railSections?: RailSection[];
 }
 
 const DISCOVER: CuratedNavItem = {
@@ -55,6 +69,26 @@ export const NAV_LAYERS: NavLayer[] = [
     blurb: 'The token layer — model endpoints, the agents calling them, and their budgets.',
     tagline: 'The token layer',
     home: { label: 'Home', to: '/ai/home', icon: 'home', description: 'The token layer at a glance' },
+    /* The AI Gateway rail, adopted from the Figma (NAAS AI). Insights IS this
+       layer's Observe; Connect folds into Providers; Cost lives as Insights'
+       Cost tab. The generic verb routes stay alive underneath. */
+    railSections: [
+      {
+        items: [
+          { label: 'AI Fabric', to: '/ai/home', icon: 'home', description: 'The token layer at a glance' },
+          { label: 'Insights', to: '/ai/observe', icon: 'high-meter', description: 'Traffic, savings and requests' },
+        ],
+      },
+      {
+        title: 'Governance',
+        items: [
+          { label: 'Policies', to: '/ai/govern', icon: 'check-shield', description: 'Token policy and guardrails' },
+          { label: 'Teams & limits', to: '/ai/teams', icon: 'person-group', description: 'Budgets and limits by team' },
+          { label: 'Providers', to: '/ai/providers', icon: 'apis', description: 'Model endpoints and neoclouds' },
+          { label: 'Virtual keys', to: '/ai/keys', icon: 'lock', description: 'Agent identities and scopes' },
+        ],
+      },
+    ],
     items: [
       { label: 'Connect', to: '/ai/connect', icon: 'apis', description: 'Attach model endpoints and neoclouds' },
       { label: 'Govern', to: '/ai/govern', icon: 'check-shield', description: 'Token policy and guardrails' },
@@ -105,6 +139,26 @@ export const NAV_DISCOVER: CuratedNavItem = DISCOVER;
  */
 export function layerRail(layer: NavLayer): CuratedNavItem[] {
   return [layer.home, ...layer.items];
+}
+
+/** The rail as sections: a layer's bespoke rail when it has one, else the
+ *  generic Home+verbs as a single untitled section. */
+export function railSectionsFor(layer: NavLayer): RailSection[] {
+  return layer.railSections ?? [{ items: layerRail(layer) }];
+}
+
+/** Every distinct destination the layer's rail reaches — the drawer and the
+ *  command palette read this so no rail-only route is unreachable elsewhere. */
+export function layerDestinations(layer: NavLayer): CuratedNavItem[] {
+  const seen = new Set<string>();
+  const out: CuratedNavItem[] = [];
+  for (const item of railSectionsFor(layer).flatMap(s => s.items)) {
+    if (!seen.has(item.to)) {
+      seen.add(item.to);
+      out.push(item);
+    }
+  }
+  return out;
 }
 
 /** The layer a path belongs to (/naas/* → naas), or null for global routes

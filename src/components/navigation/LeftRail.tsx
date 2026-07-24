@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { AttIcon } from '../icons/AttIcon';
-import { isNavRouteActive, layerForPath, layerRail } from './navItems';
+import { isNavRouteActive, layerForPath, railSectionsFor } from './navItems';
+import { GatewaySelector } from './GatewaySelector';
 
 /**
  * The lifecycle rail: the verbs of the layer you are in, down the left edge,
@@ -56,34 +57,49 @@ export function LeftRail() {
         </button>
       </div>
 
-      <ul className="w-full space-y-0.5">
-        {layerRail(layer).map(item => {
-          const active = isNavRouteActive(pathname, item.to);
-          return (
-            <li key={item.to}>
-              <Link
-                to={item.to}
-                data-testid={`rail-${item.to.split('/').pop()}`}
-                aria-current={active ? 'page' : undefined}
-                title={collapsed ? item.label : undefined}
-                className={`
-                  flex items-center rounded-lg text-figma-sm font-medium transition-colors
-                  ${collapsed ? 'justify-center h-10 w-10 mx-auto' : 'gap-3 px-3 py-2.5'}
-                  ${active
-                    ? 'bg-fw-accent text-fw-link'
-                    : 'text-fw-body hover:bg-fw-wash hover:text-fw-heading'}
-                `}
-              >
-                <AttIcon
-                  name={item.icon}
-                  className={`h-[18px] w-[18px] flex-shrink-0 ${active ? 'text-fw-link' : 'text-fw-bodyLight'}`}
-                />
-                {!collapsed && <span className="truncate">{item.label}</span>}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+      {/* The AI layer is scoped to a gateway location (Figma: NYC-DC-01). */}
+      {layer.key === 'ai' && !collapsed && <GatewaySelector />}
+
+      {railSectionsFor(layer).map((section, si) => (
+        <div key={section.title ?? si} className="w-full">
+          {section.title && !collapsed && (
+            <p className="px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-fw-bodyLight">
+              {section.title}
+            </p>
+          )}
+          {section.title && collapsed && (
+            <div className="mx-2 my-2 border-t border-fw-secondary" aria-hidden="true" />
+          )}
+          <ul className="w-full space-y-0.5">
+            {section.items.map(item => {
+              const active = isNavRouteActive(pathname, item.to);
+              return (
+                <li key={item.to}>
+                  <Link
+                    to={item.to}
+                    data-testid={`rail-${item.to.split('/').pop()}`}
+                    aria-current={active ? 'page' : undefined}
+                    title={collapsed ? item.label : undefined}
+                    className={`
+                      flex items-center rounded-lg text-figma-sm font-medium transition-colors
+                      ${collapsed ? 'justify-center h-10 w-10 mx-auto' : 'gap-3 px-3 py-2.5'}
+                      ${active
+                        ? 'bg-fw-accent text-fw-link'
+                        : 'text-fw-body hover:bg-fw-wash hover:text-fw-heading'}
+                    `}
+                  >
+                    <AttIcon
+                      name={item.icon}
+                      className={`h-[18px] w-[18px] flex-shrink-0 ${active ? 'text-fw-link' : 'text-fw-bodyLight'}`}
+                    />
+                    {!collapsed && <span className="truncate">{item.label}</span>}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
     </nav>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Check, Link2, Plus, Sparkles } from 'lucide-react';
 import { AttIcon } from '../../components/icons/AttIcon';
 import { STACK_LAYERS, type NavLayer } from '../../components/navigation/navItems';
@@ -124,6 +124,22 @@ export function StackPanel() {
   const [proposalNote, setProposalNote] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout>>();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Andi's "Draft in the twin": ?draft=andi stages the advisor's draft on
+  // arrival, then strips the param so a refresh doesn't re-stage.
+  useEffect(() => {
+    if (searchParams.get('draft') !== 'andi') return;
+    const draft = advisorDraft(cc);
+    if (draft.moves.length) {
+      setStaged(draft.moves);
+      setDesigning(true);
+      setProposalNote(`Drafted by Andi · ${draft.moves.length} moves`);
+    }
+    searchParams.delete('draft');
+    setSearchParams(searchParams, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // A proposal link stages the tray it carried — same estate, same deltas,
   // Commit in front of the recipient. Valid means the move still exists in

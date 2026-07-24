@@ -1,0 +1,165 @@
+import type { CloudControl } from '../../engine/types';
+import type { NavLayer } from '../../components/navigation/navItems';
+import { parseIntent, type Command } from '../command/commandRegistry';
+import { aiSpendRows, aiSpendTotals, fmtTokens, fmtUsd } from '../ai-fabric/aiSpend';
+import { advisorDraft, attachOpportunities, steerOpportunities } from '../discover/stackFigures';
+
+/**
+ * Andi's brain — a router over things the ENGINE can ground, never a
+ * pretend LLM. Three sources, in order:
+ *   1. typed intents (commandRegistry.parseIntent — cap/attach/steer),
+ *      returned as a confirm-to-run action, never auto-executed;
+ *   2. AI-layer questions answered from aiSpend derivations;
+ *   3. the engine's own grounded answer engine (CC.answerFor) for the
+ *      network questions it already recognizes.
+ * Anything else gets an honest "can't ground that" with live suggestions.
+ * Every figure in every answer is computed at ask time from engine state.
+ */
+
+export interface AndiAction {
+  label: string;
+  kind: 'run' | 'navigate' | 'ask';
+  /** For kind 'run': executes the command. For 'navigate': the destination.
+   *  For 'ask': the prompt the panel re-asks. */
+  run?: () => void;
+  to?: string;
+  prompt?: string;
+}
+
+export interface AndiAnswer {
+  /** Plain text answer (preferred). */
+  text?: string;
+  /** Engine-authored HTML (CC.answerFor output only — never user input). */
+  html?: string;
+  actions: AndiAction[];
+}
+
+/** Suggested prompts for the current layer — each one answerable. */
+export function andiSuggestions(layerKey: NavLayer['key'] | null): string[] {
+  if (layerKey === 'ai') {
+    return [
+      'Which team is driving most spend?',
+      'Summarize AI health',
+      'Which model is most cost effective?',
+    ];
+  }
+  if (layerKey === 'naas') {
+    return [
+      'Why is egress cost up?',
+      'What is the 90-day forecast?',
+      'What should the attach order be?',
+    ];
+  }
+  return [
+    'Which team is driving most spend?',
+    'Why is egress cost up?',
+    'What should the attach order be?',
+  ];
+}
+
+/** Resolve cards: the advisor's engine-priced draft, top moves first. */
+export function andiResolveCards(cc: CloudControl): { title: string; detail: string; savingMo: number | null; move: 'draft' }[] {
+  const attaches = attachOpportunities(cc)
+    .filter(o => o.bucketSavingMo !== null)
+    .sort((a, b) => (b.bucketSavingMo ?? 0) - (a.bucketSavingMo ?? 0))
+    .slice(0, 2)
+    .map(o => ({
+      title: `Attach ${o.label}`,
+      detail: `${o.publicMs}→${o.privateMs} ms on the fabric`,
+      savingMo: o.bucketSavingMo,
+      move: 'draft' as const,
+    }));
+  const steers = steerOpportunities(cc)
+    .filter(o => o.egressSavingMo !== null)
+    .slice(0, 1)
+    .map(o => ({
+      title: `Steer ${o.label} onto the fabric`,
+      detail: o.detail,
+      savingMo: o.egressSavingMo,
+      move: 'draft' as const,
+    }));
+  return [...attaches, ...steers];
+}
+
+function aiAnswer(cc: CloudControl, q: string): AndiAnswer | null {
+  const totals = aiSpendTotals(cc);
+  if (/team.*(spend|driv)|spend.*team|most spend/i.test(q)) {
+    const rows = [...aiSpendRows(cc)].sort((a, b) => b.spendToday - a.spendToday);
+    const top = rows[0];
+    if (!top || totals.spendToday === 0) {
+      return {
+        text: `Nothing has metered spend today — ${totals.identityCount} identities carry budgets totalling ${fmtTokens(totals.budgetTokens)} tokens/day, all unspent.`,
+        actions: [{ label: 'Open Teams & limits', kind: 'navigate', to: '/ai/teams' }],
+      };
+    }
+    const share = Math.round((top.spendToday / totals.spendToday) * 100);
+    return {
+      text: `Top driver: ${top.tag} on ${top.modelName} — ${fmtUsd(top.spendToday)} today (≈${share}% of spend, ${fmtTokens(top.tokensToday)} tokens). Cap it in one line: type "cap ${top.tag} ${Math.max(1, Math.round(top.budgetTokens / 2e6))}m".`,
+      actions: [{ label: 'Open Teams & limits', kind: 'navigate', to: '/ai/teams' }],
+    };
+  }
+  if (/summari[sz]e.*(health|24h)|ai health/i.test(q)) {
+    const parts = [
+      `${totals.identityCount} identities · ${fmtTokens(totals.tokensToday)} tokens today · ${fmtUsd(totals.spendToday)} spend.`,
+      totals.ungovernedTokensToday > 0
+        ? `${fmtTokens(totals.ungovernedTokensToday)} tokens rode the public internet — that is the gap to close.`
+        : 'No tokens rode the public internet today.',
+      totals.unmeteredPolicyTags.length > 0
+        ? `${totals.unmeteredPolicyTags.join(', ')}: budget with no meter (group-scoped).`
+        : '',
+    ].filter(Boolean);
+    return {
+      text: parts.join(' '),
+      actions: [{ label: 'Open Insights', kind: 'navigate', to: '/ai/observe' }],
+    };
+  }
+  if (/model.*(cost|cheap|effective)|cheapest model/i.test(q)) {
+    const catalog = (cc.modelCatalog?.() ?? []) as { name: string; price: number; p50: number; ready: boolean }[];
+    if (!catalog.length) return null;
+    const cheapest = [...catalog].sort((a, b) => a.price - b.price)[0];
+    return {
+      text: `${cheapest.name} at $${cheapest.price.toFixed(2)}/1M tokens (P50 ${cheapest.p50} ms)${cheapest.ready ? ', ready now' : ', not attached yet'}. Full pricing is on Providers.`,
+      actions: [{ label: 'Open Providers', kind: 'navigate', to: '/ai/providers' }],
+    };
+  }
+  return null;
+}
+
+export function andiAnswer(
+  cc: CloudControl,
+  query: string,
+  layerKey: NavLayer['key'] | null,
+): AndiAnswer {
+  const q = query.trim();
+
+  // 1 — a typed intent: return it as a confirm-to-run action. Andi drafts;
+  //     the human commits.
+  const intents: Command[] = parseIntent(q, cc);
+  if (intents.length > 0) {
+    return {
+      text: 'That is an action the engine can run. Confirm to apply — Undo reverts it.',
+      actions: intents.map(c => ({ label: c.label, kind: 'run' as const, run: c.run })),
+    };
+  }
+
+  // 2 — AI-layer grounded answers.
+  const ai = aiAnswer(cc, q);
+  if (ai) return ai;
+
+  // 3 — the engine's own grounded answers (network questions).
+  const html = cc.answerFor(q);
+  if (html) {
+    const draft = advisorDraft(cc);
+    const actions: AndiAction[] =
+      /attach order|plan|egress cost|cost up|forecast/i.test(q) && draft.moves.length > 0
+        ? [{ label: `Draft it in the twin (${draft.moves.length} moves)`, kind: 'navigate', to: '/discover?draft=andi' }]
+        : [];
+    return { html, actions };
+  }
+
+  // 4 — honest fallback: say what CAN be grounded, live.
+  return {
+    text: 'I only answer what the engine can ground. Try one of these, or type an action like "cap shared-services 1m".',
+    actions: andiSuggestions(layerKey).map(s => ({ label: s, kind: 'ask' as const, prompt: s })),
+  };
+}
