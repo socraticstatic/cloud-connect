@@ -180,7 +180,9 @@ test('AI Fabric states the same token spend on Cost and on Observe', async ({ pa
   expect(metering, 'the estate must actually be metering for this to mean anything').toBe(true);
 
 
-  await openLayerVerb(page, 'AI Fabric', 'Cost');
+  // The budgets block lives on Teams & limits (Govern group) since the fold.
+  await page.getByLabel('Main navigation').getByRole('tab', { name: 'AI Fabric', exact: true }).click();
+  await page.getByTestId('left-rail').getByRole('link', { name: 'Teams & limits', exact: true }).click();
   const costTile = page.getByTestId('ai-cost-totals').filter({ hasText: 'Spend today' });
   await expect(costTile).toBeVisible();
   const onCostScreen = (await costTile.innerText()).match(/\$[\d.]+k?/)?.[0];
@@ -251,7 +253,9 @@ test('the AI money screens track the meters instead of freezing at mount', async
   );
   const after = (await kpi.innerText()).match(/\$[\d.]+k?/)?.[0];
 
-  await openLayerVerb(page, 'AI Fabric', 'Cost');
+  // The budgets block lives on Teams & limits (Govern group) since the fold.
+  await page.getByLabel('Main navigation').getByRole('tab', { name: 'AI Fabric', exact: true }).click();
+  await page.getByTestId('left-rail').getByRole('link', { name: 'Teams & limits', exact: true }).click();
   const costTile = page.getByTestId('ai-cost-totals').filter({ hasText: 'Spend today' });
   await expect(costTile).toBeVisible();
   const onCostScreen = (await costTile.innerText()).match(/\$[\d.]+k?/)?.[0];
@@ -309,7 +313,9 @@ test('AI Cost never sends a viewer to a Connect screen with nothing to attach', 
   expect(state.catalogReady, 'every model endpoint is attached').toBe(state.catalogTotal);
   expect(state.meterReady, 'while meter-readiness still lags').toBeLessThan(state.identities);
 
-  await openLayerVerb(page, 'AI Fabric', 'Cost');
+  // The budgets block lives on Teams & limits (Govern group) since the fold.
+  await page.getByLabel('Main navigation').getByRole('tab', { name: 'AI Fabric', exact: true }).click();
+  await page.getByTestId('left-rail').getByRole('link', { name: 'Teams & limits', exact: true }).click();
 
   const summary = page.getByText(/route to a model endpoint/);
   await expect(summary).toBeVisible();

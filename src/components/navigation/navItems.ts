@@ -69,23 +69,42 @@ export const NAV_LAYERS: NavLayer[] = [
     blurb: 'The token layer — model endpoints, the agents calling them, and their budgets.',
     tagline: 'The token layer',
     home: { label: 'Home', to: '/ai/home', icon: 'home', description: 'The token layer at a glance' },
-    /* The AI Gateway rail, adopted from the Figma (NAAS AI). Insights IS this
-       layer's Observe; Connect folds into Providers; Cost lives as Insights'
-       Cost tab. The generic verb routes stay alive underneath. */
+    /* The AI rail speaks the SAME lifecycle as NaaS - four verb groups -
+       with the gateway nouns nested at the stage they belong to. Attaching
+       endpoints and issuing identities is Connect-stage work wherever the
+       Figma's grouping filed it; Insights IS this layer's Observe; the
+       Savings view is its Cost. One vocabulary, so a viewer's knowledge
+       transfers across layers (task-lifecycle org spec, move 1). */
     railSections: [
       {
         items: [
           { label: 'AI Fabric', to: '/ai/home', icon: 'home', description: 'The token layer at a glance' },
+        ],
+      },
+      {
+        title: 'Connect',
+        items: [
+          { label: 'Providers', to: '/ai/providers', icon: 'apis', description: 'Model endpoints and neoclouds' },
+          { label: 'Virtual keys', to: '/ai/keys', icon: 'lock', description: 'Agent identities and scopes' },
+        ],
+      },
+      {
+        title: 'Govern',
+        items: [
+          { label: 'Policies', to: '/ai/govern', icon: 'check-shield', description: 'Token policy and guardrails' },
+          { label: 'Teams & limits', to: '/ai/teams', icon: 'person-group', description: 'Budgets and limits by team' },
+        ],
+      },
+      {
+        title: 'Observe',
+        items: [
           { label: 'Insights', to: '/ai/observe', icon: 'high-meter', description: 'Traffic, savings and requests' },
         ],
       },
       {
-        title: 'Governance',
+        title: 'Cost',
         items: [
-          { label: 'Policies', to: '/ai/govern', icon: 'check-shield', description: 'Token policy and guardrails' },
-          { label: 'Teams & limits', to: '/ai/teams', icon: 'person-group', description: 'Budgets and limits by team' },
-          { label: 'Providers', to: '/ai/providers', icon: 'apis', description: 'Model endpoints and neoclouds' },
-          { label: 'Virtual keys', to: '/ai/keys', icon: 'lock', description: 'Agent identities and scopes' },
+          { label: 'Savings', to: '/ai/cost', icon: 'bill', description: 'What routing and caching hold back' },
         ],
       },
     ],

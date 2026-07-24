@@ -32,17 +32,22 @@ describe('LeftRail', () => {
     expect(active?.getAttribute('href')).toBe('/naas/cost');
   });
 
-  test('the AI layer renders its bespoke gateway rail with the Governance group', () => {
+  test('the AI layer speaks the same lifecycle: four verb groups, gateway nouns nested', () => {
     renderAt('/ai/teams');
     const rail = screen.getByTestId('left-rail');
     // Gateway selector pinned at the top.
     expect(within(rail).getByTestId('gateway-selector')).toBeInTheDocument();
-    // Grouped sections, not the generic verbs.
-    expect(within(rail).getByText('Governance')).toBeInTheDocument();
+    // The four verb group titles - one vocabulary across layers.
+    for (const verb of ['Connect', 'Govern', 'Observe', 'Cost']) {
+      expect(within(rail).getByText(verb)).toBeInTheDocument();
+    }
     const hrefs = within(rail).getAllByRole('link').map(a => a.getAttribute('href'));
     expect(hrefs).toEqual([
-      '/ai/home', '/ai/observe',
-      '/ai/govern', '/ai/teams', '/ai/providers', '/ai/keys',
+      '/ai/home',
+      '/ai/providers', '/ai/keys',
+      '/ai/govern', '/ai/teams',
+      '/ai/observe',
+      '/ai/cost',
     ]);
     expect(within(rail).getByText('Insights')).toBeInTheDocument();
     // The current section is active.
