@@ -12,6 +12,8 @@ import { CommandPalette } from '../../features/command/CommandPalette';
 import { UndoControl } from '../../features/undo/UndoControl';
 import { NAV_DISCOVER, NAV_LAYERS, NAV_ITEMS, isNavRouteActive, layerForPath } from './navItems';
 import { CreateMenu } from './CreateMenu';
+import { toggleAndi } from '../../features/andi/AndiPanel';
+import { Sparkles } from 'lucide-react';
 import { Button } from '../common/Button';
 import { useStore } from '../../store/useStore';
 import { usePermissions } from '../../hooks/usePermission';
@@ -287,6 +289,17 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
                     global action, never an address. Each entry names its
                     layer and lands on that layer's Connect page. */}
                 <CreateMenu />
+                {/* Andi — the assistant, per the AI Gateway header. */}
+                <button
+                  type="button"
+                  data-testid="andi-toggle"
+                  aria-label="Ask Andi"
+                  title="Ask Andi"
+                  onClick={toggleAndi}
+                  className="flex items-center justify-center h-9 w-9 rounded-full bg-[#009fdb] text-white hover:bg-fw-ctaPrimary transition-colors"
+                >
+                  <Sparkles className="h-4 w-4" />
+                </button>
                 <SearchBar onSearch={onSearch} />
                 <div className="h-5 w-px bg-fw-secondary hidden xl:block mx-0.5" />
                 <UndoControl />
