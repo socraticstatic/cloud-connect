@@ -140,6 +140,9 @@ function payloadObject(){
   // re-evaluates and re-compiles - the link never carries a status.
   const ints=(_.intents||[]).map(i=>({k:i.key,sk:i.scope.kind,si:i.scope.id,sl:i.scope.label,m:i.mode}));
   if(ints.length)d.in=ints;
+  // The assessment stage travels only once started - pristine stays empty.
+  if(_.assessment&&_.assessment.stage!=='not-started')
+    d.as={g:_.assessment.stage,d:_.assessment.day,t:_.assessment.startedAt};
   if(!d.r.length)delete d.r;
   if(!d.tp.length)delete d.tp;
   if(!d.groups.length)delete d.groups;
@@ -150,7 +153,7 @@ function encodePayload(d){
 }
 function serialize(){
   const d=payloadObject();
-  if(!d.o.length&&!d.f.length&&!d.p.length&&!d.r&&!d.tp&&!d.s&&!d.groups&&!d.gw&&!d.in)return '';
+  if(!d.o.length&&!d.f.length&&!d.p.length&&!d.r&&!d.tp&&!d.s&&!d.groups&&!d.gw&&!d.in&&!d.as)return '';
   return encodePayload(d);
 }
 function shareUrl(){
@@ -211,6 +214,11 @@ function applyShareData(raw){
     (d.in||[]).forEach(x=>{
       if(CC.declareIntent)CC.declareIntent(x.k,{kind:x.sk,id:x.si??null,label:x.sl||String(x.si)},x.m==='enforce'?'enforce':'watch',true);
     });
+    if(d.as&&_.assessment&&['measuring','report','closed'].includes(d.as.g)){
+      _.assessment.stage=d.as.g;
+      _.assessment.day=Math.min(14,Math.max(1,d.as.d|0));
+      _.assessment.startedAt=typeof d.as.t==='number'?d.as.t:null;
+    }
     if(d.s){const o=onramps.find(x=>x.id===d.s);if(o&&o.active)sim.onrampId=d.s;}
     // addGroup no-ops (returns null) when the id already exists, so replaying
     // a payload against an estate that already has the group - the common

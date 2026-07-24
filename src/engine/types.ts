@@ -212,6 +212,27 @@ export interface CloudControl {
   toggleAgent?(id: string): boolean;
   promptTrace?(...args: any[]): any;
   decisionLog?(...args: any[]): RequestRecord[];
+  // --- the 14-day assessment (state-assessment.ts) ---
+  assessment(): { stage: 'not-started' | 'measuring' | 'report' | 'closed'; day: number; startedAt: number | null };
+  startAssessment(): boolean;
+  /** The demo's clock lever - labelled a demo control in the UI. */
+  advanceAssessment(days?: number): boolean;
+  closeAssessment(): boolean;
+  /** All-derived report figures; never cached, basis named. */
+  assessmentReport(): {
+    recoverableMo: number;
+    aiSavingMo: number;
+    securityEvents: number;
+    securityBreakdown: { denials: number; violations: number };
+    msWasted: number;
+    invisibleSharePct: number;
+    invisibleBasis: 'tokens' | 'flows';
+    counters: {
+      identities: number; requestsAnalyzed: number; toolsInUse: number;
+      ungovernedTools: number; securityEvents: number;
+    };
+  };
+
   // --- standing intents (state-intents.ts) ---
   intentCatalog(): IntentCatalogEntry[];
   /** `silent` is hydrate's flag: a replayed session pushes no undo, emits nothing. */
