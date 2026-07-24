@@ -128,6 +128,12 @@ const LazyOnboardingWizard = lazy(() =>
 
 // /stack — the layer-first IA concept deck. A standalone document (navy
 // cover, print-ready), routed outside DashboardLayout like /onboarding.
+const LazyAssessmentPage = lazy(() =>
+  import('./features/assessment/AssessmentPage').then(module => ({
+    default: module.AssessmentPage
+  }))
+);
+
 const LazyStackDeckPage = lazy(() =>
   import('./features/stack-deck/StackDeckPage').then(module => ({
     default: module.StackDeckPage
@@ -209,7 +215,7 @@ function App() {
 
   // Check if current route is a detached window or standalone page
   const isDetachedWindow = location.pathname.startsWith('/detached/');
-  const isStandalonePage = location.pathname === '/login' || location.pathname === '/onboarding' || location.pathname === '/stack' || location.pathname === '/no-internet' || location.pathname === '/maintenance' || location.pathname === '/demo' || location.pathname === '/brief' || location.pathname === '/scorecard';
+  const isStandalonePage = location.pathname === '/login' || location.pathname === '/onboarding' || location.pathname === '/stack' || location.pathname === '/assessment' || location.pathname === '/no-internet' || location.pathname === '/maintenance' || location.pathname === '/demo' || location.pathname === '/brief' || location.pathname === '/scorecard';
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -302,6 +308,13 @@ function App() {
             <Route path="/onboarding" element={
               <Suspense fallback={<LoadingFallback />}>
                 <LazyOnboardingWizard />
+              </Suspense>
+            } />
+
+            {/* The 14-day assessment funnel - standalone, no layout */}
+            <Route path="/assessment" element={
+              <Suspense fallback={<LoadingFallback />}>
+                <LazyAssessmentPage />
               </Suspense>
             } />
 
