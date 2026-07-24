@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Check, Link2, Plus, Sparkles } from 'lucide-react';
 import { AttIcon } from '../../components/icons/AttIcon';
+import { IntentThreads } from './IntentThreads';
 import { STACK_LAYERS, type NavLayer } from '../../components/navigation/navItems';
 import { useCloudControlLive } from '../../engine/react/useCloudControl';
 import { fmtTokens, fmtUsd } from '../ai-fabric/aiSpend';
@@ -297,6 +298,9 @@ export function StackPanel() {
           </Link>
         </div>
       </div>
+
+      {/* The estate's declared promises, threaded into the strata below. */}
+      <IntentThreads />
 
       <div className="space-y-1.5">
         <LiveBand
