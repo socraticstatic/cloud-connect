@@ -108,11 +108,34 @@ function ensurePayoffRule(): void {
  * would have made the payoff arrive after Cost and the AI Fabric had already
  * closed the story.
  *
+ * Four beats meet the surfaces shipped this week, each threaded where the
+ * arc already carries its subject rather than bolted onto the end:
+ *
+ * - `assessment` sits right after the Discover opener, because "measure for
+ *   14 days first" is the answer to the question the scan raises.
+ * - `intents` follows the naming beat on Discover: you named what you have,
+ *   now declare what must stay true of it. The standing-intents band is the
+ *   surface.
+ * - `andi` closes the Discover leg. The intents band's own empty state says
+ *   "tell Andi the outcome you want", so the beat that introduces Andi is
+ *   the one that follows it. The toggle lives in the top bar, which renders
+ *   on every route, so the beat stays on /discover and changes no section.
+ * - `insights` opens the AI leg, before the token-policy close: evidence
+ *   first, then governance, mirroring the NaaS half of the arc.
+ *
  * Each step's `targetSelector` is a `data-tour` attribute added to the
- * relevant component, and each `route` is the HashRouter path for that
+ * relevant component, or an existing stable `data-testid` other specs
+ * already hold in place, and each `route` is the HashRouter path for that
  * section. `ProductTour` is route-agnostic — the consuming `TourLauncher`
  * navigates on `onStepChange` before the spotlight looks for the target on
  * the new page.
+ *
+ * SKIP MECHANISM. A step may carry `when`; `activeCloudConnectTour()`
+ * evaluates it once per launch and leaves the step out of that run when it
+ * returns false. It exists for the one anchor that can legitimately be
+ * absent — the assessment banner — because a beat whose target is missing
+ * renders a flat overlay with nothing spotlighted, which reads as a broken
+ * tour. Steps without `when` always run.
  *
  * A step's target is only spotlighted if it's already in the DOM. Govern's
  * tab is therefore carried in the route (`?tab=groups`) rather than left to
@@ -122,7 +145,20 @@ function ensurePayoffRule(): void {
  * Any figure a beat SPEAKS is a thunk, evaluated when the beat is shown, so
  * it reads the estate as the beats before it left it.
  */
-export const cloudConnectTour: (TourStep & { route: string })[] = [
+export type CloudConnectTourStep = TourStep & {
+  route: string;
+  /** Skip predicate, read once per launch by `activeCloudConnectTour`. */
+  when?: () => boolean;
+};
+
+/** The steps a launch actually runs: every step whose `when` is absent or
+ *  true at the moment the tour opens. Evaluated per launch, not per module
+ *  load, because the estate (and the DOM) move between rehearsals. */
+export function activeCloudConnectTour(): CloudConnectTourStep[] {
+  return cloudConnectTour.filter(s => !s.when || s.when());
+}
+
+export const cloudConnectTour: CloudConnectTourStep[] = [
   {
     id: 'discover',
     title: 'Discover the estate',
@@ -132,6 +168,29 @@ export const cloudConnectTour: (TourStep & { route: string })[] = [
     targetSelector: '[data-tour="discover-estate"]',
     placement: 'top',
     highlightPadding: 12,
+  },
+  {
+    id: 'assessment',
+    title: 'Measure before you commit',
+    description:
+      'Discovery shows what exists, not what moves. Not sure what you have? Measure for 14 days first: the assessment counts AI traffic in the background, and nothing is blocked or routed while it runs.',
+    route: '/discover',
+    targetSelector: '[data-testid="assessment-banner"]',
+    placement: 'bottom',
+    highlightPadding: 12,
+    // The one anchor that can be absent. Closing the assessment removes the
+    // banner for good (stage 'closed'), and an in-session dismissal hides it
+    // until DiscoverPage remounts. Launching from any other page remounts
+    // Discover on navigate, so a missing banner only means "dismissed" when
+    // the Discover surface is actually rendered right now — the intents band
+    // is its always-present sibling, and /discover is a lazy route, so an
+    // absent band means the page merely has not mounted (or is another page
+    // entirely) and the beat must stay in.
+    when: () => {
+      if ((CC.assessment() as { stage: string }).stage === 'closed') return false;
+      const discoverRendered = !!document.querySelector('[data-testid="intent-threads"]');
+      return !discoverRendered || !!document.querySelector('[data-testid="assessment-banner"]');
+    },
   },
   {
     id: 'discover-sites',
@@ -146,6 +205,29 @@ export const cloudConnectTour: (TourStep & { route: string })[] = [
       label: `Group all sites as “${SITES_GROUP_LABEL}”`,
       onClick: ensureSitesGroup,
     },
+  },
+  {
+    id: 'intents',
+    title: 'Declare a standing intent',
+    description:
+      'Declare an outcome and the estate keeps checking it. Tell Andi "keep AI private" or "cap token spend" and it stands here as a promise: aligned, drifting, or violated, re-derived every time you look. When one drifts, Synchronize stages the repair as a draft on the twin. The machine never commits.',
+    route: '/discover',
+    targetSelector: '[data-testid="intent-threads"]',
+    // 'bottom', because the band sits near the top of /discover: a 'top'
+    // tooltip cannot fit above it, and ProductTour's on-screen clamp would
+    // drop it onto the very band the beat is pointing at.
+    placement: 'bottom',
+    highlightPadding: 12,
+  },
+  {
+    id: 'andi',
+    title: 'Ask in words',
+    description:
+      'Andi rides the top bar on every screen. Ask in words and the answer comes from the same engine every figure derives from. Actions come back as proposals you confirm to run: Andi drafts, never commits, and Undo covers every change you accept.',
+    route: '/discover',
+    targetSelector: '[data-testid="andi-toggle"]',
+    placement: 'bottom',
+    highlightPadding: 8,
   },
   {
     id: 'connect',
@@ -245,6 +327,19 @@ export const cloudConnectTour: (TourStep & { route: string })[] = [
     route: '/naas/cost',
     targetSelector: '[data-tour="cost-hero"]',
     placement: 'top',
+    highlightPadding: 12,
+  },
+  {
+    id: 'insights',
+    title: 'Every figure, derived live',
+    // Keep the word "group" out of this copy: the e2e position guard
+    // (tour.spec.ts) exempts only the FINAL beat from the groups-thread
+    // placement rule, and this beat sits one before it.
+    description:
+      'The AI layer keeps its own evidence, on one strip: tokens, cost, time to first token, requests, blocked. Every figure derives from the engine at the moment you read it; move the estate and the strip moves. Below, the sankey traces where each dollar flows: identity, to source, to route, to provider.',
+    route: '/ai/observe',
+    targetSelector: '[data-tour="insights-kpis"]',
+    placement: 'bottom',
     highlightPadding: 12,
   },
   {

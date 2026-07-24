@@ -172,6 +172,59 @@ export function requestRows(cc: CloudControl): InsightRequestRow[] {
     .reverse();
 }
 
+/** A sortable column of the requests log. `time` orders on the raw `ts`. */
+export type RequestSort = {
+  key: 'time' | 'tokens' | 'cost' | 'costSaved' | 'ttftMs';
+  dir: 'asc' | 'desc';
+};
+
+/**
+ * Stable, non-mutating sort. Ties keep their incoming order, so re-sorting
+ * on a column full of equal values never shuffles rows under the viewer.
+ */
+export function sortRows(
+  rows: InsightRequestRow[],
+  sort: RequestSort,
+): InsightRequestRow[] {
+  const value = (r: InsightRequestRow) => (sort.key === 'time' ? r.ts : r[sort.key]);
+  const dir = sort.dir === 'asc' ? 1 : -1;
+  return rows
+    .map((r, i) => ({ r, i }))
+    .sort((a, b) => {
+      const d = value(a.r) - value(b.r);
+      return d !== 0 ? d * dir : a.i - b.i;
+    })
+    .map(({ r }) => r);
+}
+
+export interface RequestWindow {
+  rows: InsightRequestRow[];
+  /** The page actually shown, clamped into [1, pages]. */
+  page: number;
+  pages: number;
+  total: number;
+}
+
+/**
+ * One page of the log. `page` is 1-based and clamped, so a filter change
+ * that shrinks the row set can never leave the table on a blank page.
+ */
+export function windowRows(
+  rows: InsightRequestRow[],
+  page: number,
+  pageSize = 25,
+): RequestWindow {
+  const total = rows.length;
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  const clamped = Math.min(Math.max(1, page), pages);
+  return {
+    rows: rows.slice((clamped - 1) * pageSize, clamped * pageSize),
+    page: clamped,
+    pages,
+    total,
+  };
+}
+
 export interface RequestFilters {
   q: string;
   provider: string;

@@ -122,3 +122,43 @@ describe('IntentThreads', () => {
     expect(badge.querySelector('.animate-pulse')).toBeNull();
   });
 });
+
+describe('the declare-from-catalog picker', () => {
+  it('lists all eighteen intents grouped by taxonomy', () => {
+    at();
+    fireEvent.click(screen.getByTestId('intent-declare-open'));
+    const items = screen.getAllByTestId(/^declare-item-/);
+    expect(items).toHaveLength(18);
+    for (const taxonomy of ['Performance', 'Resiliency', 'Security and compliance', 'AI and workload', 'Operational and governance']) {
+      expect(screen.getByText(taxonomy)).toBeInTheDocument();
+    }
+  });
+
+  it('a single-scope entry declares in watch mode on click', () => {
+    at();
+    fireEvent.click(screen.getByTestId('intent-declare-open'));
+    fireEvent.click(screen.getByTestId('declare-item-threat-aware-routing'));
+    const declared = CC.intentList().find(i => i.key === 'threat-aware-routing');
+    expect(declared).toBeTruthy();
+    expect(declared!.mode).toBe('watch');
+  });
+
+  it('a multi-scope entry opens the scope step and declares the picked one', () => {
+    at();
+    fireEvent.click(screen.getByTestId('intent-declare-open'));
+    fireEvent.click(screen.getByTestId('declare-item-optimize-jitter'));
+    const scopes = screen.getAllByTestId(/^declare-scope-/);
+    expect(scopes.length).toBeGreaterThan(1);
+    fireEvent.click(scopes[0]);
+    expect(CC.intentList().find(i => i.key === 'optimize-jitter')).toBeTruthy();
+  });
+
+  it('an already-declared entry reads declared and cannot double-declare', () => {
+    CC.declareIntent('threat-aware-routing', { kind: 'estate', id: 'egress', label: 'Egress screening' }, 'watch');
+    at();
+    fireEvent.click(screen.getByTestId('intent-declare-open'));
+    const item = screen.getByTestId('declare-item-threat-aware-routing');
+    expect(item).toBeDisabled();
+    expect(item).toHaveTextContent('declared');
+  });
+});

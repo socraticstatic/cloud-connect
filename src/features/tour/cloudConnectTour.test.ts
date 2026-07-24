@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { cloudConnectTour } from './cloudConnectTour';
+import { cloudConnectTour, activeCloudConnectTour } from './cloudConnectTour';
 import { readCopy } from '../../components/tour/ProductTour';
 import { DEMO_BEATS } from '../demo/demoScript';
 import { CC } from '../../engine';
@@ -24,9 +24,16 @@ describe('cloudConnectTour', () => {
      wrong section. The invariant that actually matters survives the groups
      thread: the tour visits the six demo sections in the demo's order and
      never leaves a section and comes back to it — a viewer is walked
-     forward, never bounced. */
-  it('visits the DEMO_BEATS sections in order, and never doubles back', () => {
-    expect(sections()).toEqual(DEMO_BEATS.map(b => b.route));
+     forward, never bounced.
+
+     One section joined since: /ai/observe (the Insights screen), deliberately
+     placed on the AI leg between Cost and the token-policy close — evidence
+     first, then governance, mirroring the NaaS half. Stated here as the exact
+     expected list, so an accidental extra section still fails. */
+  it('visits the DEMO_BEATS sections in order — Insights added on the AI leg — and never doubles back', () => {
+    const expected = DEMO_BEATS.map(b => b.route);
+    expected.splice(expected.indexOf('/ai/govern'), 0, '/ai/observe');
+    expect(sections()).toEqual(expected);
   });
 
   it('does not route to /netops (dropped from the MVP demo arc)', () => {
@@ -252,5 +259,103 @@ describe('cloudConnectTour — review fixes', () => {
   it('beat 4 (govern) foreshadows that the rule grammar widens from tag to name, so beat 5 does not contradict it', () => {
     const govText = readCopy(beat('govern').description);
     expect(govText).toMatch(/FROM a tag.*name/i);
+  });
+});
+
+/* ------------------- this week's surfaces: four new beats ------------------- */
+
+describe('cloudConnectTour — assessment, intents, Andi, Insights', () => {
+  const at = (id: string) => cloudConnectTour.findIndex(s => s.id === id);
+  const beat = (id: string) => cloudConnectTour.find(s => s.id === id)!;
+
+  it('threads each surface where the arc carries its subject, not onto the end', () => {
+    // The assessment answers the question the Discover opener raises.
+    expect(at('assessment')).toBe(at('discover') + 1);
+    // Intents follow naming: you named what you have, now declare what must
+    // stay true of it. Andi follows intents, because the intents band's own
+    // empty state says "tell Andi the outcome you want".
+    expect(at('intents')).toBe(at('discover-sites') + 1);
+    expect(at('andi')).toBe(at('intents') + 1);
+    // All three land before anything attaches.
+    expect(at('andi')).toBeLessThan(at('connect'));
+    // Insights opens the AI leg; the token-policy close stays the close.
+    expect(at('insights')).toBe(cloudConnectTour.length - 2);
+    expect(cloudConnectTour[cloudConnectTour.length - 1].id).toBe('ai-fabric');
+  });
+
+  it('anchors each beat to a surface that renders without preconditions', () => {
+    expect(beat('intents').targetSelector).toBe('[data-testid="intent-threads"]');
+    expect(beat('andi').targetSelector).toBe('[data-testid="andi-toggle"]');
+    expect(beat('assessment').targetSelector).toBe('[data-testid="assessment-banner"]');
+    expect(beat('insights').targetSelector).toBe('[data-tour="insights-kpis"]');
+    expect(beat('insights').route).toBe('/ai/observe');
+  });
+
+  it('the new beats point, never mutate — no action, and no thunk, because none of them speaks a figure', () => {
+    for (const id of ['assessment', 'intents', 'andi', 'insights']) {
+      expect(beat(id).action, `${id} must not mutate the estate`).toBeUndefined();
+      expect(typeof beat(id).description, `${id} speaks no figure`).toBe('string');
+    }
+  });
+
+  /* The e2e position guard (tour.spec.ts) treats every beat whose text says
+     "group" as part of the groups thread, and exempts only the FINAL beat
+     from its placement rule. Insights sits one before the final beat, so the
+     word would put it exactly on the boundary the guard exists to catch. */
+  it('keeps the word "group" out of the insights beat', () => {
+    const text = beat('insights').title + ' ' + readCopy(beat('insights').description);
+    expect(text).not.toMatch(/\bgroup/i);
+  });
+
+  /* The skip mechanism. The assessment banner is the one anchor that can be
+     absent for good (stage 'closed'); its beat must leave the run rather
+     than spotlight nothing. */
+  it('drops the assessment beat — and only it — when the assessment is closed', () => {
+    expect(activeCloudConnectTour().map(s => s.id)).toEqual(cloudConnectTour.map(s => s.id));
+
+    const spy = vi
+      .spyOn(CC, 'assessment')
+      .mockReturnValue({ stage: 'closed', day: 14, startedAt: null });
+    try {
+      const active = activeCloudConnectTour().map(s => s.id);
+      expect(active).not.toContain('assessment');
+      expect(active).toEqual(cloudConnectTour.map(s => s.id).filter(id => id !== 'assessment'));
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  /* The dismissal inference. A missing banner only means "dismissed" when
+     the Discover surface is actually rendered — /discover is a lazy route,
+     and at launch time its chunk may not have mounted yet. The intents band
+     is the always-present sibling that proves the page is really there. */
+  it('keeps the assessment beat when Discover is not mounted, drops it only when Discover renders without the banner', () => {
+    const ids = () => activeCloudConnectTour().map(s => s.id);
+    try {
+      // Discover rendered, banner dismissed: the beat leaves the run.
+      document.body.innerHTML = '<section data-testid="intent-threads"></section>';
+      expect(ids()).not.toContain('assessment');
+
+      // Discover rendered with the banner: the beat runs.
+      document.body.innerHTML =
+        '<div data-testid="assessment-banner"></div><section data-testid="intent-threads"></section>';
+      expect(ids()).toContain('assessment');
+
+      // Nothing of Discover in the DOM (lazy chunk not mounted, or another
+      // page): navigation will remount it fresh, so the beat stays in.
+      document.body.innerHTML = '';
+      expect(ids()).toContain('assessment');
+    } finally {
+      document.body.innerHTML = '';
+    }
+  });
+
+  it('speaks the shipped vocabulary: 14 days, the three intent verdicts, drafts-never-commits, the sankey', () => {
+    expect(readCopy(beat('assessment').description)).toMatch(/14 days/);
+    expect(readCopy(beat('assessment').description)).toMatch(/nothing is blocked or routed/i);
+    expect(readCopy(beat('intents').description)).toMatch(/aligned, drifting, or violated/i);
+    expect(readCopy(beat('andi').description)).toMatch(/drafts, never commits/i);
+    expect(readCopy(beat('insights').description)).toMatch(/derives from the engine/i);
+    expect(readCopy(beat('insights').description)).toMatch(/sankey/i);
   });
 });

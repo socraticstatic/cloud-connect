@@ -212,6 +212,13 @@ export interface CloudControl {
   toggleAgent?(id: string): boolean;
   promptTrace?(...args: any[]): any;
   decisionLog?(...args: any[]): RequestRecord[];
+  // --- derived variance and direction (state-telemetry.ts) ---
+  /** p95 minus p50 over the region's OWN drawn latency series - the jitter
+   *  figure and the chart can never disagree. Null for unknown regions. */
+  regionJitter(cloudId: string, regionId: string, n?: number): { jitterMs: number; p50: number; p95: number } | null;
+  /** The window's own direction: last-quarter mean vs first-quarter mean. */
+  latencyTrend(cloudId: string, regionId: string, n?: number): { risingPct: number; rising: boolean; firstMs: number; lastMs: number } | null;
+
   // --- the 14-day assessment (state-assessment.ts) ---
   assessment(): { stage: 'not-started' | 'measuring' | 'report' | 'closed'; day: number; startedAt: number | null };
   startAssessment(): boolean;

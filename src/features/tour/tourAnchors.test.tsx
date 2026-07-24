@@ -12,6 +12,11 @@ import { ObservabilityShell } from '../observe/ObservabilityShell';
 import { networkBinding } from '../observe/networkBinding';
 import { CostPage } from '../cost/CostPage';
 import { TokenPolicies } from '../ai-fabric/TokenPolicies';
+import { AssessmentBanner } from '../assessment/AssessmentBanner';
+import { IntentThreads } from '../discover/IntentThreads';
+import { InsightsPage } from '../ai-fabric/insights/InsightsPage';
+import { MainNav } from '../../components/navigation/MainNav';
+import { AuthProvider } from '../../contexts/AuthContext';
 
 /**
  * Every guided-tour step targets a `data-tour` anchor. The Discover and Observe
@@ -23,7 +28,21 @@ import { TokenPolicies } from '../ai-fabric/TokenPolicies';
  */
 const screenFor: Record<string, () => ReactElement> = {
   discover: () => <UnifiedDiscovery />,
+  // The banner is its own host: DiscoverPage renders it above the stack, and
+  // in a fresh engine (stage 'not-started') it renders its anchor.
+  assessment: () => <AssessmentBanner />,
   'discover-sites': () => <UnifiedDiscovery />,
+  // The standing-intents band renders its anchor with zero intents declared —
+  // the empty state is still the <section data-testid="intent-threads">.
+  intents: () => <IntentThreads />,
+  // The Andi toggle lives in the top bar, which renders on every route. jsdom
+  // reports innerWidth 1024, exactly the desktop breakpoint, so the header's
+  // !isMobile branch (innerWidth < 1024) holds here.
+  andi: () => (
+    <AuthProvider>
+      <MainNav />
+    </AuthProvider>
+  ),
   connect: () => <FabricHero model={CC.fabricModel()} />,
   govern: () => <RulesPanel />,
   'govern-groups': () => <GroupsPanel />,
@@ -32,6 +51,7 @@ const screenFor: Record<string, () => ReactElement> = {
   'group-policy': () => <RulesPanel />,
   observe: () => <ObservabilityShell binding={networkBinding(CC)} />,
   cost: () => <CostPage />,
+  insights: () => <InsightsPage />,
   'ai-fabric': () => <TokenPolicies />,
 };
 

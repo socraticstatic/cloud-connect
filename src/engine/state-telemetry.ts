@@ -220,7 +220,34 @@ function topTalkers(rid){
   });
 }
 
-Object.assign(CC,{telemetry,obsSummary,latencySeries,lossSeries,percentiles,topTalkers,windowMoments});
+/* ---------- jitter: variance of the region's own drawn series ----------
+   Not a new number: p95 minus p50 over the SAME latencySeries every chart
+   draws, so the jitter figure and the chart a viewer checks it against can
+   never disagree. Public transit carries the wide variance (the series'
+   own 18% band); the fabric carries the tight one. */
+function regionJitter(cloudId,regionId,N){
+  const key=cloudId+'/'+regionId;
+  const s=latencySeries(key,N||48);
+  if(!s.length)return null;
+  const p=percentiles(s);
+  return {jitterMs:Math.max(0,Math.round((p.p95-p.p50)*10)/10),p50:p.p50,p95:p.p95};
+}
+
+/* ---------- trend: the window's own direction ----------
+   The mean of the series' last quarter against its first. Deterministic -
+   the seeded anomaly and the public-transit variance are what move it -
+   and honest: "rising" is a claim about the drawn window, nothing more. */
+function latencyTrend(cloudId,regionId,N){
+  const s=latencySeries(cloudId+'/'+regionId,N||48);
+  if(s.length<8)return null;
+  const q=Math.floor(s.length/4);
+  const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
+  const first=mean(s.slice(0,q)), last=mean(s.slice(-q));
+  const risingPct=Math.round(((last-first)/first)*100);
+  return {risingPct,rising:risingPct>=15,firstMs:Math.round(first),lastMs:Math.round(last)};
+}
+
+Object.assign(CC,{telemetry,obsSummary,latencySeries,lossSeries,percentiles,topTalkers,windowMoments,regionJitter,latencyTrend});
 
 /* tokens get a time dimension: spend/day per app (flat zero before the
    substrate exists, ramping once it does) and per-model inference latency

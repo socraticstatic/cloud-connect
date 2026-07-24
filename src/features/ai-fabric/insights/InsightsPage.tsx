@@ -112,7 +112,12 @@ export function InsightsPage() {
         </div>
       </div>
 
-      <KpiStrip kpis={view.kpis} emphasize={emphasis} />
+      {/* data-tour: the guided tour's Insights beat spotlights the strip,
+          not the whole page — a full-page cutout highlights nothing (see
+          e2e/tour.spec.ts, the Discover spotlight finding). */}
+      <div data-tour="insights-kpis">
+        <KpiStrip kpis={view.kpis} emphasize={emphasis} />
+      </div>
 
       <div role="tablist" aria-label="Insights sections" className="flex gap-1 border-b border-fw-secondary">
         {TABS.map(t => (
