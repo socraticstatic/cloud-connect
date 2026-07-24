@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 import { seedAuth } from '../tests/e2e/helpers';
 
 /**
@@ -60,6 +61,29 @@ test('banner → setup → measure → advance → report → close → day 15',
   await page.goto('/#/assessment', { waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('assessment-page')).toHaveAttribute('data-stage', 'closed');
   await expect(page.getByText(/Completed on/)).toBeVisible();
+});
+
+test('every funnel state passes an axe scan - the funnel is customer-facing', async ({ page }) => {
+  await seedAuth(page);
+  await page.goto('/#/assessment', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('assessment-page')).toBeVisible();
+
+  const scan = async (label: string) => {
+    const axe = await new AxeBuilder({ page }).include('[data-testid="assessment-page"]').analyze();
+    expect(axe.violations.map(v => `${label}: ${v.id} — ${v.description}`)).toEqual([]);
+  };
+
+  await scan('setup');
+  await page.getByTestId('assessment-start').click();
+  await expect(page.getByTestId('assessment-page')).toHaveAttribute('data-stage', 'measuring');
+  await scan('measuring');
+  await page.getByTestId('assessment-skip').click();
+  await expect(page.getByTestId('assessment-page')).toHaveAttribute('data-stage', 'report');
+  await scan('report');
+  await page.getByTestId('assessment-close').click();
+  await page.goto('/#/assessment', { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('assessment-page')).toHaveAttribute('data-stage', 'closed');
+  await scan('closed');
 });
 
 test('the banner tracks the stage and the portal never gates', async ({ page }) => {
