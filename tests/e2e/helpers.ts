@@ -50,16 +50,15 @@ export async function openLayerVerb(
   layer: 'NaaS' | 'AI Fabric',
   verb: 'Home' | 'Connect' | 'Govern' | 'Observe' | 'Cost',
 ) {
-  // The AI layer's rail speaks the gateway vocabulary: Observe is Insights,
-  // Govern is Policies, and since phase 3 the Connect verb's catalog lives on
-  // Providers while the Cost verb's budgets live on Teams & limits.
+  // The AI rail's four verb GROUPS nest the gateway nouns; clicking a verb
+  // means clicking that stage's lead item. Cost leads with Savings.
   const label =
     layer === 'AI Fabric'
       ? ({
           Observe: 'Insights',
           Govern: 'Policies',
           Connect: 'Providers',
-          Cost: 'Teams & limits',
+          Cost: 'Savings',
         } as Record<string, string>)[verb] ?? verb
       : verb;
   await page.getByLabel('Main navigation').getByRole('tab', { name: layer, exact: true }).click();
