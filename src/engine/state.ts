@@ -220,6 +220,7 @@ function snapshot(){
     app:CC.settings.requireApproval,
     gw:{..._.gatewayFlags},
     it:(_.intents||[]).map(i=>({...i,scope:{...i.scope},baseline:{...i.baseline}})),
+    as:_.assessment?{..._.assessment}:null,
     /* Token policies were never snapshotted, so setTokenPolicy was the one
        mutation Undo silently skipped - an enforce-mode intent's standing
        control could not reverse with its declaration. Deep-copied per tag;
@@ -266,6 +267,7 @@ function restore(s){
     Object.keys(_.tokenPolicies).forEach(k=>{if(!(k in s.tpol))delete _.tokenPolicies[k];});
     Object.entries(s.tpol).forEach(([k,p])=>{_.tokenPolicies[k]=Object.assign(_.tokenPolicies[k]||{},p);});
   }
+  if(s.as&&_.assessment)Object.assign(_.assessment,s.as);
   // rebuild in place - state-intents.ts closes over this exact array
   if(s.it&&_.intents){
     _.intents.length=0;
