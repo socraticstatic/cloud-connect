@@ -140,11 +140,18 @@ export function SavingsTab() {
           budgets imply ({fmtUsd(view.budget.budgetMonthly)}).
         </p>
         <BudgetLine series={view.budget.spentSeries} />
-        <p className={`mt-2 text-figma-sm font-medium ${view.budget.overBudget ? 'text-fw-red-600' : 'text-fw-success'}`}>
-          {view.budget.overBudget
-            ? `Predicted ${fmtUsd(view.budget.predictedMonthly)}/mo runs over the ${fmtUsd(view.budget.budgetMonthly)} ceiling`
-            : `Predicted ${fmtUsd(view.budget.predictedMonthly)}/mo holds under the ${fmtUsd(view.budget.budgetMonthly)} ceiling`}
-        </p>
+        {statesRealMoney(view.budget.predictedMonthly) ? (
+          <p className={`mt-2 text-figma-sm font-medium ${view.budget.overBudget ? 'text-fw-red-600' : 'text-fw-success'}`}>
+            {view.budget.overBudget
+              ? `Predicted ${fmtUsd(view.budget.predictedMonthly)}/mo runs over the ${fmtUsd(view.budget.budgetMonthly)} ceiling`
+              : `Predicted ${fmtUsd(view.budget.predictedMonthly)}/mo holds under the ${fmtUsd(view.budget.budgetMonthly)} ceiling`}
+          </p>
+        ) : (
+          <p className="mt-2 text-figma-sm text-fw-bodyLight">
+            The window has metered less than a cent so far; the prediction firms up as
+            spend accrues.
+          </p>
+        )}
       </section>
 
       {/* Teams */}
