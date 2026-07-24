@@ -1,6 +1,6 @@
-import { useEffect, useState, type RefObject } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X } from 'lucide-react';
+import { ChevronLeft, Plus, X } from 'lucide-react';
 import { useCloudControlLive, useCloudControlActions } from '../../engine/react/useCloudControl';
 import { toggleAndi } from '../andi/AndiPanel';
 
@@ -25,6 +25,18 @@ export const THREADS: Record<string, string[]> = {
   'data-sensitivity': ['cloud', 'naas'],
   'private-inference': ['ai', 'naas'],
   'cap-token-spend': ['ai'],
+  'maximize-bandwidth': ['naas', 'transport'],
+  'optimize-jitter': ['naas', 'transport'],
+  'recovery-objective': ['naas', 'transport'],
+  'active-active': ['naas', 'transport'],
+  'predictive-failover': ['naas', 'transport'],
+  'route-by-app-class': ['cloud', 'naas'],
+  'zero-trust-segmentation': ['cloud', 'naas'],
+  'threat-aware-routing': ['naas'],
+  'data-residency': ['cloud', 'naas'],
+  'optimize-data-gravity': ['ai', 'naas'],
+  'ai-flow-prediction': ['ai'],
+  'lifecycle-connectivity': ['naas', 'transport'],
 };
 
 const BADGE: Record<string, { dot: string; label: string }> = {
@@ -127,6 +139,132 @@ export function IntentThreadOverlay({ containerRef }: { containerRef: RefObject<
   );
 }
 
+/**
+ * Declare from the catalog: every ILM intent the engine can evaluate,
+ * grouped by taxonomy. One-scope entries declare on click; multi-scope
+ * entries open a second step listing engine-known scopes. Watch mode
+ * always - enforcement stays a separate, visible decision on the row.
+ */
+function DeclareMenu() {
+  const actions = useCloudControlActions();
+  const catalog = useCloudControlLive(cc => cc.intentCatalog());
+  const declared = useCloudControlLive(cc => cc.intentList());
+  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) { setOpen(false); setPicked(null); }
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setOpen(false); setPicked(null); } };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const isDeclared = (key: string, scopeId: string | null) =>
+    declared.some(i => i.key === key && i.scope.id === scopeId);
+
+  const declareAndClose = (key: string, scope: { kind: string; id: string | null; label: string }) => {
+    actions.declareIntent(key, scope as never, 'watch');
+    setOpen(false);
+    setPicked(null);
+  };
+
+  const byTaxonomy = new Map<string, typeof catalog>();
+  catalog.forEach(c => byTaxonomy.set(c.taxonomy, [...(byTaxonomy.get(c.taxonomy) ?? []), c]));
+  const pickedEntry = picked ? catalog.find(c => c.key === picked) : null;
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        data-testid="intent-declare-open"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => { setOpen(o => !o); setPicked(null); }}
+        className="inline-flex items-center gap-1 rounded-full border border-fw-secondary bg-fw-wash px-3 py-1 text-figma-xs font-medium text-fw-body hover:border-fw-active hover:text-fw-link"
+      >
+        <Plus className="h-3 w-3" aria-hidden="true" /> Declare
+      </button>
+      {open && (
+        <div
+          role="menu"
+          aria-label="Declare a standing intent"
+          className="absolute right-0 top-full z-20 mt-1 max-h-[420px] w-[340px] overflow-y-auto rounded-xl border border-fw-secondary bg-fw-base p-2 shadow-lg"
+        >
+          {pickedEntry ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setPicked(null)}
+                className="mb-1 inline-flex items-center gap-1 rounded px-2 py-1 text-figma-xs font-medium text-fw-bodyLight hover:text-fw-body"
+              >
+                <ChevronLeft className="h-3 w-3" aria-hidden="true" /> {pickedEntry.label}: pick a scope
+              </button>
+              {pickedEntry.scopes().map(s => (
+                <button
+                  key={`${s.kind}-${s.id}`}
+                  type="button"
+                  role="menuitem"
+                  data-testid={`declare-scope-${s.id ?? 'estate'}`}
+                  disabled={isDeclared(pickedEntry.key, s.id)}
+                  onClick={() => declareAndClose(pickedEntry.key, s)}
+                  className="block w-full rounded-md px-2.5 py-1.5 text-left text-figma-sm text-fw-body hover:bg-fw-wash disabled:opacity-40"
+                >
+                  {s.label}
+                  {isDeclared(pickedEntry.key, s.id) && (
+                    <span className="ml-2 text-figma-xs text-fw-bodyLight">declared</span>
+                  )}
+                </button>
+              ))}
+            </>
+          ) : (
+            [...byTaxonomy.entries()].map(([taxonomy, entries]) => (
+              <div key={taxonomy} className="mb-1">
+                <p className="px-2.5 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-fw-bodyLight">
+                  {taxonomy}
+                </p>
+                {entries.map(c => {
+                  const scopes = c.scopes();
+                  const single = scopes.length === 1;
+                  const done = single && isDeclared(c.key, scopes[0].id);
+                  return (
+                    <button
+                      key={c.key}
+                      type="button"
+                      role="menuitem"
+                      data-testid={`declare-item-${c.key}`}
+                      disabled={done}
+                      onClick={() =>
+                        single ? declareAndClose(c.key, scopes[0]) : setPicked(c.key)
+                      }
+                      className="block w-full rounded-md px-2.5 py-1.5 text-left text-figma-sm text-fw-body hover:bg-fw-wash disabled:opacity-40"
+                    >
+                      {c.label}
+                      <span className="ml-2 text-figma-xs text-fw-bodyLight">
+                        {done ? 'declared' : single ? scopes[0].label : `${scopes.length} scopes`}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))
+          )}
+          <p className="border-t border-fw-secondary px-2.5 pt-2 text-[11px] text-fw-bodyLight">
+            Declarations start in watch mode: evaluated and counted, changing nothing.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function IntentThreads() {
   const intents = useCloudControlLive(cc => cc.intentList());
   const actions = useCloudControlActions();
@@ -138,11 +276,14 @@ export function IntentThreads() {
         <h3 className="text-figma-sm font-bold text-fw-heading tracking-[-0.02em]">
           Standing intents
         </h3>
-        {intents.length > 0 && (
-          <span className="text-figma-xs text-fw-bodyLight">
-            {intents.filter(i => i.reading.status === 'aligned').length} of {intents.length} aligned
-          </span>
-        )}
+        <span className="flex items-center gap-3">
+          {intents.length > 0 && (
+            <span className="text-figma-xs text-fw-bodyLight">
+              {intents.filter(i => i.reading.status === 'aligned').length} of {intents.length} aligned
+            </span>
+          )}
+          <DeclareMenu />
+        </span>
       </div>
 
       {intents.length === 0 ? (
