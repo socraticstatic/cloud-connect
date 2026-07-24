@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useCloudControlLive, useCloudControlActions } from '../../../engine/react/useCloudControl';
-import { fmtUsd } from '../aiSpend';
+import { fmtUsd, statesRealMoney } from '../aiSpend';
 import { toggleAndi } from '../../andi/AndiPanel';
 import {
   CACHE_HIT_RATE,
@@ -46,15 +46,28 @@ export function SavingsTab() {
             <MoneyBar label="Current (all external)" value={view.routing.currentMonthly} max={view.routing.currentMonthly} muted />
             <MoneyBar label="With routing" value={view.routing.routedMonthly} max={view.routing.currentMonthly} />
           </div>
-          <p className="mt-3 text-figma-sm font-medium text-fw-success">
-            {fmtUsd(view.routing.savingMonthly)}/mo stays in budget
-          </p>
+          {/* A money claim only when the figure survives formatting - a
+              sub-cent saving stated as "$0.00/mo stays in budget" is the
+              exact contradiction statesRealMoney exists to prevent. */}
+          {statesRealMoney(view.routing.savingMonthly) ? (
+            <p className="mt-3 text-figma-sm font-medium text-fw-success">
+              {fmtUsd(view.routing.savingMonthly)}/mo stays in budget
+            </p>
+          ) : (
+            <p className="mt-3 text-figma-sm text-fw-bodyLight">
+              The saving grows as spend accrues; today's volume is still under a cent.
+            </p>
+          )}
           <CardFooter
             achieved={view.routing.achieved}
             flagKey="routing"
             warnText="Routing policy not configured"
             warnCta="Set policy"
-            doneText={`Cost-aware routing is on. ${fmtUsd(view.routing.savingMonthly)}/mo of external spend is being held back.`}
+            doneText={
+              statesRealMoney(view.routing.savingMonthly)
+                ? `Cost-aware routing is on. ${fmtUsd(view.routing.savingMonthly)}/mo of external spend is being held back.`
+                : 'Cost-aware routing is on. Every new request is priced against the routed path.'
+            }
             onEnable={() => actions.setGatewayFlag('routing', true)}
           />
         </section>
@@ -83,15 +96,25 @@ export function SavingsTab() {
               </div>
             ))}
           </div>
-          <p className="mt-3 text-figma-sm font-medium text-fw-success">
-            {fmtUsd(view.caching.savingMonthly)}/mo saved at the stated hit rate
-          </p>
+          {statesRealMoney(view.caching.savingMonthly) ? (
+            <p className="mt-3 text-figma-sm font-medium text-fw-success">
+              {fmtUsd(view.caching.savingMonthly)}/mo saved at the stated hit rate
+            </p>
+          ) : (
+            <p className="mt-3 text-figma-sm text-fw-bodyLight">
+              The saving grows as spend accrues; today's volume is still under a cent.
+            </p>
+          )}
           <CardFooter
             achieved={view.caching.achieved}
             flagKey="caching"
             warnText="Caching disabled"
             warnCta="Enable caching"
-            doneText={`Response caching is on. Repeat completions stop leaving at ${fmtUsd(view.caching.savingMonthly)}/mo.`}
+            doneText={
+              statesRealMoney(view.caching.savingMonthly)
+                ? `Response caching is on. Repeat completions stop leaving at ${fmtUsd(view.caching.savingMonthly)}/mo.`
+                : 'Response caching is on. Repeat completions are served from cache instead of leaving.'
+            }
             onEnable={() => actions.setGatewayFlag('caching', true)}
           />
         </section>

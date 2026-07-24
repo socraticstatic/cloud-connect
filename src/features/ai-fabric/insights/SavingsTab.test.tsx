@@ -48,6 +48,18 @@ describe('SavingsTab', () => {
     });
   });
 
+  it('never states a saving that formats to $0.00, in any state', () => {
+    /* aiSpend's law, applied here: a money claim must survive formatting.
+       Both card states are checked - the warning state's green line and the
+       achieved footers swap to non-money sentences below a cent. */
+    renderTab();
+    expect(screen.queryByText(/\$0\.00\/mo/)).toBeNull();
+    CC.setGatewayFlag('routing', true);
+    CC.setGatewayFlag('caching', true);
+    renderTab();
+    expect(screen.queryByText(/\$0\.00\/mo/)).toBeNull();
+  });
+
   it('provider share names its basis honestly', () => {
     renderTab();
     const share = screen.getByTestId('provider-share');
