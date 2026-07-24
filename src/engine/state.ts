@@ -218,6 +218,7 @@ function snapshot(){
     rl:_.rules.map(r=>({...r,src:{...r.src},chain:r.chain.slice()})),
     cp:_.customPolicies.map(p=>({...p})),
     app:CC.settings.requireApproval,
+    gw:{..._.gatewayFlags},
   };
 }
 /* The estate is not a fixed shape. rescanAccount() pushes a newly DISCOVERED
@@ -254,6 +255,7 @@ function restore(s){
   if(s.rl){_.rules.length=0;s.rl.forEach(r=>_.rules.push({...r,src:{...r.src},chain:r.chain.slice()}));}
   if(s.cp){_.customPolicies.length=0;s.cp.forEach(p=>_.customPolicies.push({...p}));}
   if(s.app!==undefined)CC.settings.requireApproval=s.app;
+  if(s.gw)Object.assign(_.gatewayFlags,s.gw);
   // rebuild in place - state-groups.js closes over this exact object
   if(s.gr&&_.groups){
     Object.keys(_.groups).forEach(k=>{delete _.groups[k];});
@@ -465,7 +467,11 @@ function posture(){
 /* the internal bag: privates the sibling state*.js modules share.
    Members land here as each module loads; consumers read them at call
    time, so the bag is the only load-order coupling between files. */
-const _={emit,hist,sessionAttached,pushUndo,listeners};
+const _={emit,hist,sessionAttached,pushUndo,listeners,
+  /* Gateway optimization levers (state-console.ts mutates; Insights reads).
+     Declared here, not there, so snapshot()/restore() above can cover them -
+     the undo stack must not know about a bag member it cannot restore. */
+  gatewayFlags:{routing:false,caching:false}};
 
 return {TAGS,onramps,branches,clouds,regions,vpcs,fixes,sim,designedPublic,
   auditLog,auditClear,

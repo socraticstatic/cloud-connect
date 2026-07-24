@@ -68,6 +68,22 @@ export interface FabricRegion {
   onrampIds: string[];
 }
 
+/** One judged request in CC.decisionLog(). Every field is a fact promptTrace
+ *  held at the moment of the request; `reason` quotes the trace's own DENIED
+ *  sentence and is null on an allowed request. Entries recorded before the
+ *  detail existed carry tag/modelId null and render nowhere. */
+export interface RequestRecord {
+  ts: number;
+  allowed: boolean;
+  guarded: boolean;
+  tag: string | null;
+  modelId: string | null;
+  tokens: number;
+  ttftMs: number;
+  path: 'private' | 'governed egress' | 'public';
+  reason: string | null;
+}
+
 export interface CloudControl {
   // --- core state (state.js) ---
   counts(): CloudControlCounts;
@@ -164,7 +180,12 @@ export interface CloudControl {
   agentList?(...args: any[]): any;
   toggleAgent?(id: string): boolean;
   promptTrace?(...args: any[]): any;
-  decisionLog?(...args: any[]): any;
+  decisionLog?(...args: any[]): RequestRecord[];
+  /** Gateway optimization levers the Insights Cost tab reads. Both seeded
+   *  false — the warning state is the estate's truth until flipped. */
+  gatewayFlags(): { routing: boolean; caching: boolean };
+  /** Flip a lever. Pushes an undo entry first; emits like every mutation. */
+  setGatewayFlag(key: 'routing' | 'caching', on: boolean): boolean;
 
   // --- actions catalog (state-actions.js) ---
   postureCatalog: any[];

@@ -99,6 +99,22 @@ CC.setTokenPolicy=function(tag,patch){
 };
 CC.tokenBudgetOf=function(tag){return tokenPolicies[tag]?tokenPolicies[tag].budget:1000000;};
 
+/* ---------- gateway optimization flags ----------
+   Two levers the Insights Cost tab reads: cost-aware routing and response
+   caching. Off is the seeded truth - the warning state is real until the
+   user flips the lever. The bag object is created in state.ts so the undo
+   snapshot/restore there covers it; flipping a flag pushes an undo entry
+   BEFORE mutating, like every other commitment. */
+CC.gatewayFlags=function(){return {..._.gatewayFlags};};
+CC.setGatewayFlag=function(key,on){
+  if(!(key in _.gatewayFlags))return false;
+  if(!!_.gatewayFlags[key]===!!on)return true;
+  _.pushUndo((on?'Enable':'Disable')+' gateway '+key);
+  _.gatewayFlags[key]=!!on;
+  CC._.emit({type:'policy',label:`Gateway ${key} ${on?'enabled':'disabled'}`});
+  return true;
+};
+
 /* ---------- model catalog: latency + price derive from the model ----------
    A self-hosted model's P50 is compute + the network it sits behind. COMPUTE_MS
    is a per-model seed (what the GPU takes; no path changes it); the network term
@@ -157,23 +173,40 @@ setInterval(agentTick,7000);
 /* governance outcomes over time - every traced request records one */
 const decisions=[];
 CC.decisionLog=function(){return decisions.slice();};
-function recordDecision(allowed,guarded){
-  decisions.push({ts:Date.now(),allowed,guarded:!!guarded});
+/* A decision entry carries the REQUEST it judged, not just the verdict.
+   Every field is a fact promptTrace holds at the moment of the request -
+   nothing here is invented after it. `reason` is non-null only on a denial
+   and quotes the same sentence the trace's DENIED step prints. */
+function recordDecision(allowed,guarded,detail){
+  decisions.push(Object.assign(
+    {ts:Date.now(),allowed,guarded:!!guarded,tag:null,modelId:null,tokens:0,ttftMs:0,path:'public',reason:null},
+    detail||{}));
   if(decisions.length>400)decisions.shift();
 }
 CC.promptTrace=function(tag,modelId,prompt){
   const pol=tokenPolicies[tag];
   const model=CC.modelCatalog().find(m=>m.id===modelId);
   const tokens=Math.max(40,Math.round((prompt||'').length*1.4))+120;
+  /* The ONE path derivation this estate has - the same modelRoutes() the
+     meter reads. Recorded on every decision so the requests table and the
+     Route column of /ai/observe can never disagree about a request. */
+  const route=CC.modelRoutes().find(r=>r.tag===tag);
+  const rpath=route?route.path:'public';
   const steps=[];
   steps.push({hop:'Workload',detail:`${tag} app issues the request`,ok:true});
   // token policy gate
   if(pol){
     const externalModel=modelId==='gpt-class';
-    if(pol.scope==='no-external'&&externalModel)
-      {recordDecision(false);return {blocked:true,steps:[...steps,{hop:'Token policy',detail:`${tag}: no external models — request DENIED`,ok:false}],tokens:0};}
-    if(pol.scope==='self-hosted'&&externalModel)
-      {recordDecision(false);return {blocked:true,steps:[...steps,{hop:'Token policy',detail:`${tag}: model allowlist is self-hosted only — request DENIED`,ok:false}],tokens:0};}
+    if(pol.scope==='no-external'&&externalModel){
+      const why=`${tag}: no external models — request DENIED`;
+      recordDecision(false,false,{tag,modelId,tokens:0,ttftMs:0,path:rpath,reason:why});
+      return {blocked:true,steps:[...steps,{hop:'Token policy',detail:why,ok:false}],tokens:0};
+    }
+    if(pol.scope==='self-hosted'&&externalModel){
+      const why=`${tag}: model allowlist is self-hosted only — request DENIED`;
+      recordDecision(false,false,{tag,modelId,tokens:0,ttftMs:0,path:rpath,reason:why});
+      return {blocked:true,steps:[...steps,{hop:'Token policy',detail:why,ok:false}],tokens:0};
+    }
     steps.push({hop:'Token policy',detail:`${pol.scope}${pol.enforced?' · enforced':' · draft'} — allowed`,ok:true});
   } else steps.push({hop:'Token policy',detail:'no policy for this tag — default allow',ok:true});
   // route + path
@@ -191,7 +224,7 @@ CC.promptTrace=function(tag,modelId,prompt){
      reads and the meter a viewer reads can never describe one request as
      both governed and public. */
   CC.meterTokens&&CC.meterTokens(tag,tokens,priv);
-  recordDecision(true,pol&&pol.guardrail);
+  recordDecision(true,pol&&pol.guardrail,{tag,modelId,tokens,ttftMs:model.p50,path:rpath});
   return {blocked:false,steps,tokens};
 };
 })();
