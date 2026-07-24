@@ -217,7 +217,7 @@ for (const vp of [
       // Connect and Cost). Each layer's Home is its tappable group header,
       // not a counted grid cell. AI items with labels unique in the drawer
       // render compact — no description line.
-      expect(fold.items).toHaveLength(10);
+      expect(fold.items).toHaveLength(12);
 
       expect(
         fold.overflow,
