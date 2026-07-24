@@ -20,6 +20,10 @@ const COL_X = [0, 467, 934, 1400];
 
 const SELECTED = '#00c9ff';
 const RIBBON = '#0074b3';
+/** No node shrinks below one legible label line. Proportional stacking alone
+ *  crushes every low-spend node to a sliver the moment one identity carries
+ *  the estate's spend - which is the seeded resting state, not an edge case. */
+const MIN_H = 28;
 
 interface Laid {
   x: number;
@@ -47,9 +51,14 @@ function layout(graph: SankeyGraph) {
     if (!colNodes.length) continue;
     const total = colNodes.reduce((s, n) => s + n.value, 0);
     const avail = VIEW_H - GAP * (colNodes.length - 1);
+    // Every node gets its legibility floor first; only the remainder is
+    // divided by value share, so proportion still reads without any node
+    // vanishing under a dominant sibling.
+    const floor = Math.min(MIN_H, avail / colNodes.length);
+    const spread = avail - floor * colNodes.length;
     let y = 0;
     for (const n of colNodes) {
-      const h = total > 0 ? (n.value / total) * avail : avail / colNodes.length;
+      const h = floor + (total > 0 ? (n.value / total) * spread : spread / colNodes.length);
       laid.set(n.id, { x: COL_X[col], y, h, col, label: n.label, value: n.value, color: n.color });
       y += h + GAP;
     }
