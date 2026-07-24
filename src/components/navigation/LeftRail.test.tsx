@@ -75,6 +75,19 @@ describe('LeftRail', () => {
     expect(localStorage.getItem('cc-rail-collapsed')).toBe('1');
   });
 
+  test('the rail header switches layers, mirroring the top tabs', () => {
+    renderAt('/naas/observe');
+    const switcher = screen.getByTestId('rail-layer-switcher');
+    expect(switcher).toHaveTextContent('NaaS');
+    fireEvent.click(switcher);
+    const menu = screen.getByRole('menu', { name: 'Switch layer' });
+    const items = within(menu).getAllByRole('menuitem');
+    expect(items.map(a => a.getAttribute('href'))).toEqual(['/naas/home', '/ai/home']);
+    // The current layer is marked; the other is the jump.
+    expect(items[0].textContent).toContain('NaaS');
+    expect(items[1].textContent).toContain('AI Fabric');
+  });
+
   test('restores the collapsed choice from storage', () => {
     localStorage.setItem('cc-rail-collapsed', '1');
     renderAt('/ai/govern');
