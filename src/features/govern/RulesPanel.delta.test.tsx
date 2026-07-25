@@ -1,8 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { RulesPanel } from './RulesPanel';
 import { enforceAndMeasure, type EnforcementDelta } from './enforcementDelta';
 import { CC } from '../../engine';
+
+/* RulesPanel now mounts ProposalBand above the table, and ProposalBand's
+   actions are react-router <Link>s - rendering RulesPanel outside a Router
+   throws. These tests exercise the enforce/apply lifecycle, not routing, so a
+   MemoryRouter wrapper is enough. */
+const renderPanel = () => render(<MemoryRouter><RulesPanel /></MemoryRouter>);
 
 /**
  * The lastDelta LIFECYCLE in RulesPanel: when the consequence panel appears,
@@ -68,7 +75,7 @@ describe('RulesPanel · a null measurement leaves the previous panel standing', 
     // `if (delta) setLastDelta(delta)` — no consequence, no change.
     measure.mockReturnValueOnce(fakeDelta()).mockReturnValue(null);
     const rule = fixableRule();
-    render(<RulesPanel />);
+    renderPanel();
 
     openRowMenu(rule.name);
     clickMenuItem(/^Enforce$/);
@@ -94,7 +101,7 @@ describe('RulesPanel · Apply is a mutation the panel must not survive', () => {
     // around it. A stale claim is worse than no claim: it clears.
     measure.mockReturnValue(fakeDelta());
     const rule = fixableRule();
-    render(<RulesPanel />);
+    renderPanel();
 
     openRowMenu(rule.name);
     clickMenuItem(/^Enforce$/);

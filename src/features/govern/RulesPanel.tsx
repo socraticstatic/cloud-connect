@@ -3,6 +3,7 @@ import { Tag, Boxes, ShieldAlert, ShieldCheck, Eye, Wrench } from 'lucide-react'
 import { OverflowMenu, type OverflowMenuItem } from '../../components/common/OverflowMenu';
 import { RuleBuilder } from './RuleBuilder';
 import { NextMoveBand } from './NextMoveBand';
+import { ProposalBand } from './ProposalBand';
 import { EnforcedDeltaPanel } from './EnforcedDeltaPanel';
 import { enforceAndMeasure, type EnforcementDelta } from './enforcementDelta';
 import { AttIcon } from '../../components/icons/AttIcon';
@@ -168,6 +169,8 @@ export function RulesPanel() {
 
   return (
     <div className="space-y-4" data-tour="govern-rules">
+      <ProposalBand />
+
       <div className="rounded-2xl border border-fw-secondary bg-fw-base overflow-hidden">
         <div className="flex items-center gap-3 px-5 py-3 border-b border-fw-secondary bg-fw-wash">
           <AttIcon name="check-shield" className="h-5 w-5 text-fw-body" />

@@ -1,7 +1,14 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { RulesPanel } from './RulesPanel';
 import { CC } from '../../engine';
+
+/* RulesPanel now mounts ProposalBand above the table, and ProposalBand's
+   actions are react-router <Link>s - rendering RulesPanel outside a Router
+   throws ("Cannot destructure property 'basename' ..."). These tests exercise
+   the rules table itself, not routing, so a MemoryRouter wrapper is enough. */
+const renderPanel = () => render(<MemoryRouter><RulesPanel /></MemoryRouter>);
 
 /* A group rule is stored with a structured src ({group}) and a structured dst
    ({group}). Both cells in the rules table used to read only src.tag and
@@ -25,7 +32,7 @@ describe('RulesPanel · group rules', () => {
   }
 
   it('names both groups in plain language rather than rendering [object Object]', () => {
-    render(<RulesPanel />);
+    renderPanel();
     const row = groupRow();
     expect(row.textContent).not.toContain('[object Object]');
     expect(row.textContent).not.toContain('undefined');
@@ -34,7 +41,7 @@ describe('RulesPanel · group rules', () => {
   });
 
   it('does not let "any" stand in for a named source group', () => {
-    render(<RulesPanel />);
+    renderPanel();
     // The Match cell is the second column.
     const matchCell = groupRow().querySelectorAll('td')[1];
     expect(matchCell.textContent).not.toMatch(/\bany\b/);
@@ -42,7 +49,7 @@ describe('RulesPanel · group rules', () => {
   });
 
   it('still renders legacy tag rules exactly as before', () => {
-    render(<RulesPanel />);
+    renderPanel();
     const row = screen.getByText('Block finance direct internet').closest('tr') as HTMLTableRowElement;
     const cells = row.querySelectorAll('td');
     expect(cells[1].textContent).toContain('finance-invoices');
@@ -58,7 +65,7 @@ describe('RulesPanel · group rules', () => {
       action: 'deny',
       chain: [],
     });
-    render(<RulesPanel />);
+    renderPanel();
     const row = screen.getByText('keep west traffic inside west').closest('tr') as HTMLTableRowElement;
     expect(row.textContent).toContain('outside the group');
     expect(row.textContent).not.toContain('not-intra-group');
