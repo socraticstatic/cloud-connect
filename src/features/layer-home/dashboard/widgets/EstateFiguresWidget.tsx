@@ -35,10 +35,10 @@ export function EstateFiguresWidget(_props: LayerWidgetProps) {
 
   return (
     <WidgetFrame title="Estate at a glance" icon={Gauge}>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="flex flex-col gap-3">
         {figures.map(f => (
-          <div key={f.label} data-testid="estate-figure">
-            <div className={`text-figma-2xl font-bold tabular-nums tracking-[-0.02em] ${f.warn ? 'text-fw-warn' : 'text-fw-heading'}`}>
+          <div key={f.label} data-testid="estate-figure" className="min-w-0">
+            <div className={`text-figma-xl font-bold tabular-nums tracking-[-0.02em] ${f.warn ? 'text-fw-warn' : 'text-fw-heading'}`}>
               {f.value}
             </div>
             <div className="text-figma-sm text-fw-bodyLight mt-0.5">{f.label}</div>

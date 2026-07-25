@@ -14,10 +14,10 @@ export function AssessmentFindingsWidget(_props: LayerWidgetProps) {
   });
   return (
     <WidgetFrame title="What the assessment found" icon={ClipboardCheck}>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="flex flex-col gap-3">
         {kpis.map(k => (
-          <div key={k.label} data-testid="assessment-kpi">
-            <div className="text-figma-2xl font-bold tabular-nums tracking-[-0.02em] text-fw-heading">{k.value}</div>
+          <div key={k.label} data-testid="assessment-kpi" className="min-w-0">
+            <div className="text-figma-xl font-bold tabular-nums tracking-[-0.02em] text-fw-heading">{k.value}</div>
             <div className="text-figma-sm text-fw-bodyLight mt-0.5">{k.label}</div>
           </div>
         ))}
