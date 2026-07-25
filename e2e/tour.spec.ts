@@ -192,6 +192,84 @@ test('the tour teaches groups, and every beat finds its target', async ({ page }
   expect(enforced).toBe(true);
 });
 
+/* THE OVERLAP CASE. Every beat asks for `placement: 'top'`, and every one of
+   them used to render at `top: 16` — squarely over the cutout it was supposed
+   to sit above. The tooltip runs 314–456px tall and the old code centred each
+   target in the viewport, which leaves ~316px clear on either side of it, so
+   the on-screen clamp fired on every beat regardless of how big the target was.
+
+   The assertion is deliberately not one flat number. A beat whose target and
+   tooltip both fit the viewport has NO excuse for any overlap at all, and that
+   is asserted exactly. A beat pointing at something taller than the viewport
+   can spare has nowhere clean to put the tooltip — the cutout covers the whole
+   screen — so what is asserted there is that the tooltip went as far away as
+   the viewport allows: pinned to an edge, and off the great majority of the
+   spotlight. A single `< 0.5` would pass on beats that should be at zero. */
+
+const VIEWPORT_MARGIN = 16;
+/** Loosest bound tolerated on a beat whose target cannot share the viewport
+ *  with the tooltip. The pre-fix run measured 0.158–0.339 on those same beats;
+ *  they now measure 0.045–0.096. */
+const UNAVOIDABLE_OVERLAP_MAX = 0.12;
+
+interface Box { x: number; y: number; width: number; height: number }
+
+function overlapFraction(spot: Box, tip: Box): number {
+  const w = Math.max(0, Math.min(spot.x + spot.width, tip.x + tip.width) - Math.max(spot.x, tip.x));
+  const h = Math.max(0, Math.min(spot.y + spot.height, tip.y + tip.height) - Math.max(spot.y, tip.y));
+  return (w * h) / (spot.width * spot.height);
+}
+
+test('no beat covers the spotlight it points at', async ({ page }) => {
+  await firstVisit(page);
+  const viewport = page.viewportSize()!;
+
+  await page.getByRole('button', { name: TOUR_LAUNCH }).click();
+  const counter = page.getByTestId('tour-progress');
+  await expect(counter).toBeVisible();
+  const total = Number(/of (\d+)/.exec((await counter.textContent()) ?? '')![1]);
+
+  let beatsThatMustBeClean = 0;
+
+  for (let i = 1; i <= total; i++) {
+    await expect(counter).toHaveText(`Step ${i} of ${total}`);
+    await expect(page.getByTestId('tour-spotlight')).toBeVisible();
+    // The scroll settles, then the tooltip is placed 300ms later.
+    await page.waitForTimeout(700);
+
+    const title = ((await page.getByTestId('tour-title').textContent()) ?? '').trim();
+    const spot = (await page.getByTestId('tour-spotlight').boundingBox())!;
+    const tip = (await page.getByTestId('tour-tooltip').boundingBox())!;
+    const where = `beat ${i} (“${title}”): spot ${JSON.stringify(spot)} tip ${JSON.stringify(tip)}`;
+    const overlap = overlapFraction(spot, tip);
+
+    /* Can this target and this tooltip both be on screen at once? If so the
+       flip-and-scroll has a clean answer available and must have found it. */
+    const canCoexist =
+      spot.height + tip.height + VIEWPORT_MARGIN * 2 <= viewport.height;
+
+    if (canCoexist) {
+      beatsThatMustBeClean++;
+      expect(overlap, `${where} — target and tooltip both fit; nothing should overlap`).toBe(0);
+    } else {
+      expect(overlap, `${where} — oversized target, but the tooltip must still clear most of it`)
+        .toBeLessThan(UNAVOIDABLE_OVERLAP_MAX);
+      const pinnedToAnEdge =
+        tip.y <= VIEWPORT_MARGIN + 1 ||
+        tip.y + tip.height >= viewport.height - VIEWPORT_MARGIN - 1;
+      expect(pinnedToAnEdge, `${where} — oversized target, so the tooltip belongs at a viewport edge`)
+        .toBe(true);
+    }
+
+    await page.getByRole('button', { name: i === total ? /^finish$/i : /^next$/i }).click();
+  }
+
+  /* Guard against a vacuous pass: if every target grew until nothing could
+     coexist, the strict branch above would stop running and this test would
+     assert almost nothing. */
+  expect(beatsThatMustBeClean, 'no beat exercised the zero-overlap branch').toBeGreaterThanOrEqual(3);
+});
+
 /* THE REHEARSAL CASE. addGroup returns null for an id that already exists,
    and addRule happily appends a second copy of the same rule — so a naive
    second pass either throws or silently doubles the estate. */
