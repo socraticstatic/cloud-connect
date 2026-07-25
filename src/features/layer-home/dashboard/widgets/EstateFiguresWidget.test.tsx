@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, test, expect } from 'vitest';
 import { LayerContext } from '../registry';
 import { EstateFiguresWidget } from './EstateFiguresWidget';
@@ -22,5 +22,20 @@ describe('EstateFiguresWidget', () => {
     const f = aiStratum(CC);
     expect(screen.getByText(fmtUsd(f.spendToday))).toBeInTheDocument();
     expect(screen.getAllByTestId('estate-figure')).toHaveLength(4);
+  });
+
+  test('follows the layer switch immediately, with no engine event in between', () => {
+    const { rerender } = render(
+      <LayerContext.Provider value="naas"><EstateFiguresWidget /></LayerContext.Provider>
+    );
+    expect(screen.getByText('Regions on the fabric')).toBeInTheDocument();
+    expect(screen.queryByText('Model endpoints ready')).not.toBeInTheDocument();
+
+    rerender(
+      <LayerContext.Provider value="ai"><EstateFiguresWidget /></LayerContext.Provider>
+    );
+
+    expect(screen.queryByText('Regions on the fabric')).not.toBeInTheDocument();
+    expect(screen.getByText('Model endpoints ready')).toBeInTheDocument();
   });
 });
