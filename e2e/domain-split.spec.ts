@@ -144,16 +144,16 @@ test('AI Fabric states the same budgets on Govern and on Cost', async ({ page })
  *
  *   1. `state-rules` `tickHits` — a 3s interval carrying `_.tickTokens`.
  *      `CC.stopHits()` stops it. This is the one that was stopped.
- *   2. `state-console` `agentTick` — a SEPARATE, ungated 7s `setInterval` with
- *      no handle kept. Its promptTrace -> meterTokens path meters regardless of
- *      endpoint readiness, and `stopHits()` has no effect on it whatsoever.
+ *   2. `state-console` `agentTick` — a SEPARATE 7s interval. Its promptTrace ->
+ *      meterTokens path meters regardless of endpoint readiness, and
+ *      `stopHits()` has no effect on it whatsoever.
  *
  * So the estate was never frozen; the spec passed (60/60 under
  * `--repeat-each=6`) because both screens now read the meters live, not
- * because nothing was moving. Suspending every agent is the engine's own
- * supported freeze for (2): `agentTick` returns immediately when nothing is
- * enabled. Both are stopped below, so a failure here means the two screens
- * genuinely disagree rather than that a timer fired mid-assertion. */
+ * because nothing was moving. (2) has its own handle now — `CC.stopAgents()`,
+ * lifecycle only, leaving the agent roster as a viewer would find it. Both are
+ * stopped below, so a failure here means the two screens genuinely disagree
+ * rather than that a timer fired mid-assertion. */
 test('AI Fabric states the same token spend on Cost and on Observe', async ({ page }) => {
   await seedAuth(page);
   await page.goto('/#/discover', { waitUntil: 'domcontentloaded' });
@@ -162,15 +162,14 @@ test('AI Fabric states the same token spend on Cost and on Observe', async ({ pa
     const CC = (window as unknown as {
       CC: {
         stopHits: () => boolean;
+        stopAgents: () => boolean;
         activateOnramp: (id: string) => void;
-        agentList: () => { id: string; enabled: boolean }[];
-        toggleAgent: (id: string) => boolean;
         _: { tickTokens: (rng: () => number) => boolean };
         tokenMeterList: () => { today: number }[];
       };
     }).CC;
-    CC.stopHits();                                        // the 3s hit ticker
-    CC.agentList().filter(a => a.enabled).forEach(a => CC.toggleAgent(a.id)); // the 7s agent ticker
+    CC.stopHits();    // the 3s hit ticker
+    CC.stopAgents();  // the 7s agent ticker
     // Lighting nb2 makes shared-services meter. The rng is a constant, not
     // Math.random, so the volume is the same on every run.
     CC.activateOnramp('nb2');
@@ -214,15 +213,14 @@ test('the AI money screens track the meters instead of freezing at mount', async
     const CC = (window as unknown as {
       CC: {
         stopHits: () => boolean;
+        stopAgents: () => boolean;
         activateOnramp: (id: string) => void;
-        agentList: () => { id: string; enabled: boolean }[];
-        toggleAgent: (id: string) => boolean;
         _: { tickTokens: (rng: () => number) => boolean };
         tokenMeterList: () => { tag: string; ready: boolean }[];
       };
     }).CC;
     CC.stopHits();
-    CC.agentList().filter(a => a.enabled).forEach(a => CC.toggleAgent(a.id));
+    CC.stopAgents();
     CC.activateOnramp('nb2');
     CC._.tickTokens(() => 0.5);
     return CC.tokenMeterList().find(m => m.ready)?.tag ?? null;
@@ -284,16 +282,15 @@ async function afterConnectAndGovernBeats(page: import('@playwright/test').Page)
     const CC = (window as unknown as {
       CC: {
         stopHits: () => boolean;
+        stopAgents: () => boolean;
         activateOnramp: (id: string) => boolean;
         enforceAny: (id: string) => boolean;
-        agentList: () => { id: string; enabled: boolean }[];
-        toggleAgent: (id: string) => boolean;
         modelCatalog: () => { ready: boolean }[];
         tokenMeterList: () => { ready: boolean }[];
       };
     }).CC;
     CC.stopHits();
-    CC.agentList().filter(a => a.enabled).forEach(a => CC.toggleAgent(a.id));
+    CC.stopAgents();
     CC.activateOnramp('nb2');   // cloudConnectTour.ts:162 — the Connect beat
     CC.enforceAny('pol-insp');  // cloudConnectTour.ts:175 — the Govern beat
     return {

@@ -22,22 +22,18 @@ import { aiSpendTotals, fmtTokens, fmtUsd, routeLabel, statesRealMoney } from '.
  */
 
 /* ------------------------------------------------------------------ *
- * Determinism: stop the agents before they can meter.
+ * Determinism: the agents cannot meter under us.
  *
- * `state-console.ts` fires `agentTick` on a bare, ungated 7s interval, and
- * its promptTrace -> meterTokens path meters whether or not an endpoint is
- * attached. The unlit assertions below therefore only held because vitest
- * usually finishes the file inside seven seconds — on a slow machine, or
- * under `--repeat-each`, the first tick lands mid-file and the estate is no
- * longer unlit. That is a test passing on a race.
+ * `agentTick`'s promptTrace -> meterTokens path meters whether or not an
+ * endpoint is attached, so the unlit assertions below once held only because
+ * vitest usually finished the file inside the ticker's seven seconds — on a
+ * slow machine, or under `--repeat-each`, the first tick landed mid-file and
+ * the estate was no longer unlit. That was a test passing on a race.
  *
- * Suspending every agent is the engine's own supported freeze: `agentTick`
- * returns immediately when nothing is enabled. Done at module scope, so it
- * takes effect in the same tick the engine is imported, long before 7s.
+ * The ticker is now a managed handle that does not start under test
+ * (see engine/agentTicker.test.ts), so the estate rests until something here
+ * moves it.
  * ------------------------------------------------------------------ */
-(CC.agentList() as { id: string; enabled: boolean }[])
-  .filter(a => a.enabled)
-  .forEach(a => CC.toggleAgent(a.id));
 
 /* Module loading is async under vite-node, so on a loaded runner the engine's
    3s tick can fire BETWEEN the engine import and this file's module scope -

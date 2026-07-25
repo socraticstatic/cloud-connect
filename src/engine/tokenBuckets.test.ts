@@ -26,13 +26,10 @@ import { CC } from './index';
  * the unattached assertions come FIRST and the attaching describe runs last.
  */
 
-/* Determinism: `state-console.ts` fires `agentTick` on an ungated 7s interval
-   and that path meters. Suspending every agent is the engine's own freeze —
-   `agentTick` returns immediately when nothing is enabled. Module scope, so it
-   lands in the same tick the engine is imported. */
-(CC.agentList() as { id: string; enabled: boolean }[])
-  .filter(a => a.enabled)
-  .forEach(a => CC.toggleAgent(a.id));
+/* Determinism: `agentTick` meters, so a tick landing mid-file would move these
+   figures. The ticker is now a managed handle that does not start under test
+   (see agentTicker.test.ts), so nothing here has to suspend the agents to
+   freeze the estate. */
 
 interface Meter {
   tag: string;
