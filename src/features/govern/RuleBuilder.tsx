@@ -66,12 +66,17 @@ interface MatchedFlow {
   bad: boolean;
 }
 
+interface ShadowedMatch {
+  flow: MatchedFlow['flow'];
+  by: string;
+}
+
 interface Preview {
   matched: MatchedFlow[];
   gbps: number;
   blocked: number;
   pending: number;
-  shadowed: unknown[];
+  shadowed: ShadowedMatch[];
 }
 
 /* Names, resolved live from the engine — never a lookup table copied into
@@ -114,7 +119,6 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
   const [dst, setDst] = useState(INITIAL_FORM.dst);
   const [ports, setPorts] = useState<string>(INITIAL_FORM.ports);
   const [action, setAction] = useState<string>(INITIAL_FORM.action);
-  const [preview, setPreview] = useState<Preview | null>(null);
   const [failed, setFailed] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -166,7 +170,6 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
     setDst(INITIAL_FORM.dst);
     setPorts(INITIAL_FORM.ports);
     setAction(INITIAL_FORM.action);
-    setPreview(null);
     setFailed(false);
   };
 
@@ -207,13 +210,11 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
     setOpen(false);
   };
 
-  const runDry = () => setPreview(CC.dryRun(spec()) as Preview);
-
-  // Any field edit invalidates the last dry-run readout: it described a
-  // spec that no longer matches what's on screen.
+  // A failed author is scoped to the spec that produced it — any further
+  // edit means the person is trying something new, not repeating the
+  // failure, so the warning should not linger past that edit.
   const onField = <T,>(setter: (v: T) => void) => (v: T) => {
     setter(v);
-    setPreview(null);
     setFailed(false);
   };
 
@@ -246,6 +247,14 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
      requires group === 'any'. */
   const groupInfo = group !== 'any' ? (CC.resolveGroup(group) as { vpcIds: string[]; branchIds: string[] }) : null;
   const tagGroupMismatch = !!groupInfo && tag !== 'any' && groupInfo.vpcIds.length === 0 && groupInfo.branchIds.length > 0;
+
+  /* The preview is derived, not stored: it describes exactly the spec on
+     screen, so what a person approved and what they commit cannot drift.
+     The old flow cleared it on every keystroke, which meant the reviewed
+     spec and the committed spec were never the same object. */
+  const preview = open && !groupNeeded && !tagGroupMismatch
+    ? (CC.dryRun(spec()) as Preview)
+    : null;
 
   return (
     <div role="dialog" aria-modal="true" aria-label="New rule">
@@ -377,10 +386,6 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
           className="h-9 px-4 rounded-full text-figma-sm font-medium bg-fw-active text-white hover:bg-fw-linkHover transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-fw-active">
           Add rule
         </button>
-        <button type="button" onClick={runDry}
-          className="h-9 px-4 rounded-full text-figma-sm font-medium border border-fw-secondary text-fw-body hover:bg-fw-wash transition-colors">
-          Dry run
-        </button>
         <button type="button" onClick={cancel}
           className="h-9 px-4 rounded-full text-figma-sm font-medium border border-fw-secondary text-fw-body hover:bg-fw-wash transition-colors">
           Cancel
@@ -394,7 +399,7 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
           rounded-full: this is a panel, not a chip. */}
       {preview && (
         <div
-          data-testid="dry-run-result"
+          data-testid="rule-preview"
           className="rounded-xl border border-fw-secondary bg-fw-wash overflow-hidden"
         >
           <div className="px-4 py-3 border-b border-fw-secondary">
@@ -406,8 +411,17 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
               {' · '}{preview.gbps} Gbps
               {' · '}{preview.blocked} blocked
               {preview.pending > 0 && ` · ${preview.pending} pending a private path`}
-              {preview.shadowed.length > 0 && ` · ${preview.shadowed.length} shadowed by a higher-priority rule`}
             </div>
+            {/* A count alone ("N shadowed by a higher-priority rule") tells a
+                person something is blocking their rule but not what to go look
+                at. Naming the rule (or rules — de-duplicated, since the same
+                rule can shadow more than one matched flow) turns it into
+                something actionable. */}
+            {preview.shadowed.length > 0 && (
+              <p className="text-figma-xs text-fw-bodyLight mt-1">
+                Shadowed by {Array.from(new Set(preview.shadowed.map(s => s.by))).join(', ')}
+              </p>
+            )}
           </div>
 
           {preview.matched.length === 0 ? (

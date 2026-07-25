@@ -20,10 +20,13 @@ const DEFAULT_SPEC = {
 };
 
 describe('RuleBuilder', () => {
+  // Dry run is no longer a button press — the preview is derived from
+  // whatever spec is on screen the instant the dialog is open, so this
+  // asks the real engine what the default (untouched) form spec produces
+  // without ever clicking anything preview-related.
   it('renders a dry-run preview that matches what CC.dryRun actually returns for the current spec', () => {
     render(<RuleBuilder />);
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
-    fireEvent.click(screen.getByRole('button', { name: /dry run/i }));
 
     // Ask the real engine, independently of the component, what the
     // on-screen (default) form spec should produce.
@@ -31,7 +34,7 @@ describe('RuleBuilder', () => {
       matched: unknown[];
       gbps: number;
       blocked: number;
-      shadowed: unknown[];
+      shadowed: { by: string }[];
     };
 
     const noun = `flow${expected.matched.length === 1 ? '' : 's'}`;
@@ -39,30 +42,36 @@ describe('RuleBuilder', () => {
     expect(screen.getByText(new RegExp(escapeRegExp(summary)))).toBeInTheDocument();
 
     if (expected.shadowed.length > 0) {
+      const firstShadowingRule = expected.shadowed[0].by;
       expect(
-        screen.getByText(new RegExp(`${expected.shadowed.length} shadowed by a higher-priority rule`))
+        screen.getByText(new RegExp(escapeRegExp(firstShadowingRule)))
       ).toBeInTheDocument();
     }
   });
 
-  it('changing a field after a dry run clears the now-stale preview', () => {
+  // Was "changing a field after a dry run clears the now-stale preview" —
+  // that was the defect this task removes. The preview is derived from the
+  // spec on screen, so a field edit must make it RECOMPUTE, never clear:
+  // there is no "no preview at all" state to fall back into once the
+  // dialog is open (RuleBuilder.preview.test.tsx covers this directly, but
+  // this keeps the regression pinned alongside the rest of this suite).
+  it('changing a field after opening the dialog recomputes the preview instead of clearing it', () => {
     render(<RuleBuilder />);
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
-    fireEvent.click(screen.getByRole('button', { name: /dry run/i }));
-    expect(screen.getByText(/matched/i)).toBeInTheDocument();
+    expect(screen.getByTestId('rule-preview')).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/action/i), { target: { value: 'allow' } });
-    expect(screen.queryByText(/matched/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId('rule-preview')).toBeInTheDocument();
+    expect(screen.getByText(/matched/i)).toBeInTheDocument();
   });
 
-  it('Cancel resets the form to its initial state, including the preview', () => {
+  it('Cancel resets the form to its initial state', () => {
     render(<RuleBuilder />);
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
 
     fireEvent.change(screen.getByLabelText(/rule name/i), { target: { value: 'half-typed-name' } });
     fireEvent.change(screen.getByLabelText(/action/i), { target: { value: 'inspect' } });
-    fireEvent.click(screen.getByRole('button', { name: /dry run/i }));
-    expect(screen.getByText(/matched/i)).toBeInTheDocument();
+    expect(screen.getByTestId('rule-preview')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
 
@@ -70,7 +79,9 @@ describe('RuleBuilder', () => {
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
     expect(screen.getByLabelText(/rule name/i)).toHaveValue('');
     expect(screen.getByLabelText(/action/i)).toHaveValue('deny');
-    expect(screen.queryByText(/matched/i)).not.toBeInTheDocument();
+    // The preview is present again — it's derived from the (now reset)
+    // default spec, not carried over from the cancelled session.
+    expect(screen.getByTestId('rule-preview')).toBeInTheDocument();
   });
 
   it('offers intra-group / not-intra-group as destinations now that a source-group control exists', () => {
@@ -108,7 +119,6 @@ describe('RuleBuilder', () => {
     fireEvent.change(screen.getByLabelText(/source group/i), { target: { value: 'west-branches' } });
     fireEvent.change(screen.getByLabelText(/destination/i), { target: { value: 'group:west-workloads' } });
     fireEvent.change(screen.getByLabelText(/action/i), { target: { value: 'allow' } });
-    fireEvent.click(screen.getByRole('button', { name: /dry run/i }));
 
     const expected = CC.dryRun({
       name: '',
