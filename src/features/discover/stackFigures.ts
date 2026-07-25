@@ -101,6 +101,15 @@ export interface SteerOpportunity {
   egressSavingMo: number | null;
 }
 
+export interface RuleSpec {
+  name: string;
+  src: Record<string, string>;
+  dst: unknown;
+  ports: string;
+  action: string;
+  chain: string[];
+}
+
 export type StagedMove =
   | { kind: 'attach'; regionId: string }
   | { kind: 'steer'; flowId: string; pathId: string }
@@ -110,7 +119,11 @@ export type StagedMove =
      budget/guardrail changes), never as invented dollars. */
   | { kind: 'fix'; fixKey: string }
   | { kind: 'enforce'; ruleId: string }
-  | { kind: 'policy'; tag: string; patch: { scope?: string; budget?: number; guardrail?: boolean; enforced?: boolean } };
+  | { kind: 'policy'; tag: string; patch: { scope?: string; budget?: number; guardrail?: boolean; enforced?: boolean } }
+  /* A rule the human authored (or tightened from a proposal) and staged rather
+     than committed. Its consequence is stated in dryRun's own figures; it never
+     claims a dollar the engine does not price. */
+  | { kind: 'rule'; spec: RuleSpec };
 
 export function attachOpportunities(cc: CloudControl): AttachOpportunity[] {
   const fabric = cc.fabricModel();
@@ -207,6 +220,14 @@ export function moveLabel(cc: CloudControl, move: StagedMove): { label: string; 
       if (move.patch.scope !== undefined) parts.push(`scope ${move.patch.scope}`);
       return { label: `Token policy · ${move.tag}`, detail: parts.join(' · ') };
     }
+    case 'rule': {
+      const dry = cc.dryRun(move.spec) as { matched: unknown[]; gbps: number };
+      const n = dry.matched.length;
+      return {
+        label: `Author rule · ${move.spec.name || 'unnamed rule'}`,
+        detail: `${n} modelled flow${n === 1 ? '' : 's'} carrying ${dry.gbps} Gbps`,
+      };
+    }
   }
 }
 
@@ -251,7 +272,7 @@ export function stagedDeltas(cc: CloudControl, moves: StagedMove[]): StagedDelta
       if (!opp) continue;
       if (opp.egressSavingMo !== null) egressSavingMo += opp.egressSavingMo;
       else unpriced.push(opp.label);
-    } else if (move.kind === 'policy' || move.kind === 'enforce') {
+    } else if (move.kind === 'policy' || move.kind === 'enforce' || move.kind === 'rule') {
       const { label, detail } = moveLabel(cc, move);
       policyNotes.push(detail ? `${label}: ${detail}` : label);
     }
@@ -305,6 +326,9 @@ export function commitMoves(cc: CloudControl, moves: StagedMove[]): StagedMove[]
       case 'policy':
         cc.setTokenPolicy(move.tag, move.patch);
         ok = true;
+        break;
+      case 'rule':
+        ok = cc.addRule({ ...move.spec, enforceNow: false }) !== null;
         break;
     }
     if (!ok) failed.push(move);
