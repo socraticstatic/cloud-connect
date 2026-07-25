@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { CC } from '../../engine';
 import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
@@ -23,6 +23,13 @@ const GROUP_WARNING_ID = 'rb-group-warning';
    match anything. Shared between the <p> that renders it and the
    aria-describedby on the two controls it concerns (#rb-group, #rb-tag). */
 const TAG_GROUP_WARNING_ID = 'rb-tag-group-warning';
+
+/* id of the "engine rejected this spec" warning. addRule returns null on an
+   invalid spec (e.g. a destination naming a group that no longer exists)
+   rather than throwing — same idiom as GroupBuilder's CREATE_FAILED_WARNING_ID
+   for addGroup. Without this, a null return was discarded and the form reset
+   and closed anyway: a failed author looked identical to a successful one. */
+const AUTHOR_FAILED_WARNING_ID = 'rb-author-failed-warning';
 
 /* How many matched flows the dry-run surface names before it summarises the
    rest. Enough to recognise the blast radius; not so many the form becomes
@@ -108,6 +115,30 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
   const [ports, setPorts] = useState<string>(INITIAL_FORM.ports);
   const [action, setAction] = useState<string>(INITIAL_FORM.action);
   const [preview, setPreview] = useState<Preview | null>(null);
+  const [failed, setFailed] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus moves to the name field the moment the dialog opens — the trigger
+  // that opened it lives elsewhere on the page (in the card header), so
+  // without this a keyboard or screen-reader user lands nowhere in
+  // particular when the dialog appears.
+  useEffect(() => {
+    if (open) nameInputRef.current?.focus();
+  }, [open]);
+
+  // Escape closes the dialog from anywhere in the document, not just while
+  // a field inside it has focus — the standard dismissal a modal dialog is
+  // expected to support. Bound on document and cleaned up on unmount/close
+  // so a stray listener never outlives the dialog that registered it.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') cancel();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   // Subscribed via useCloudControl (not useCloudControlActions, which hands
   // back the engine handle without wiring a re-render). A group added or
@@ -136,6 +167,7 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
     setPorts(INITIAL_FORM.ports);
     setAction(INITIAL_FORM.action);
     setPreview(null);
+    setFailed(false);
   };
 
   const cancel = () => {
@@ -143,13 +175,34 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
     setOpen(false);
   };
 
+  // Every field still at its INITIAL_FORM value: nothing has been
+  // authored yet, so this is not "a deny-any-to-any rule the person
+  // chose" — it's the form nobody has touched. That default must never
+  // be committable just by opening the dialog and clicking Add.
+  const untouched =
+    name === INITIAL_FORM.name &&
+    tag === INITIAL_FORM.tag &&
+    cloud === INITIAL_FORM.cloud &&
+    group === INITIAL_FORM.group &&
+    dst === INITIAL_FORM.dst &&
+    ports === INITIAL_FORM.ports &&
+    action === INITIAL_FORM.action;
+
   const submit = () => {
     // Defense in depth: the Add rule button is disabled in this state, but
     // a disabled control is a UI affordance, not a contract — refuse here
     // too so the silent-zero-match rule stays unreachable even if submit()
     // is ever reached some other way.
-    if (groupNeeded || tagGroupMismatch) return;
-    actions.addRule({ ...spec(), enforceNow: false });
+    if (groupNeeded || tagGroupMismatch || untouched) return;
+    const created = actions.addRule({ ...spec(), enforceNow: false });
+    // addRule returns null on an invalid spec (e.g. a destination naming a
+    // group that no longer exists) rather than throwing. Discarding that
+    // return and resetting/closing regardless made a failed author
+    // indistinguishable from a success — stay open, keep the draft, say why.
+    if (created === null) {
+      setFailed(true);
+      return;
+    }
     resetForm();
     setOpen(false);
   };
@@ -161,6 +214,7 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
   const onField = <T,>(setter: (v: T) => void) => (v: T) => {
     setter(v);
     setPreview(null);
+    setFailed(false);
   };
 
   if (!open) {
@@ -194,12 +248,20 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
   const tagGroupMismatch = !!groupInfo && tag !== 'any' && groupInfo.vpcIds.length === 0 && groupInfo.branchIds.length > 0;
 
   return (
-    <div className="rounded-2xl border border-fw-secondary bg-fw-base p-5 space-y-3">
+    <div role="dialog" aria-modal="true" aria-label="New rule">
+      <form
+        onSubmit={e => {
+          e.preventDefault();
+          submit();
+        }}
+        className="rounded-2xl border border-fw-secondary bg-fw-base p-5 space-y-3"
+      >
       <label className="block text-figma-xs text-fw-bodyLight" htmlFor="rb-name">
         Rule name
       </label>
       <input
         id="rb-name"
+        ref={nameInputRef}
         value={name}
         onChange={e => onField(setName)(e.target.value)}
         className="w-full h-9 px-3 rounded-lg border border-fw-secondary bg-fw-wash text-figma-sm"
@@ -296,11 +358,22 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
         </p>
       )}
 
+      {/* addRule returned null: the spec was rejected at the instant it was
+          submitted (e.g. the destination named a group removed out from
+          under the selection). Stay open, keep the draft, say why — same
+          idiom as GroupBuilder's create-failed warning for addGroup. */}
+      {failed && (
+        <p id={AUTHOR_FAILED_WARNING_ID} role="alert" className="text-figma-sm text-fw-warn">
+          That rule could not be authored. Check the destination still names a live group.
+        </p>
+      )}
+
       <div className="flex gap-2">
-        <button type="button" onClick={submit} disabled={groupNeeded || tagGroupMismatch}
-          aria-disabled={groupNeeded || tagGroupMismatch}
+        <button type="submit" disabled={groupNeeded || tagGroupMismatch || untouched}
+          aria-disabled={groupNeeded || tagGroupMismatch || untouched}
           title={groupNeeded ? 'Pick a source group before adding this rule'
-            : tagGroupMismatch ? 'This source group and tag combination matches nothing' : undefined}
+            : tagGroupMismatch ? 'This source group and tag combination matches nothing'
+            : untouched ? 'Edit the form before adding a rule' : undefined}
           className="h-9 px-4 rounded-full text-figma-sm font-medium bg-fw-active text-white hover:bg-fw-linkHover transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-fw-active">
           Add rule
         </button>
@@ -375,6 +448,7 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
           )}
         </div>
       )}
+      </form>
     </div>
   );
 }
