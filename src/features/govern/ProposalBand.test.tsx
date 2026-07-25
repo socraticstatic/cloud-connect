@@ -28,6 +28,13 @@ describe('ProposalBand', () => {
     expect(enforce.getAttribute('href')).toBe(`/discover?draft=${first.id}`);
   });
 
+  test('each row link states which proposal it belongs to', () => {
+    renderBand();
+    const first = ruleProposals(CC)[0];
+    expect(screen.getByRole('link', { name: `Enforce it: ${first.title}` })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: `Tighten it: ${first.title}` })).toBeInTheDocument();
+  });
+
   test('renders nothing when every finding is resolved', () => {
     for (const p of ruleProposals(CC)) CC.enforceRule(p.ruleId);
     renderBand();

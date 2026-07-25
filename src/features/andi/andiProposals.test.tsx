@@ -26,4 +26,18 @@ describe('Andi proposals', () => {
     render(<MemoryRouter><MainNav /></MemoryRouter>);
     expect(screen.queryByTestId('andi-proposal-badge')).not.toBeInTheDocument();
   });
+
+  test('the toggle announces the proposal count in its accessible name', () => {
+    render(<MemoryRouter><MainNav /></MemoryRouter>);
+    const count = ruleProposals(CC).length;
+    expect(count).toBeGreaterThan(0);
+    const label = count === 1 ? 'Ask Andi: 1 proposal waiting' : `Ask Andi: ${count} proposals waiting`;
+    expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
+  });
+
+  test('the toggle reads plainly when there is nothing to review', () => {
+    for (const p of ruleProposals(CC)) CC.enforceRule(p.ruleId);
+    render(<MemoryRouter><MainNav /></MemoryRouter>);
+    expect(screen.getByRole('button', { name: 'Ask Andi' })).toBeInTheDocument();
+  });
 });

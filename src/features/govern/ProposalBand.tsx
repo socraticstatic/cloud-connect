@@ -51,6 +51,7 @@ export function ProposalBand() {
               <Link
                 data-testid="proposal-enforce"
                 to={`/discover?draft=${p.id}`}
+                aria-label={`Enforce it: ${p.title}`}
                 className="rounded-full bg-fw-ctaPrimary px-3 py-1.5 text-figma-xs font-medium text-white hover:opacity-90 transition-opacity"
               >
                 Enforce it
@@ -58,6 +59,7 @@ export function ProposalBand() {
               <Link
                 data-testid="proposal-tighten"
                 to={`/naas/govern?rule=${p.ruleId}`}
+                aria-label={`Tighten it: ${p.title}`}
                 className="rounded-full border border-fw-secondary bg-fw-base px-3 py-1.5 text-figma-xs font-medium text-fw-link hover:border-fw-active transition-colors"
               >
                 Tighten it

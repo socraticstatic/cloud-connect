@@ -112,7 +112,13 @@ export function AndiPanel() {
 
         {/* Proposal cards always render, thread empty or not - advice that
             vanishes the moment you ask a question is not advice. The other
-            families keep the empty-thread-only gate below. */}
+            families keep the empty-thread-only gate below.
+
+            Only one "Resolve" heading may exist at a time - a screen-reader
+            user navigating by heading must not find two identically-named
+            sections. Proposal cards lead, so this section owns the heading
+            whenever it renders; the intent/draft section below only grows
+            its own heading when this one is absent. */}
         {resolve.some(c => c.move === 'proposal') && (
           <section data-testid="andi-resolve-proposals">
             <h3 className="text-figma-sm font-bold text-fw-heading mb-2">Resolve</h3>
@@ -145,7 +151,9 @@ export function AndiPanel() {
           <>
             {resolve.some(c => c.move !== 'proposal') && (
               <section data-testid="andi-resolve">
-                <h3 className="text-figma-sm font-bold text-fw-heading mb-2">Resolve</h3>
+                {!resolve.some(c => c.move === 'proposal') && (
+                  <h3 className="text-figma-sm font-bold text-fw-heading mb-2">Resolve</h3>
+                )}
                 <div className="space-y-3">
                   {resolve.filter(c => c.move !== 'proposal').map(cardItem => (
                     <div

@@ -85,4 +85,14 @@ describe('AndiPanel', () => {
     renderAt('/discover');
     expect(screen.getByTestId('andi-context').textContent).toBe('Discover · Estate');
   });
+
+  test('only one Resolve heading renders, even when proposal and intent/draft cards both exist', () => {
+    localStorage.setItem('cc-andi-open', '1');
+    renderAt('/ai/home');
+    const proposalCards = andiResolveCards(CC).filter(c => c.move === 'proposal');
+    const otherCards = andiResolveCards(CC).filter(c => c.move !== 'proposal');
+    expect(proposalCards.length).toBeGreaterThan(0);
+    expect(otherCards.length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('heading', { name: /^Resolve$/i })).toHaveLength(1);
+  });
 });

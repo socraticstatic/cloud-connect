@@ -300,7 +300,11 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
                 <button
                   type="button"
                   data-testid="andi-toggle"
-                  aria-label="Ask Andi"
+                  aria-label={
+                    proposalCount > 0
+                      ? `Ask Andi: ${proposalCount} proposal${proposalCount === 1 ? '' : 's'} waiting`
+                      : 'Ask Andi'
+                  }
                   title="Ask Andi"
                   onClick={toggleAndi}
                   className="relative flex items-center justify-center h-9 w-9 rounded-full bg-[#009fdb] text-white hover:bg-fw-ctaPrimary transition-colors"
