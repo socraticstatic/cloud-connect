@@ -17,6 +17,7 @@ import {
   advisorDraft,
   type StagedMove,
 } from './stackFigures';
+import { ruleProposals } from '../govern/ruleProposals';
 
 /**
  * The living cross-section: the stack as Discover's front door, stating live
@@ -131,8 +132,9 @@ export function StackPanel() {
   // Andi's "Draft in the twin": ?draft=andi stages the advisor's draft on
   // arrival; ?draft=intent-<id> stages a standing intent's compiled repair
   // (Synchronize); ?draft=policy-<tag> stages a token-policy enforce patch
-  // (the layer-home dashboard's Enforce). Either way the param strips so a
-  // refresh cannot re-stage.
+  // (the layer-home dashboard's Enforce); ?draft=finding-<id> stages a
+  // security finding's preventive rule as an enforce move. Either way the
+  // param strips so a refresh cannot re-stage.
   useEffect(() => {
     const param = searchParams.get('draft');
     if (!param) return;
@@ -162,6 +164,17 @@ export function StackPanel() {
         setStaged([{ kind: 'policy', tag, patch: { enforced: true } }]);
         setDesigning(true);
         setProposalNote(`Token policy · ${tag} · enforce`);
+      }
+    } else if (param.startsWith('finding-')) {
+      /* ?draft=finding-gd-dns -> the behavioural finding whose id is gd-dns.
+         A finding names an EXISTING preventive rule, so what stages is the
+         enforce move the tray already understands. promote() would enforce it
+         on the spot; the machine stages, never commits. */
+      const proposal = ruleProposals(cc).find(p => p.id === param);
+      if (proposal) {
+        setStaged([{ kind: 'enforce', ruleId: proposal.ruleId }]);
+        setDesigning(true);
+        setProposalNote(`Proposed by Andi · ${proposal.title}`);
       }
     } else {
       return;
