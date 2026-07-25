@@ -294,10 +294,10 @@ export function IntentThreads({ manage = true }: { manage?: boolean }) {
             <button
               type="button"
               data-testid="intent-manage-link"
-              onClick={() => navigate('/work')}
+              onClick={() => navigate('/tasks')}
               className="text-figma-xs font-medium text-fw-link hover:underline"
             >
-              Manage on Work
+              Manage on Tasks
             </button>
           )}
         </span>

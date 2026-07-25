@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { CC } from '../../engine';
 import { attachOpportunities, steerOpportunities } from '../discover/stackFigures';
 import { workQueue, workByStage } from './workQueue';
-import { WorkPage } from './WorkPage';
+import { TasksPage } from './TasksPage';
 import { IntentThreads } from '../discover/IntentThreads';
 
 /* Engine singleton: declarations unwind after each test. */
@@ -53,7 +53,7 @@ describe('workQueue - the one task derivation', () => {
 });
 
 describe('the Work office', () => {
-  const at = () => render(<MemoryRouter><WorkPage /></MemoryRouter>);
+  const at = () => render(<MemoryRouter><TasksPage /></MemoryRouter>);
 
   it('groups the queue by stage and states the priced total', () => {
     at();

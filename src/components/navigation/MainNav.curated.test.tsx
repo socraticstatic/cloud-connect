@@ -14,10 +14,14 @@ const renderNav = (path = '/discover') =>
   );
 
 describe('MainNav curated Cloud Connect nav — layers on top', () => {
-  test('the top bar carries the estate pair (Discover, Work) plus one tab per layer, no verbs', () => {
+  test('the top bar carries Discover plus one tab per layer; Tasks is utility state, not a place', () => {
     renderNav();
     const tabs = screen.getAllByRole('tab').map(t => t.textContent?.trim());
-    expect(tabs).toEqual(['Discover', 'Work', 'NaaS', 'AI Fabric']);
+    expect(tabs).toEqual(['Discover', 'NaaS', 'AI Fabric']);
+    // Tasks lives beside the bell with the queue's live count - state that
+    // follows you, never a tab.
+    expect(screen.getByTestId('tasks-badge')).toBeInTheDocument();
+    expect(Number(screen.getByTestId('tasks-badge-count').textContent)).toBeGreaterThan(0);
     // Verbs never appear in the top bar — they live in the left rail.
     for (const verb of ['Connect', 'Govern', 'Observe', 'Cost']) {
       expect(screen.queryByRole('tab', { name: verb })).toBeNull();

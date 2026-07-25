@@ -46,7 +46,7 @@ function RowActions({ row }: { row: WorkRow }) {
   );
 }
 
-export function WorkPage() {
+export function TasksPage() {
   const [layer, setLayer] = useState<'all' | 'naas' | 'ai'>('all');
   const rows = useCloudControlLive(cc => workQueue(cc));
   const visible = rows.filter(r => layer === 'all' || r.layer === layer || r.layer === 'estate');
@@ -57,7 +57,7 @@ export function WorkPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-10" data-testid="work-page">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-figma-2xl font-bold text-fw-heading tracking-[-0.03em]">Work</h1>
+          <h1 className="text-figma-2xl font-bold text-fw-heading tracking-[-0.03em]">Tasks</h1>
           <p className="text-figma-base text-fw-body mt-1 max-w-2xl">
             Every task waiting for a human, by lifecycle stage. Committing stays in the
             twin; this is the whole list.

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Bell, HelpCircle } from 'lucide-react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { AttIcon } from '../icons/AttIcon';
-import { NAV_DISCOVER, NAV_WORK, NAV_LAYERS, isNavRouteActive, layerDestinations, type CuratedNavItem } from './navItems';
+import { NAV_DISCOVER, NAV_TASKS, NAV_LAYERS, isNavRouteActive, layerDestinations, type CuratedNavItem } from './navItems';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -252,7 +252,7 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
                       transition={{ delay: 0.05, duration: 0.2 }}
                     >
                       {renderDiscoverItem(NAV_DISCOVER)}
-                      {renderDiscoverItem(NAV_WORK)}
+                      {renderDiscoverItem(NAV_TASKS)}
                     </motion.div>
 
                     {NAV_LAYERS.map((domain, domainIndex) => (

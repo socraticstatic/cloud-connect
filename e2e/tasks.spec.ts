@@ -2,13 +2,14 @@ import { test, expect } from '@playwright/test';
 import { seedAuth } from '../tests/e2e/helpers';
 
 /**
- * The Work office: one queue by lifecycle stage, promises managed here,
- * the picture on Discover. Walked as a person walks it.
+ * The Tasks office: one queue by lifecycle stage, promises managed here,
+ * the picture on Discover, the badge beside the bell. Walked as a person
+ * walks it.
  */
 
 test('the office lists the queue by stage and manages a declared promise', async ({ page }) => {
   await seedAuth(page);
-  await page.goto('/#/work', { waitUntil: 'domcontentloaded' });
+  await page.goto('/#/tasks', { waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('work-page')).toBeVisible();
 
   // The seeded estate has advisor work waiting at Connect and Cost.
@@ -28,7 +29,7 @@ test('the office lists the queue by stage and manages a declared promise', async
   await expect(page.getByTestId('design-tray')).toBeVisible();
 });
 
-test('Discover keeps the picture; management points at Work; the top bar carries the pair', async ({ page }) => {
+test('Discover keeps the picture; management points at Tasks; the badge rides the bell cluster', async ({ page }) => {
   await seedAuth(page);
   await page.goto('/#/discover', { waitUntil: 'domcontentloaded' });
 
@@ -45,11 +46,15 @@ test('Discover keeps the picture; management points at Work; the top bar carries
   await expect(page.locator('[data-testid^="intent-remove-"]')).toHaveCount(0);
 
   await page.getByTestId('intent-manage-link').click();
-  await expect(page).toHaveURL(/#\/work/);
+  await expect(page).toHaveURL(/#\/tasks/);
   await expect(page.locator('[data-testid^="intent-mode-"]').first()).toBeVisible();
 
-  // The estate pair up top.
+  // Tasks is utility state, not a place: three tabs, and a live badge.
   const tabs = page.getByLabel('Main navigation').getByRole('tab');
-  await expect(tabs.nth(0)).toHaveText('Discover');
-  await expect(tabs.nth(1)).toHaveText('Work');
+  await expect(tabs).toHaveCount(3);
+  await expect(tabs.nth(1)).toHaveText('NaaS');
+  const badge = page.getByTestId('tasks-badge-count');
+  await expect(badge).toBeVisible();
+  // A violated promise turns the badge red - declared above, so it is.
+  await expect(badge).toHaveAttribute('data-violated', 'true');
 });

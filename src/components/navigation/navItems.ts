@@ -40,9 +40,11 @@ const DISCOVER: CuratedNavItem = {
 };
 
 /** The estate-level office: every task in one queue, every promise managed.
- *  A sibling of Discover, not of the layers — tasks span both. */
-const WORK: CuratedNavItem = {
-  label: 'Work', to: '/work', icon: 'checklist',
+ *  NOT a top-bar place - tasks are state that follows you, so the bar's
+ *  utility cluster carries them as a badge (MainNav) and the drawer as an
+ *  item. Places stay few; state stays glanceable. */
+const TASKS: CuratedNavItem = {
+  label: 'Tasks', to: '/tasks', icon: 'checklist',
   description: 'Every task by lifecycle stage, every standing intent',
 };
 
@@ -158,8 +160,8 @@ export function counterpartPath(pathname: string, target: NavLayer['key']): stri
 /** Discover, alone above both domains. */
 export const NAV_DISCOVER: CuratedNavItem = DISCOVER;
 
-/** Work, Discover's sibling: the task queue and the intent office. */
-export const NAV_WORK: CuratedNavItem = WORK;
+/** Tasks: the queue and the intent office. Utility-cluster state, not a place. */
+export const NAV_TASKS: CuratedNavItem = TASKS;
 
 /**
  * The left rail for a layer: Home first, then the four verbs. The rail is the
