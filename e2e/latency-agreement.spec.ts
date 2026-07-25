@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { seedAuth } from '../tests/e2e/helpers';
 
 /**
@@ -47,16 +47,36 @@ async function goHash(page: Page, hash: string) {
 const regionLatency = (page: Page, rid: string): Promise<LatencyPair> =>
   page.evaluate(id => (window as unknown as { CC: CCHandle }).CC.regionLatency(id)!, rid);
 
+/** The region's row in the Discover tree, with its cloud expanded when it
+ *  is ACTUALLY collapsed. The old version guessed collapse from the row's
+ *  visibility 150ms after the hash change — under full-suite CPU load the
+ *  tree renders later than that, so the guess read "hidden" for a cloud
+ *  that starts expanded (AWS does), and the "expand" click TOGGLED it
+ *  closed, unmounting the row for the rest of the test. aria-expanded is
+ *  the state itself, read only once the cloud button exists. */
+async function discoverRegionRow(
+  page: Page,
+  cloudName: RegExp | string,
+  regionName: string,
+): Promise<Locator> {
+  await goHash(page, '#/discover');
+  const cloud = page
+    .getByRole('button', typeof cloudName === 'string' ? { name: cloudName, exact: true } : { name: cloudName })
+    .first();
+  // The route is lazy-loaded; under full-suite CPU load its chunk can take
+  // well past the 5s default to evaluate and render. This wait is for that
+  // render — the reveal-stagger animation only fades opacity, which
+  // toBeVisible never waits on.
+  await expect(cloud).toBeVisible({ timeout: 15000 });
+  if ((await cloud.getAttribute('aria-expanded')) !== 'true') await cloud.click();
+  const row = page.getByRole('button', { name: regionName, exact: true }).first();
+  await expect(row).toBeVisible({ timeout: 15000 });
+  return row;
+}
+
 /** The Latency stat tile on /discover for one region, as rendered. */
 async function discoverLatency(page: Page, cloudName: RegExp, regionName: string): Promise<string> {
-  await goHash(page, '#/discover');
-  const row = page.getByRole('button', { name: regionName, exact: true }).first();
-  // The cloud may already be expanded; only toggle it when the region is hidden.
-  if (!(await row.isVisible().catch(() => false))) {
-    await page.getByRole('button', { name: cloudName }).first().click();
-  }
-  // Reveal-stagger animation + full-suite CPU load can exceed the default 5s.
-  await expect(row).toBeVisible({ timeout: 15000 });
+  const row = await discoverRegionRow(page, cloudName, regionName);
   const text = (await row.innerText()).replace(/\s+/g, ' ');
   const m = /(\d+)ms/.exec(text);
   expect(m, `no latency on the ${regionName} row: "${text}"`).not.toBeNull();
@@ -157,12 +177,7 @@ test('every region states one figure across Connect, Discover and Observe — on
     ).toBe(String(expected));
 
     // 2. Discover's tile: same number, and its label names the same path.
-    await goHash(page, '#/discover');
-    const row = page.getByRole('button', { name: region.name, exact: true }).first();
-    if (!(await row.isVisible().catch(() => false))) {
-      await page.getByRole('button', { name: region.cloudName, exact: true }).first().click();
-    }
-    await expect(row).toBeVisible({ timeout: 15000 });
+    const row = await discoverRegionRow(page, region.cloudName, region.name);
     const tile = (await row.innerText()).replace(/\s+/g, ' ');
     const m = /(\d+)ms LATENCY · (FABRIC|PUBLIC)/i.exec(tile);
     expect(m, `${region.name}: no labelled latency tile on Discover: "${tile}"`).not.toBeNull();
