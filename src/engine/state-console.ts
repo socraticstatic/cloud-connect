@@ -167,7 +167,23 @@ function agentTick(){
   a.last={ts:Date.now(),blocked:res.blocked,tokens:res.tokens,model:AGENT_MODEL[a.id]};
   CC._.emit({type:'hits',agent:{name:a.name,app:a.app,blocked:res.blocked,tokens:res.tokens,model:AGENT_MODEL[a.id]}});
 }
-setInterval(agentTick,7000);
+/* A tick issues a real traced request and meters it, so the ticker drives live
+   product state and has to keep running in the app. It used to be a bare
+   setInterval fired at module load with no handle kept - the same defect the
+   hit ticker had: unstoppable, and started fresh in every test process that
+   imported the engine, where a 7s timer that meters is a race the suite can
+   neither clear nor wait out. Every AI test file worked around it by
+   suspending the agents at module scope; one that forgot passed only because
+   vitest usually finished first. Same treatment as CC.startHits: a managed
+   handle, started automatically everywhere EXCEPT under test. What a tick
+   DOES when it runs is unchanged - this is lifecycle only. */
+let agentTimer=null;
+function startAgents(){if(agentTimer!==null)return false;agentTimer=setInterval(agentTick,7000);return true;}
+function stopAgents(){if(agentTimer===null)return false;clearInterval(agentTimer);agentTimer=null;return true;}
+function agentsRunning(){return agentTimer!==null;}
+const underTest=typeof process!=='undefined'&&!!process.env&&(!!process.env.VITEST||process.env.NODE_ENV==='test');
+if(!underTest)startAgents();
+Object.assign(CC,{startAgents,stopAgents,agentsRunning});
 
 /* ---------- the prompt trace: one request through every layer ---------- */
 /* governance outcomes over time - every traced request records one */

@@ -34,11 +34,9 @@ import { aiPublicFlowGbps, estateDomains } from '../discover/discoveryModel';
  * the unattached describe runs FIRST.
  */
 
-/* Determinism: `agentTick` fires on an ungated 7s interval and meters. Freeze
-   the agents at module scope — the engine's own supported stop. */
-(CC.agentList() as { id: string; enabled: boolean }[])
-  .filter(a => a.enabled)
-  .forEach(a => CC.toggleAgent(a.id));
+/* Determinism: `agentTick` meters, and the ticker used to fire on an ungated
+   7s interval that no test could stop. It is now off by default under test
+   (see engine/agentTicker.test.ts), so the estate rests here. */
 
 const at = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
 

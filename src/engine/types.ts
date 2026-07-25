@@ -210,6 +210,11 @@ export interface CloudControl {
   modelCatalog?(...args: any[]): any;
   agentList?(...args: any[]): any;
   toggleAgent?(id: string): boolean;
+  /** Agent ticker lifecycle. Running in the app, off by default under test;
+   *  `start` returns false if already running, `stop` false if already stopped. */
+  startAgents?(): boolean;
+  stopAgents?(): boolean;
+  agentsRunning?(): boolean;
   promptTrace?(...args: any[]): any;
   decisionLog?(...args: any[]): RequestRecord[];
   // --- derived variance and direction (state-telemetry.ts) ---
