@@ -34,19 +34,16 @@ describe('RuleBuilder', () => {
       matched: unknown[];
       gbps: number;
       blocked: number;
-      shadowed: { by: string }[];
     };
 
     const noun = `flow${expected.matched.length === 1 ? '' : 's'}`;
     const summary = `${expected.matched.length} ${noun} matched · ${expected.gbps} Gbps · ${expected.blocked} blocked`;
     expect(screen.getByText(new RegExp(escapeRegExp(summary)))).toBeInTheDocument();
-
-    if (expected.shadowed.length > 0) {
-      const firstShadowingRule = expected.shadowed[0].by;
-      expect(
-        screen.getByText(new RegExp(escapeRegExp(firstShadowingRule)))
-      ).toBeInTheDocument();
-    }
+    // Shadowing on the default (untouched) form spec is covered directly,
+    // with shadowing genuinely enforced first, in
+    // RuleBuilder.preview.test.tsx — nothing is enforced here, so
+    // expected.shadowed is always empty and asserting on it would be the
+    // same vacuous guard this suite is being fixed to remove.
   });
 
   // Was "changing a field after a dry run clears the now-stale preview" —
