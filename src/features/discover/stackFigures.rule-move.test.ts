@@ -47,3 +47,20 @@ describe('the rule staged move', () => {
     expect(failed).toEqual([bad]);
   });
 });
+
+describe('the enforce staged move', () => {
+  test('labels itself with the rule\'s name, not its id', () => {
+    const rule = (CC.ruleList() as { id: string; name: string }[]).find(r => r.id === 'pol-perimeter')!;
+    const enforceMove: StagedMove = { kind: 'enforce', ruleId: 'pol-perimeter' };
+    const { label } = moveLabel(CC, enforceMove);
+    expect(label).toContain(rule.name);
+    expect(label).not.toContain('pol-perimeter');
+  });
+
+  test('falls back to the rule id, without throwing, when the estate no longer carries that rule', () => {
+    const enforceMove: StagedMove = { kind: 'enforce', ruleId: 'no-such-rule' };
+    expect(() => moveLabel(CC, enforceMove)).not.toThrow();
+    const { label } = moveLabel(CC, enforceMove);
+    expect(label).toContain('no-such-rule');
+  });
+});

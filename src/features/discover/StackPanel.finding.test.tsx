@@ -17,9 +17,9 @@ describe('?draft=finding-<id>', () => {
     );
     // The tray names the finding it came from, and the rule it would enforce.
     // The tray's 'enforce' move (stackFigures.moveLabel) states the rule by
-    // id, not by name, so that's what the assertion checks for here.
+    // its name, not its id, so that's what the assertion checks for here.
     expect(await screen.findByText(new RegExp(p.title.slice(0, 20), 'i'))).toBeInTheDocument();
-    expect(screen.getByText(new RegExp(`Enforce ${p.ruleId}`, 'i'))).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`Enforce ${p.ruleName}`, 'i'))).toBeInTheDocument();
   });
 
   test('an unknown finding token stages nothing', () => {

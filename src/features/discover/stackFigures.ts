@@ -210,8 +210,10 @@ export function moveLabel(cc: CloudControl, move: StagedMove): { label: string; 
         detail: cleared > 0 ? `clears ${cleared} violation${cleared === 1 ? '' : 's'}` : 'a posture control',
       };
     }
-    case 'enforce':
-      return { label: `Enforce ${move.ruleId}`, detail: 'policy goes from draft to enforced' };
+    case 'enforce': {
+      const rule = (cc.ruleList?.() ?? []).find((r: { id: string }) => r.id === move.ruleId);
+      return { label: `Enforce ${rule?.name ?? move.ruleId}`, detail: 'policy goes from draft to enforced' };
+    }
     case 'policy': {
       const parts: string[] = [];
       if (move.patch.budget !== undefined) parts.push(`budget ${move.patch.budget.toLocaleString()} tokens/day`);
