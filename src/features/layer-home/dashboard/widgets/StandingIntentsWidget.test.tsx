@@ -82,6 +82,9 @@ describe('StandingIntentsWidget', () => {
       declared = CC.declareIntent('cap-token-spend', cat.scopes()[0], 'watch');
     });
     expect(declared!).not.toBeNull();
+    // Belt-and-suspenders: this test removes it below, but if an assertion
+    // throws first, afterEach must still not leave it on the shared engine.
+    declaredIds.push(declared!.id);
 
     const reading = CC.intentList().find(i => i.id === declared!.id)!.reading;
     expect(screen.getByText(reading.evidence)).toBeInTheDocument();
