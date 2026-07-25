@@ -1,7 +1,14 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, it, expect } from 'vitest';
-import { ProductTour, TourStep, choosePlacement, planTourScroll } from './ProductTour';
+import {
+  ProductTour,
+  TourStep,
+  choosePlacement,
+  planTourScroll,
+  tooltipTopFor,
+  overlapPxFor,
+} from './ProductTour';
 
 /* ProductTour is a SHARED component: the Cloud Connect demo tour
    (TourLauncher.tsx) and the main-app onboarding tour (App.tsx, mainAppTour)
@@ -59,40 +66,76 @@ describe('ProductTour — resetOnOpen scoping', () => {
 
 /* Every beat of cloudConnectTour asks for `placement: 'top'`, and every one of
    them used to end up at `top: 16` — on top of the spotlight it was supposed to
-   sit above. Two separate things had to be true for that, and both are covered
-   here because fixing either one alone leaves the bug standing:
+   sit above. The fix is three cooperating pieces, each covered here because any
+   one alone leaves the bug standing:
 
-   - choosePlacement: the tooltip must move to the other side when its own side
-     cannot hold it, instead of being shoved back on-screen by the clamp.
-   - planTourScroll: the sides have to be measured against where the page CAN be
-     scrolled, not where `block: 'center'` happens to leave the target. Centring
-     splits the viewport into two halves that are each too short, so a flip with
-     no scroll has nowhere to flip to. */
+   - tooltipTopFor / overlapPxFor: the geometry — where the tooltip lands after
+     the on-screen clamp, and how much of the spotlight that covers. One source
+     of truth for planning, the flip decision, and the render.
+   - choosePlacement: render on the side that covers LESS of the spotlight,
+     requested side wins ties. Overlap, not fit, so one rule covers every case.
+   - planTourScroll: measure each side at the scroll position it can actually
+     reach, not where `block: 'center'` happens to leave the target. Centring
+     splits the viewport into two halves each too short, so a flip with no
+     scroll has nowhere to go. */
 
 const GAP = 28; // highlightPadding 12 + the 16px the tooltip keeps clear
 const VIEW = { top: 0, bottom: 720 };
 
+describe('tooltipTopFor', () => {
+  it('places the tooltip a gap above/below the target when there is room', () => {
+    expect(tooltipTopFor('top', 500, 100, 300, GAP, 720)).toBe(500 - 300 - GAP);
+    expect(tooltipTopFor('bottom', 200, 100, 300, GAP, 720)).toBe(200 + 100 + GAP);
+  });
+
+  it('clamps to the viewport margin on both edges — the shove the old code relied on', () => {
+    // No room above: raw -257 → pinned to the top margin.
+    expect(tooltipTopFor('top', 189, 366, 418, GAP, 720)).toBe(16);
+    // No room below: raw 410 → pinned to vh - tipH - margin = 286.
+    expect(tooltipTopFor('bottom', 16, 366, 418, GAP, 720)).toBe(286);
+  });
+});
+
+describe('overlapPxFor', () => {
+  it('is zero when the tooltip clears the spotlight', () => {
+    expect(overlapPxFor('top', 500, 100, 300, GAP, 720)).toBe(0);
+    expect(overlapPxFor('bottom', 100, 100, 300, GAP, 720)).toBe(0);
+  });
+
+  it('measures the AI Fabric close: top side frozen at 245px, bottom side only 96px', () => {
+    // Target 366px tall, tooltip 418px — cannot coexist in 720px. Pinned to the
+    // top of a page that cannot scroll up, `top` covers 245px; scrolled to the
+    // top with the tooltip below, `bottom` covers 96px. This is why it flips.
+    expect(overlapPxFor('top', 189, 366, 418, GAP, 720)).toBe(245);
+    expect(overlapPxFor('bottom', 16, 366, 418, GAP, 720)).toBe(96);
+  });
+});
+
 describe('choosePlacement', () => {
-  it('keeps the requested side when it holds the tooltip', () => {
-    expect(choosePlacement('top', 400, 100, 300)).toBe('top');
-    expect(choosePlacement('bottom', 100, 400, 300)).toBe('bottom');
+  it('keeps the requested side when it covers no more of the spotlight', () => {
+    expect(choosePlacement('top', 0, 100)).toBe('top');
+    expect(choosePlacement('bottom', 100, 0)).toBe('bottom');
   });
 
-  it('flips to the other side when the requested one cannot hold it', () => {
-    expect(choosePlacement('top', 200, 400, 300)).toBe('bottom');
-    expect(choosePlacement('bottom', 400, 200, 300)).toBe('top');
+  it('flips to the side that covers less of the spotlight', () => {
+    expect(choosePlacement('top', 100, 0)).toBe('bottom');
+    expect(choosePlacement('bottom', 0, 100)).toBe('top');
   });
 
-  it('keeps the requested side when NEITHER holds it — the target is simply too tall', () => {
-    // The roomier side is `below` by 4px. Flipping for that is a trade the
-    // clamp then pays for at ~10x, so intent wins.
-    expect(choosePlacement('top', 307, 311, 418)).toBe('top');
+  it('flips even when NEITHER side fits — the AI Fabric case, 96px beats 245px', () => {
+    expect(choosePlacement('top', 245, 96)).toBe('bottom');
+  });
+
+  it('treats a sub-pixel difference as a tie and keeps the requested side', () => {
+    // Rect jitter of a fraction of a pixel must not flip the beat frame to frame.
+    expect(choosePlacement('top', 50, 50.5)).toBe('top');
+    expect(choosePlacement('bottom', 50.5, 50)).toBe('bottom');
   });
 
   it('leaves the non-vertical placements alone', () => {
-    expect(choosePlacement('center', 0, 0, 400)).toBe('center');
-    expect(choosePlacement('left', 0, 0, 400)).toBe('left');
-    expect(choosePlacement('right', 0, 0, 400)).toBe('right');
+    expect(choosePlacement('center', 0, 400)).toBe('center');
+    expect(choosePlacement('left', 400, 0)).toBe('left');
+    expect(choosePlacement('right', 0, 400)).toBe('right');
   });
 });
 
@@ -127,16 +170,18 @@ describe('planTourScroll', () => {
   });
 
   it('never scrolls the head of its own target off-screen to make room below', () => {
-    // A 600px target cannot leave 446px below it AND keep its own top visible,
-    // so `bottom` is not offered and the beat stays on the requested side.
+    // A 600px target scrolled up to fit the tooltip below would hide its own
+    // head: `bottom` would cover 342px vs `top`'s 110px, so top wins and the
+    // page is already as low as scrollTop 0 allows.
     const { placement, scrollTop } = plan({ rect: { top: 336, height: 600 } });
     expect(placement).toBe('top');
-    expect(scrollTop).toBe(0); // already as low as scrollTop 0 allows
+    expect(scrollTop).toBe(0);
   });
 
   it('cannot invent scroll range that does not exist', () => {
-    // Short page: nothing to scroll, so both sides are whatever the target
-    // already left, and neither holds a 430px tooltip.
+    // Short page: nothing to scroll, so both sides are stuck where the target
+    // already sits. `top` covers 110px there, `bottom` 190px — top wins, and
+    // there is no scroll to apply.
     const { placement, scrollTop } = plan({ maxScroll: 0 });
     expect(placement).toBe('top');
     expect(scrollTop).toBe(0);

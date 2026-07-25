@@ -203,14 +203,30 @@ test('the tour teaches groups, and every beat finds its target', async ({ page }
    is asserted exactly. A beat pointing at something taller than the viewport
    can spare has nowhere clean to put the tooltip — the cutout covers the whole
    screen — so what is asserted there is that the tooltip went as far away as
-   the viewport allows: pinned to an edge, and off the great majority of the
-   spotlight. A single `< 0.5` would pass on beats that should be at zero. */
+   the viewport allows: pinned to an edge, and off the majority of the
+   spotlight. A single `< 0.5` would pass on beats that should be at zero.
+
+   And EVERY beat, oversized or not, has to keep its spotlight on screen. That
+   is not a given: the tooltip is placed to minimise how much of the spotlight
+   it covers, and a target scrolled clean off the page covers nothing — so an
+   objective that only counted overlap would happily push the spotlight into
+   the void and score it perfect. The visibility floor below is what caught
+   exactly that during the fix (two Discover beats whose targets load far below
+   the fold were being left there). */
 
 const VIEWPORT_MARGIN = 16;
-/** Loosest bound tolerated on a beat whose target cannot share the viewport
- *  with the tooltip. The pre-fix run measured 0.158–0.339 on those same beats;
- *  they now measure 0.045–0.096. */
-const UNAVOIDABLE_OVERLAP_MAX = 0.12;
+/** Loosest overlap tolerated on a beat whose target cannot share the viewport
+ *  with the tooltip. Pre-fix those beats measured 0.16–0.34; they now measure
+ *  0.05–0.16. The ceiling sits above the worst survivor — the AI Fabric close,
+ *  whose `/ai/govern` page has only ~126px of scroll, so its 366px spotlight
+ *  and 418px tooltip cannot be prised apart further than 0.162 — while staying
+ *  far below the ~0.3+ a genuine "tooltip parked over the middle" regression
+ *  would produce. */
+const UNAVOIDABLE_OVERLAP_MAX = 0.2;
+/** Every spotlight must keep at least this many pixels on screen (or all of it,
+ *  if it is shorter). Guards the off-screen-target regression the overlap
+ *  objective is blind to. */
+const MIN_SPOTLIGHT_VISIBLE_PX = 120;
 
 interface Box { x: number; y: number; width: number; height: number }
 
@@ -218,6 +234,49 @@ function overlapFraction(spot: Box, tip: Box): number {
   const w = Math.max(0, Math.min(spot.x + spot.width, tip.x + tip.width) - Math.max(spot.x, tip.x));
   const h = Math.max(0, Math.min(spot.y + spot.height, tip.y + tip.height) - Math.max(spot.y, tip.y));
   return (w * h) / (spot.width * spot.height);
+}
+
+/** Pixels of the spotlight's height that lie within the viewport. */
+function visibleHeight(spot: Box, viewportHeight: number): number {
+  return Math.max(0, Math.min(spot.y + spot.height, viewportHeight) - Math.max(spot.y, 0));
+}
+
+/** Read the spotlight and tooltip boxes only once BOTH have stopped moving.
+ *  ProductTour smooth-scrolls the target into place and settles the tooltip a
+ *  few frames later; a fixed delay races that and occasionally samples a beat
+ *  mid-motion (a tooltip 30px shy of its cleared position reads as a few px of
+ *  overlap). Polling until two consecutive samples agree measures the position
+ *  the user actually ends up looking at. */
+async function stableBoxes(page: Page): Promise<{ spot: Box; tip: Box }> {
+  const read = async () => ({
+    // Either can be momentarily null: during settle the spotlight drops to the
+    // flat overlay for a frame if the target rect is being recomputed. A null
+    // sample just means "not settled yet", never a stable answer.
+    spot: await page.getByTestId('tour-spotlight').boundingBox(),
+    tip: await page.getByTestId('tour-tooltip').boundingBox(),
+  });
+  const same = (a: Box | null, b: Box | null) =>
+    !!a && !!b &&
+    Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5 &&
+    Math.abs(a.width - b.width) < 0.5 && Math.abs(a.height - b.height) < 0.5;
+
+  let prev = await read();
+  let last = prev;
+  for (let i = 0; i < 25; i++) {
+    await page.waitForTimeout(100);
+    const next = await read();
+    if (next.spot && next.tip) last = { spot: next.spot, tip: next.tip };
+    if (same(prev.spot, next.spot) && same(prev.tip, next.tip)) {
+      return { spot: next.spot!, tip: next.tip! };
+    }
+    prev = next;
+  }
+  // Best effort: the last fully-non-null sample seen, or force a final read.
+  if (last.spot && last.tip) return { spot: last.spot, tip: last.tip };
+  return {
+    spot: (await page.getByTestId('tour-spotlight').boundingBox())!,
+    tip: (await page.getByTestId('tour-tooltip').boundingBox())!,
+  };
 }
 
 test('no beat covers the spotlight it points at', async ({ page }) => {
@@ -234,14 +293,19 @@ test('no beat covers the spotlight it points at', async ({ page }) => {
   for (let i = 1; i <= total; i++) {
     await expect(counter).toHaveText(`Step ${i} of ${total}`);
     await expect(page.getByTestId('tour-spotlight')).toBeVisible();
-    // The scroll settles, then the tooltip is placed 300ms later.
-    await page.waitForTimeout(700);
 
     const title = ((await page.getByTestId('tour-title').textContent()) ?? '').trim();
-    const spot = (await page.getByTestId('tour-spotlight').boundingBox())!;
-    const tip = (await page.getByTestId('tour-tooltip').boundingBox())!;
+    const { spot, tip } = await stableBoxes(page);
     const where = `beat ${i} (“${title}”): spot ${JSON.stringify(spot)} tip ${JSON.stringify(tip)}`;
     const overlap = overlapFraction(spot, tip);
+
+    /* First, non-negotiable for every beat: the spotlight is actually on
+       screen. `toBeVisible` above only proves it is in the DOM — an element
+       scrolled below the fold still passes that but shows the user nothing. */
+    expect(
+      visibleHeight(spot, viewport.height),
+      `${where} — the spotlight is off screen; the user sees no highlight`,
+    ).toBeGreaterThanOrEqual(Math.min(spot.height, MIN_SPOTLIGHT_VISIBLE_PX));
 
     /* Can this target and this tooltip both be on screen at once? If so the
        flip-and-scroll has a clean answer available and must have found it. */
@@ -439,7 +503,7 @@ test('the Discover spotlight highlights one section, not the whole estate header
 
   const spotlight = page.getByTestId('tour-spotlight');
   await expect(spotlight).toBeVisible();
-  await page.waitForTimeout(600); // ProductTour scrolls, then measures at +300ms
+  await page.waitForTimeout(900); // ProductTour smooth-scrolls, then settles the tooltip
 
   const vh = page.viewportSize()!.height;
   const box = (await spotlight.boundingBox())!;
@@ -454,28 +518,18 @@ test('the Discover spotlight highlights one section, not the whole estate header
   const cloudBox = (await page.getByTestId('estate-cloud').boundingBox())!;
   expect(Math.abs(box.height - cloudBox.height)).toBeLessThan(40); // highlightPadding is 12 a side
 
-  /* How much of the tooltip still lands on the cutout. ProductTour's 366px
-     tooltip cannot fit above ANY element `scrollIntoView({block:'center'})`
-     centres in a 720px viewport, so the `Math.max(16, …)` clamp fires
-     whatever the anchor is — that is a ProductTour placement concern, not an
-     anchor one. What the anchor controls is how BAD it gets: the old
-     three-section wrapper was 388px of cutout, this is ~135px. Asserted as a
-     ceiling that the old anchor would have blown through. */
-  /* `overlap < box.height` was a geometric identity, not a guard: an
-     interval's intersection with the spotlight can never exceed the
-     spotlight's own height, so it could only ever fail on exact full
-     coverage. Measured against the OLD wrapper anchor it was also true
-     (overlap 215.5 < box.height 387.5) — the "ceiling the old anchor would
-     have blown through" claim that used to sit here was false.
-
-     What actually matters is how much of the TOOLTIP itself the spotlight
-     eats — asserted here as a fraction of the tooltip's own height, which a
-     future placement regression (e.g. the `Math.max(16, …)` clamp pinning
-     the tooltip flush against a taller cutout) can genuinely fail. */
+  /* The tooltip must now CLEAR the spotlight outright, not merely cover less
+     than half of it. The Cloud section (~159px) and the 366px tooltip fit a
+     720px viewport together with room to spare, so ProductTour scrolls the
+     section into a band and seats the tooltip fully on the other side —
+     overlap zero. The old `< 0.5` was a ceiling from when the tooltip was
+     pinned onto the cutout by the `Math.max(16, …)` clamp; with the flip and
+     scroll-to-fit landed, a positive overlap here is a regression, so this is
+     tightened to require none. (`overlap` goes negative when the tooltip sits
+     clear above or below — hence `<= 0`, not `=== 0`.) */
   const overlap = Math.min(box.y + box.height, tip.y + tip.height) - Math.max(box.y, tip.y);
-  const overlapFraction = overlap / tip.height;
   expect(
-    overlapFraction,
-    `${Math.round(overlapFraction * 100)}% of the tooltip's own height sits on the spotlight (${Math.round(overlap)}px of ${Math.round(tip.height)}px)`,
-  ).toBeLessThan(0.5);
+    overlap,
+    `the tooltip covers ${Math.round(overlap)}px of the spotlight; it should clear it entirely`,
+  ).toBeLessThanOrEqual(0);
 });

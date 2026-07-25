@@ -16,12 +16,6 @@ export function readCopy(copy: TourCopy): string {
  *  clamp below enforces on all four sides. */
 const VIEWPORT_MARGIN = 16;
 
-/** Sub-pixel slack in the fit test. `getBoundingClientRect` returns fractional
- *  values, and `planTourScroll` aims at EXACTLY the room the tooltip needs — so
- *  a side it just made fit can measure 445.98 against a need of 446 and read as
- *  a miss. One pixel of tolerance keeps the plan and the check agreeing. */
-const FIT_TOLERANCE = 1;
-
 /** Consecutive frames the target rect must hold still before the tooltip stops
  *  chasing it, and the hard cap on how long it may chase. One second is longer
  *  than any smooth scroll here; the cap only exists so a genuinely animating
@@ -29,41 +23,84 @@ const FIT_TOLERANCE = 1;
 const SETTLE_STABLE_FRAMES = 3;
 const SETTLE_FRAME_BUDGET = 60;
 
+/** A side is preferred over the other only when it beats it by more than this
+ *  many pixels of overlap. Inside the band the two are a tie and the step
+ *  author's requested side wins — so sub-pixel rect jitter can't flip a beat
+ *  back and forth between frames. */
+const OVERLAP_TIE_PX = 1;
+
+/** How much of the spotlight must stay on screen. A target taller than this is
+ *  pushed only until this much shows, trading the rest for a clear tooltip; a
+ *  shorter one is kept whole. Without a floor, minimising overlap alone would
+ *  scroll the spotlight clean off the page — an off-screen target overlaps
+ *  nothing, which the geometry would otherwise score as the perfect result. */
+const MIN_SPOTLIGHT_VISIBLE = 200;
+
 export type TourPlacement = NonNullable<TourStep['placement']>;
 
-const fitsIn = (space: number, tooltipHeight: number) =>
-  space + FIT_TOLERANCE >= tooltipHeight + VIEWPORT_MARGIN;
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 /**
- * Which side the tooltip ACTUALLY renders on. Only the vertical placements can
- * flip; `left`/`right`/`center` are returned untouched.
+ * Where the tooltip's top edge lands for a given side, AFTER the same on-screen
+ * clamp the render path applies. This is the single source of truth for tooltip
+ * position — planning, the flip decision, and the final render all derive from
+ * it, so a beat can never be decided against one geometry and drawn with
+ * another.
+ */
+export function tooltipTopFor(
+  placement: 'top' | 'bottom',
+  rectTop: number,
+  rectHeight: number,
+  tooltipHeight: number,
+  gap: number,
+  viewportHeight: number,
+): number {
+  const raw = placement === 'top' ? rectTop - tooltipHeight - gap : rectTop + rectHeight + gap;
+  return clamp(raw, VIEWPORT_MARGIN, viewportHeight - tooltipHeight - VIEWPORT_MARGIN);
+}
+
+/** Pixels of the target the tooltip would cover on `placement`, at the clamped
+ *  position above. Zero when the tooltip clears the spotlight; that is the
+ *  number the whole feature is trying to drive to zero. */
+export function overlapPxFor(
+  placement: 'top' | 'bottom',
+  rectTop: number,
+  rectHeight: number,
+  tooltipHeight: number,
+  gap: number,
+  viewportHeight: number,
+): number {
+  const tipTop = tooltipTopFor(placement, rectTop, rectHeight, tooltipHeight, gap, viewportHeight);
+  return Math.max(
+    0,
+    Math.min(rectTop + rectHeight, tipTop + tooltipHeight) - Math.max(rectTop, tipTop),
+  );
+}
+
+/**
+ * Which side the tooltip renders on, given how much each side would overlap the
+ * spotlight. Only the vertical placements flip; `left`/`right`/`center` pass
+ * through.
  *
- * The old code committed to `step.placement` and leaned on the on-screen clamp
- * to keep the tooltip in view. That clamp is not a fallback — it is a shove. A
- * `top` beat with less than `tooltipHeight + gap + margin` above its target got
- * slid down to `top: 16`, straight over the spotlight it was supposed to sit
- * above. Flipping asks the real question first: does the requested side hold
- * the tooltip? If not, does the other one?
- *
- * When NEITHER side holds it the requested side wins. That case only arises
- * for a target too tall to share the viewport with the tooltip at all, where
- * some overlap is arithmetic rather than a bug — and there the step author's
- * intent is a better tie-break than a few pixels of spare room. Picking "the
- * roomier side" instead reads as principled and behaves worse: a beat with
- * 307px above and 311px below flips to the short side, and the clamp then
- * drags the tooltip back across the target far harder than staying put would.
+ * The rule is simply: the side that covers LESS of the target wins, and the
+ * requested side wins ties. Framed as overlap rather than fit, one rule covers
+ * every case. When a side fits, its overlap is 0 and it can only lose to the
+ * other side also fitting — where the tie hands it back to the requested side.
+ * When NEITHER side fits — a target too tall to share the viewport with the
+ * tooltip — the smaller overlap is a real, visible win, not a rounding artefact:
+ * the AI Fabric close loads at the top of a page that cannot scroll up, so its
+ * `top` side is frozen at ~245px of overlap while placing `bottom` (target
+ * scrolled to the top, tooltip below) costs ~96px. An earlier "requested side
+ * always wins when neither fits" rule shipped the 245px.
  */
 export function choosePlacement(
   requested: TourPlacement,
-  spaceAbove: number,
-  spaceBelow: number,
-  tooltipHeight: number,
+  overlapTop: number,
+  overlapBottom: number,
 ): TourPlacement {
   if (requested !== 'top' && requested !== 'bottom') return requested;
-  const above = fitsIn(spaceAbove, tooltipHeight);
-  const below = fitsIn(spaceBelow, tooltipHeight);
-  if (requested === 'top' && !above && below) return 'bottom';
-  if (requested === 'bottom' && !below && above) return 'top';
+  if (overlapTop < overlapBottom - OVERLAP_TIE_PX) return 'top';
+  if (overlapBottom < overlapTop - OVERLAP_TIE_PX) return 'bottom';
   return requested;
 }
 
@@ -74,7 +111,8 @@ interface ScrollPlan {
 }
 
 /**
- * Where to scroll so the tooltip has room, and which side that room is on.
+ * Where to scroll so the tooltip covers as little of the spotlight as possible,
+ * and which side that is.
  *
  * This is the half of the fix that flipping cannot do on its own. Every beat
  * used to get `scrollIntoView({ block: 'center' })`, and centring a target in a
@@ -83,13 +121,14 @@ interface ScrollPlan {
  * flip TO. The side has to be chosen against the room the page COULD be
  * scrolled to give it, not the room a centred target happens to leave.
  *
- * Hence the two candidate positions. `top` only ever pushes the target down,
- * `bottom` only ever pulls it up, and both are clamped to what the scroll range
- * actually allows — a target already at the top of its page cannot be pushed
- * lower, which is precisely the case the flip then rescues. `bottom` is
- * additionally floored at the viewport margin: a beat that scrolls the head of
- * its own target off-screen to make room has traded one hidden spotlight for
- * another.
+ * Hence the two candidate positions. `top` only ever pushes the target down
+ * (opening room above), `bottom` only ever pulls it up, and both are clamped to
+ * what the scroll range actually allows — a target already at the top of its
+ * page cannot be pushed lower, which is exactly the AI Fabric case where `top`
+ * is stuck and `bottom` wins. `bottom` is additionally floored at the viewport
+ * margin: a beat that scrolls the head of its own target off-screen to make
+ * room has traded one hidden spotlight for another. Each candidate's overlap is
+ * then measured at the position it can actually reach, and the lesser wins.
  */
 export function planTourScroll(args: {
   requested: TourPlacement;
@@ -111,7 +150,24 @@ export function planTourScroll(args: {
   const reachMin = rect.top - (maxScroll - scrollTop); // scrolled fully down
   const reachable = (t: number) => Math.max(reachMin, Math.min(reachMax, t));
 
-  const forTop = reachable(Math.max(rect.top, view.top + gap + need));
+  // Keep at least this much of the spotlight on screen when choosing where a
+  // target may sit — the whole thing if it is short enough, a band otherwise.
+  const keepVisible = Math.min(rect.height, MIN_SPOTLIGHT_VISIBLE);
+
+  // 'top' wants the target LOW (room for the tooltip above it), but bounded on
+  // BOTH ends: `loTop` is the lowest position that still leaves the tooltip
+  // fully above; `hiTop` is as low as it may go before the spotlight stops
+  // being visible. Clamping rect.top INTO [loTop, hiTop] — rather than only
+  // pushing it up to loTop — is what stops a target that loads far below the
+  // fold from being left there (its overlap reads 0 only because it is off
+  // screen). When the band inverts (a target too tall to seat the tooltip above
+  // AND stay visible), visibility wins and the overlap comparison below takes
+  // it from there.
+  const loTop = view.top + gap + need;
+  const hiTop = view.bottom - VIEWPORT_MARGIN - keepVisible;
+  const forTop = reachable(loTop <= hiTop ? Math.max(loTop, Math.min(rect.top, hiTop)) : hiTop);
+
+  // 'bottom' wants the target HIGH; the same clamp keeps its top on screen.
   const forBottom = reachable(
     Math.max(
       view.top + VIEWPORT_MARGIN,
@@ -119,12 +175,14 @@ export function planTourScroll(args: {
     ),
   );
 
-  const placement = choosePlacement(
-    requested,
-    forTop - view.top - gap,
-    view.bottom - (forBottom + rect.height) - gap,
-    tooltipHeight,
-  );
+  // Each side is judged at the position IT can reach, not at a shared one:
+  // `top` scrolls the target to forTop, `bottom` scrolls it to forBottom, and
+  // whichever leaves less of the spotlight covered is the one to render.
+  const vh = view.bottom - view.top;
+  const overlapTop = overlapPxFor('top', forTop - view.top, rect.height, tooltipHeight, gap, vh);
+  const overlapBottom = overlapPxFor('bottom', forBottom - view.top, rect.height, tooltipHeight, gap, vh);
+
+  const placement = choosePlacement(requested, overlapTop, overlapBottom);
   const targetTop = placement === 'top' ? forTop : forBottom;
   return { placement, scrollTop: scrollTop + (rect.top - targetTop) };
 }
@@ -310,16 +368,21 @@ export function ProductTour({ steps, isOpen, onClose, onComplete, storageKey = '
 
           if (tooltipRef.current) {
             const tooltipRect = tooltipRef.current.getBoundingClientRect();
-            /* Re-decide against where the scroll ACTUALLY landed. The plan
-               above aims at a destination; the page may not have been able to
-               reach it (short page, another scroll in flight), and the side
-               that renders has to follow the pixels, not the intent. */
-            const resolved = choosePlacement(
-              requested,
-              rect.top - gap,
-              window.innerHeight - rect.bottom - gap,
-              tooltipRect.height,
-            );
+            /* Re-decide against where the scroll ACTUALLY landed, using the same
+               overlap geometry the plan did. The plan aims at a destination; the
+               page may not have reached it (short page, another scroll in
+               flight), so the side that renders follows the pixels, not the
+               intent. Both sides are measured at this one landed rect — the side
+               the scroll optimised for wins because the target is now near that
+               side's edge. */
+            const vh = window.innerHeight;
+            const resolved = (requested === 'top' || requested === 'bottom')
+              ? choosePlacement(
+                  requested,
+                  overlapPxFor('top', rect.top, rect.height, tooltipRect.height, gap, vh),
+                  overlapPxFor('bottom', rect.top, rect.height, tooltipRect.height, gap, vh),
+                )
+              : requested;
             setPlacement(resolved);
 
             let top = 0;
