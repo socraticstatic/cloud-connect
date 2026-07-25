@@ -2,44 +2,17 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { AttIcon } from '../../components/icons/AttIcon';
 import { NAV_LAYERS, type NavLayer } from '../../components/navigation/navItems';
-import { useCloudControlLive } from '../../engine/react/useCloudControl';
-import { fmtTokens, fmtUsd } from '../ai-fabric/aiSpend';
-import { aiStratum, naasStratum } from '../discover/stackFigures';
-import type { CloudControl } from '../../engine/types';
+import { LayerDashboard } from './dashboard/LayerDashboard';
 
 /**
  * A layer's Home — the landing when you pick the layer up top, first in the
- * left rail. It states the layer's live figures (from the same getters its
+ * left rail. It renders the layer's live widget board (the same getters its
  * verb pages read) and opens onto the four verbs. A layer never drops you
  * straight onto Govern; it opens onto its overview.
  */
 
-interface Stat { label: string; value: string; tone?: 'plain' | 'warn' }
-
-function layerStats(key: NavLayer['key'], cc: CloudControl): Stat[] {
-  if (key === 'ai') {
-    const f = aiStratum(cc);
-    return [
-      { label: 'Model endpoints ready', value: `${f.modelsReady}/${f.modelsTotal}` },
-      { label: 'Tokens today', value: fmtTokens(f.tokensToday) },
-      { label: 'On the public internet', value: fmtTokens(f.ungovernedTokensToday), tone: f.ungovernedTokensToday > 0 ? 'warn' : 'plain' },
-      { label: 'Spend today', value: fmtUsd(f.spendToday) },
-    ];
-  }
-  const f = naasStratum(cc);
-  const money = (n: number) => `$${Math.round(n).toLocaleString()}/mo`;
-  return [
-    { label: 'Regions on the fabric', value: `${f.regionsAttached}/${f.regionsTotal}` },
-    { label: 'Sites', value: `${f.sites}` },
-    { label: 'Egress on public transit', value: money(f.egressPubMo), tone: f.egressPubMo > 0 ? 'warn' : 'plain' },
-    { label: 'Still on the table', value: money(f.availableSavingsMo) },
-  ];
-}
-
 export function LayerHomePage({ layerKey }: { layerKey: NavLayer['key'] }) {
-  const cc = useCloudControlLive(c => c);
   const layer = NAV_LAYERS.find(l => l.key === layerKey)!;
-  const stats = layerStats(layerKey, cc);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-10">
@@ -49,16 +22,9 @@ export function LayerHomePage({ layerKey }: { layerKey: NavLayer['key'] }) {
         <p className="text-figma-base text-fw-body mt-1 max-w-2xl">{layer.blurb}</p>
       </header>
 
-      {/* Live figures — the same derivations the verb pages state. */}
-      <div data-testid="layer-home-stats" className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-        {stats.map(s => (
-          <div key={s.label} className="rounded-2xl border border-fw-secondary bg-fw-base p-4">
-            <div className={`text-figma-2xl font-bold tabular-nums tracking-[-0.02em] ${s.tone === 'warn' ? 'text-fw-warn' : 'text-fw-heading'}`}>
-              {s.value}
-            </div>
-            <div className="text-figma-sm text-fw-bodyLight mt-0.5">{s.label}</div>
-          </div>
-        ))}
+      {/* The live board - replaces the flat stat grid. */}
+      <div className="mb-8">
+        <LayerDashboard surface={layerKey} />
       </div>
 
       {/* Into the lifecycle. */}
