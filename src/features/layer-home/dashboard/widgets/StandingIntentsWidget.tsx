@@ -1,9 +1,9 @@
 import { Target } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { WidgetFrame } from '../WidgetFrame';
 import { useLayer, type LayerWidgetProps } from '../registry';
 import { isAiIntent } from './intentLayer';
 import { useCloudControlLive, useCloudControlActions } from '../../../../engine/react/useCloudControl';
-import { commitMoves, type StagedMove } from '../../../discover/stackFigures';
 
 const STATUS_TONE: Record<string, string> = {
   aligned: 'text-fw-success',
@@ -14,6 +14,7 @@ const STATUS_TONE: Record<string, string> = {
 export function StandingIntentsWidget(_props: LayerWidgetProps) {
   const surface = useLayer();
   const actions = useCloudControlActions();
+  const navigate = useNavigate();
 
   // Required pattern: get the engine handle with a trivial selector, then
   // derive everything in the render body every render. Baking `surface`
@@ -63,7 +64,7 @@ export function StandingIntentsWidget(_props: LayerWidgetProps) {
             {i.reading.moves.length > 0 && (
               <button
                 data-testid="intent-synchronize"
-                onClick={() => commitMoves(actions, i.reading.moves as StagedMove[])}
+                onClick={() => navigate(`/discover?draft=intent-${i.id}`)}
                 className="mt-2 rounded-full bg-fw-ctaPrimary px-3 py-1.5 text-figma-sm font-medium text-white hover:opacity-90 transition-opacity"
               >
                 Synchronize

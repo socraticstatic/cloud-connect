@@ -1,14 +1,30 @@
-import { render, screen, act } from '@testing-library/react';
-import { describe, test, expect, afterEach } from 'vitest';
+import { render, screen, act, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { describe, test, expect, afterEach, vi } from 'vitest';
 import { LayerContext } from '../registry';
 import { StandingIntentsWidget } from './StandingIntentsWidget';
 import { CC } from '../../../../engine';
 
+/* Navigation is asserted by destination, not by router internals — same
+   pattern IntentThreads.tsx's own tests use. */
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return { ...(actual as object), useNavigate: () => mockNavigate };
+});
+
 const declaredIds: string[] = [];
-afterEach(() => { declaredIds.splice(0).forEach(id => CC.removeIntent(id)); });
+afterEach(() => {
+  declaredIds.splice(0).forEach(id => CC.removeIntent(id));
+  mockNavigate.mockClear();
+});
 
 const renderIn = (surface: 'naas' | 'ai') =>
-  render(<LayerContext.Provider value={surface}><StandingIntentsWidget /></LayerContext.Provider>);
+  render(
+    <MemoryRouter>
+      <LayerContext.Provider value={surface}><StandingIntentsWidget /></LayerContext.Provider>
+    </MemoryRouter>,
+  );
 
 describe('StandingIntentsWidget', () => {
   test('with no intents for the layer, offers to declare one from the catalog', () => {
@@ -56,14 +72,18 @@ describe('StandingIntentsWidget', () => {
     const naasEvidence = CC.intentList().find(i => i.id === naasDeclared!.id)!.reading.evidence;
 
     const { rerender } = render(
-      <LayerContext.Provider value="naas"><StandingIntentsWidget /></LayerContext.Provider>,
+      <MemoryRouter>
+        <LayerContext.Provider value="naas"><StandingIntentsWidget /></LayerContext.Provider>
+      </MemoryRouter>,
     );
     expect(screen.getByText(naasEvidence)).toBeInTheDocument();
     expect(screen.queryByText(aiEvidence)).not.toBeInTheDocument();
 
     // Layer switch alone, no engine mutation in between.
     rerender(
-      <LayerContext.Provider value="ai"><StandingIntentsWidget /></LayerContext.Provider>,
+      <MemoryRouter>
+        <LayerContext.Provider value="ai"><StandingIntentsWidget /></LayerContext.Provider>
+      </MemoryRouter>,
     );
 
     expect(screen.queryByText(naasEvidence)).not.toBeInTheDocument();
@@ -97,5 +117,32 @@ describe('StandingIntentsWidget', () => {
 
     expect(screen.queryByText(reading.evidence)).not.toBeInTheDocument();
     expect(screen.getAllByTestId('declare-intent').length).toBeGreaterThan(0);
+  });
+
+  test('Synchronize stages the intent draft into the review tray, not the estate', () => {
+    // The seeded engine declares no intents (CC.intentList() is []), and the
+    // AI board only renders private-inference among the four AI keys with a
+    // repair on this seed (see intentThreads.test.tsx), so declare it first.
+    CC.intentList().filter(i => i.key === 'private-inference').forEach(i => CC.removeIntent(i.id));
+    const declared = CC.declareIntent(
+      'private-inference',
+      { kind: 'estate', id: 'ai', label: 'The token layer' },
+      'watch',
+    )!;
+    expect(declared).not.toBeNull();
+    declaredIds.push(declared.id);
+
+    const reading = CC.intentList().find(i => i.id === declared.id)!.reading;
+    // Guard: this test only means something if the intent actually offers a
+    // repair - otherwise the Synchronize button never renders at all.
+    expect(reading.moves.length).toBeGreaterThan(0);
+
+    renderIn('ai');
+    fireEvent.click(screen.getByTestId('intent-synchronize'));
+
+    // Fails against a no-op onClick: an unwired handler never calls navigate.
+    expect(mockNavigate).toHaveBeenCalledWith(`/discover?draft=intent-${declared.id}`);
+    // The click must not have committed anything to the estate.
+    expect(CC.intentList().find(i => i.id === declared.id)!.reading.status).toBe(reading.status);
   });
 });

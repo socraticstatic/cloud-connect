@@ -130,7 +130,9 @@ export function StackPanel() {
 
   // Andi's "Draft in the twin": ?draft=andi stages the advisor's draft on
   // arrival; ?draft=intent-<id> stages a standing intent's compiled repair
-  // (Synchronize). Either way the param strips so a refresh cannot re-stage.
+  // (Synchronize); ?draft=policy-<tag> stages a token-policy enforce patch
+  // (the layer-home dashboard's Enforce). Either way the param strips so a
+  // refresh cannot re-stage.
   useEffect(() => {
     const param = searchParams.get('draft');
     if (!param) return;
@@ -148,6 +150,18 @@ export function StackPanel() {
         setStaged(it.reading.moves as StagedMove[]);
         setDesigning(true);
         setProposalNote(`Synchronize · ${it.scope.label} · ${it.reading.moves.length} move${it.reading.moves.length === 1 ? '' : 's'}`);
+      }
+    } else if (param.startsWith('policy-')) {
+      // ?draft=policy-shared-services -> the layer-home dashboard's Enforce
+      // action (TokenBudgetsWidget). setTokenPolicy pushes no undo entry, so
+      // Enforce stages the same 'policy' move the engine's own repairs use
+      // (stackFigures.moveLabel/commitMoves) rather than mutating directly.
+      const tag = param.slice('policy-'.length);
+      const known = (cc.tokenPolicyList?.() ?? []).some((p: { tag: string }) => p.tag === tag);
+      if (known) {
+        setStaged([{ kind: 'policy', tag, patch: { enforced: true } }]);
+        setDesigning(true);
+        setProposalNote(`Token policy · ${tag} · enforce`);
       }
     } else {
       return;

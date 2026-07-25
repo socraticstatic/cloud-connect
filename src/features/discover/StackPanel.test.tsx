@@ -186,4 +186,18 @@ describe('StackPanel — proposals and the advisor', () => {
     expect(tray.textContent).toContain(`${opp.publicMs}→${opp.privateMs} ms`);
     fireEvent.click(screen.getByTestId('design-discard'));
   });
+
+  test('?draft=policy-<tag> stages an enforce patch for the layer-home dashboard\'s Enforce action', () => {
+    const tag = CC.tokenPolicyList()[0].tag;
+    render(
+      <MemoryRouter initialEntries={[`/discover?draft=policy-${tag}`]}>
+        <StackPanel />
+      </MemoryRouter>,
+    );
+    const tray = screen.getByTestId('design-tray');
+    expect(within(tray).getByTestId('proposal-note').textContent)
+      .toBe(`Token policy · ${tag} · enforce`);
+    expect(tray.textContent).toContain(`Token policy · ${tag}`);
+    fireEvent.click(screen.getByTestId('design-discard'));
+  });
 });

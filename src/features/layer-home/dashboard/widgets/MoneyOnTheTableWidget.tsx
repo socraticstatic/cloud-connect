@@ -1,11 +1,12 @@
 import { PiggyBank } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { WidgetFrame } from '../WidgetFrame';
 import type { LayerWidgetProps } from '../registry';
-import { useCloudControlLive, useCloudControlActions } from '../../../../engine/react/useCloudControl';
-import { advisorDraft, commitMoves } from '../../../discover/stackFigures';
+import { useCloudControlLive } from '../../../../engine/react/useCloudControl';
+import { advisorDraft } from '../../../discover/stackFigures';
 
 export function MoneyOnTheTableWidget(_props: LayerWidgetProps) {
-  const cc = useCloudControlActions();
+  const navigate = useNavigate();
   const { available, buckets, moveCount } = useCloudControlLive(c => {
     const arb = c.arbitrage();
     return {
@@ -15,11 +16,14 @@ export function MoneyOnTheTableWidget(_props: LayerWidgetProps) {
     };
   });
 
+  // Review stages the advisor's own draft into the twin's tray (?draft=andi,
+  // the same param StackPanel's advisor chip uses) — the machine stages,
+  // never commits.
   const review = (
     <button
       data-testid="money-review"
       disabled={moveCount === 0}
-      onClick={() => commitMoves(cc, advisorDraft(cc).moves)}
+      onClick={() => navigate('/discover?draft=andi')}
       className="rounded-full bg-fw-ctaPrimary px-3 py-1.5 text-figma-xs font-medium text-white disabled:opacity-40 hover:opacity-90 transition-opacity"
     >
       Review {moveCount} {moveCount === 1 ? 'move' : 'moves'}

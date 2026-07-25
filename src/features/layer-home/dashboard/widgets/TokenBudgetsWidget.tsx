@@ -1,13 +1,14 @@
 import { Coins } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { WidgetFrame } from '../WidgetFrame';
 import type { LayerWidgetProps } from '../registry';
-import { useCloudControlLive, useCloudControlActions } from '../../../../engine/react/useCloudControl';
+import { useCloudControlLive } from '../../../../engine/react/useCloudControl';
 import { fmtTokens } from '../../../ai-fabric/aiSpend';
 
 interface Policy { tag: string; budget: number; enforced: boolean }
 
 export function TokenBudgetsWidget(_props: LayerWidgetProps) {
-  const cc = useCloudControlActions();
+  const navigate = useNavigate();
   const policies = useCloudControlLive<Policy[]>(c => c.tokenPolicyList() as Policy[]);
 
   return (
@@ -24,7 +25,11 @@ export function TokenBudgetsWidget(_props: LayerWidgetProps) {
             ) : (
               <button
                 data-testid="token-enforce"
-                onClick={() => cc.setTokenPolicy(p.tag, { enforced: true })}
+                // setTokenPolicy pushes no undo entry, so this stages the
+                // patch into the review tray (?draft=policy-<tag>, the same
+                // 'policy' StagedMove the engine's own repairs use) instead
+                // of mutating directly — the machine stages, never commits.
+                onClick={() => navigate(`/discover?draft=policy-${p.tag}`)}
                 className="rounded-full bg-fw-ctaPrimary px-3 py-1 text-figma-xs font-medium text-white hover:opacity-90 transition-opacity"
               >
                 Enforce
