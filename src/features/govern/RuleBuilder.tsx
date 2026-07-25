@@ -4,7 +4,7 @@ import { CC } from '../../engine';
 import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
 
 const ACTIONS = ['deny', 'inspect', 'route-private', 'allow'] as const;
-const PORTS = ['any', '443', '5432', '8443'] as const;
+const PORTS = ['any', '53', '443', '5432', '8443'] as const;
 
 /* A structured group destination is encoded in the single <select> as
    "group:<id>" so one control expresses both destination families. Nothing

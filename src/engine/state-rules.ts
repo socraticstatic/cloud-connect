@@ -315,7 +315,12 @@ function ruleMatch(rule,flow){
     if(flow.dst==='intra-tag')return false;
   }else if(rule.dst&&rule.dst!=='any'&&flow.dst!==rule.dst)return false;
 
-  if(rule.ports!=='any'&&!flow.ports.includes(rule.ports))return false;
+  /* Ports are a comma-separated set, not a string to search: '443' is not a
+     port of '5432, 8443' even though it is a substring of it. */
+  if(rule.ports&&rule.ports!=='any'){
+    var flowPorts=String(flow.ports||'').split(',').map(function(s){return s.trim();});
+    if(flowPorts.indexOf(String(rule.ports))===-1)return false;
+  }
   return true;
 }
 function verdictFor(rule,flow){
