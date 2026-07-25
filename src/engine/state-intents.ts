@@ -229,7 +229,9 @@ const CATALOG=[
         m.pct>=100
           ? {status:'violated',evidence:`${scope.id} stands at ${m.pct}% of its ${m.budget.toLocaleString()}-token budget.`,
              moves:[{kind:'policy',tag:scope.id,patch:{enforced:true}}]}
-          : m.pct>=80
+          /* The soft threshold is the policy's to set; 80 stays the default
+             so a policy that names none reads exactly as it did before. */
+          : m.pct>=((CC.tokenPolicy(scope.id)||{}).softPct||80)
             ? {status:'drifting',evidence:`${scope.id} is at ${m.pct}% of budget - the ceiling is close.`,moves:[]}
             : {status:'aligned',evidence:`${scope.id} is at ${m.pct}% of its budget.`,moves:[]};
       if(intent&&intent.mode==='watch'&&m.pct>=100){
