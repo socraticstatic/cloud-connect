@@ -12,6 +12,172 @@ export function readCopy(copy: TourCopy): string {
   return typeof copy === 'function' ? copy() : copy;
 }
 
+/** Gutter the tooltip is never allowed to cross — the same 16px the on-screen
+ *  clamp below enforces on all four sides. */
+const VIEWPORT_MARGIN = 16;
+
+/** Sub-pixel slack in the fit test. `getBoundingClientRect` returns fractional
+ *  values, and `planTourScroll` aims at EXACTLY the room the tooltip needs — so
+ *  a side it just made fit can measure 445.98 against a need of 446 and read as
+ *  a miss. One pixel of tolerance keeps the plan and the check agreeing. */
+const FIT_TOLERANCE = 1;
+
+/** Consecutive frames the target rect must hold still before the tooltip stops
+ *  chasing it, and the hard cap on how long it may chase. One second is longer
+ *  than any smooth scroll here; the cap only exists so a genuinely animating
+ *  target cannot pin a rAF loop open for the length of the beat. */
+const SETTLE_STABLE_FRAMES = 3;
+const SETTLE_FRAME_BUDGET = 60;
+
+export type TourPlacement = NonNullable<TourStep['placement']>;
+
+const fitsIn = (space: number, tooltipHeight: number) =>
+  space + FIT_TOLERANCE >= tooltipHeight + VIEWPORT_MARGIN;
+
+/**
+ * Which side the tooltip ACTUALLY renders on. Only the vertical placements can
+ * flip; `left`/`right`/`center` are returned untouched.
+ *
+ * The old code committed to `step.placement` and leaned on the on-screen clamp
+ * to keep the tooltip in view. That clamp is not a fallback — it is a shove. A
+ * `top` beat with less than `tooltipHeight + gap + margin` above its target got
+ * slid down to `top: 16`, straight over the spotlight it was supposed to sit
+ * above. Flipping asks the real question first: does the requested side hold
+ * the tooltip? If not, does the other one?
+ *
+ * When NEITHER side holds it the requested side wins. That case only arises
+ * for a target too tall to share the viewport with the tooltip at all, where
+ * some overlap is arithmetic rather than a bug — and there the step author's
+ * intent is a better tie-break than a few pixels of spare room. Picking "the
+ * roomier side" instead reads as principled and behaves worse: a beat with
+ * 307px above and 311px below flips to the short side, and the clamp then
+ * drags the tooltip back across the target far harder than staying put would.
+ */
+export function choosePlacement(
+  requested: TourPlacement,
+  spaceAbove: number,
+  spaceBelow: number,
+  tooltipHeight: number,
+): TourPlacement {
+  if (requested !== 'top' && requested !== 'bottom') return requested;
+  const above = fitsIn(spaceAbove, tooltipHeight);
+  const below = fitsIn(spaceBelow, tooltipHeight);
+  if (requested === 'top' && !above && below) return 'bottom';
+  if (requested === 'bottom' && !below && above) return 'top';
+  return requested;
+}
+
+interface ScrollPlan {
+  placement: TourPlacement;
+  /** Absolute destination for the scroller, already reachable. */
+  scrollTop: number;
+}
+
+/**
+ * Where to scroll so the tooltip has room, and which side that room is on.
+ *
+ * This is the half of the fix that flipping cannot do on its own. Every beat
+ * used to get `scrollIntoView({ block: 'center' })`, and centring a target in a
+ * 720px-tall viewport leaves roughly 316px clear on EACH side while these
+ * tooltips run 314–456px tall — so neither side fits and there is nothing to
+ * flip TO. The side has to be chosen against the room the page COULD be
+ * scrolled to give it, not the room a centred target happens to leave.
+ *
+ * Hence the two candidate positions. `top` only ever pushes the target down,
+ * `bottom` only ever pulls it up, and both are clamped to what the scroll range
+ * actually allows — a target already at the top of its page cannot be pushed
+ * lower, which is precisely the case the flip then rescues. `bottom` is
+ * additionally floored at the viewport margin: a beat that scrolls the head of
+ * its own target off-screen to make room has traded one hidden spotlight for
+ * another.
+ */
+export function planTourScroll(args: {
+  requested: TourPlacement;
+  rect: { top: number; height: number };
+  tooltipHeight: number;
+  gap: number;
+  /** The scroller's visible box, in client coordinates. */
+  view: { top: number; bottom: number };
+  scrollTop: number;
+  maxScroll: number;
+}): ScrollPlan {
+  const { requested, rect, tooltipHeight, gap, view, scrollTop, maxScroll } = args;
+  if (requested !== 'top' && requested !== 'bottom') {
+    return { placement: requested, scrollTop };
+  }
+
+  const need = tooltipHeight + VIEWPORT_MARGIN;
+  const reachMax = rect.top + scrollTop; // scrolled fully up
+  const reachMin = rect.top - (maxScroll - scrollTop); // scrolled fully down
+  const reachable = (t: number) => Math.max(reachMin, Math.min(reachMax, t));
+
+  const forTop = reachable(Math.max(rect.top, view.top + gap + need));
+  const forBottom = reachable(
+    Math.max(
+      view.top + VIEWPORT_MARGIN,
+      Math.min(rect.top, view.bottom - gap - need - rect.height),
+    ),
+  );
+
+  const placement = choosePlacement(
+    requested,
+    forTop - view.top - gap,
+    view.bottom - (forBottom + rect.height) - gap,
+    tooltipHeight,
+  );
+  const targetTop = placement === 'top' ? forTop : forBottom;
+  return { placement, scrollTop: scrollTop + (rect.top - targetTop) };
+}
+
+/** The element that actually scrolls `el`. `scrollIntoView` resolves this for
+ *  free; landing the target on a COMPUTED offset instead means resolving it
+ *  here. Falls back to the document scroller, which is what these pages use. */
+function scrollParentOf(el: HTMLElement): HTMLElement {
+  for (let n = el.parentElement; n; n = n.parentElement) {
+    if (/(auto|scroll|overlay)/.test(getComputedStyle(n).overflowY) && n.scrollHeight > n.clientHeight) {
+      return n;
+    }
+  }
+  return (document.scrollingElement as HTMLElement | null) ?? document.documentElement;
+}
+
+/**
+ * Run `planTourScroll` against the live DOM and scroll there.
+ *
+ * The destination is absolute, not a relative nudge, because `updatePosition`
+ * re-runs on every scroll event — a relative `scrollBy` would keep stacking new
+ * deltas onto an in-flight smooth scroll and overshoot. Recomputing the same
+ * absolute destination each time converges instead.
+ */
+function scrollTargetIntoPlace(
+  el: HTMLElement,
+  requested: TourPlacement,
+  tooltipHeight: number,
+  gap: number,
+): void {
+  if (requested !== 'top' && requested !== 'bottom') {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
+  const scroller = scrollParentOf(el);
+  const isRoot = scroller === document.scrollingElement || scroller === document.documentElement;
+  const view = isRoot ? { top: 0, bottom: window.innerHeight } : scroller.getBoundingClientRect();
+  const rect = el.getBoundingClientRect();
+
+  const plan = planTourScroll({
+    requested,
+    rect: { top: rect.top, height: rect.height },
+    tooltipHeight,
+    gap,
+    view,
+    scrollTop: scroller.scrollTop,
+    maxScroll: Math.max(0, scroller.scrollHeight - (isRoot ? window.innerHeight : scroller.clientHeight)),
+  });
+
+  scroller.scrollTo({ top: plan.scrollTop, behavior: 'smooth' });
+}
+
 export interface TourStep {
   id: string;
   title: string;
@@ -54,7 +220,16 @@ export function ProductTour({ steps, isOpen, onClose, onComplete, storageKey = '
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+  /* The side the tooltip ENDED UP on, which is not always the side the step
+     asked for — see resolvePlacement. The bouncing pointer reads this rather
+     than `step.placement`, or a flipped beat would point up at nothing while
+     its tooltip sat below the target. */
+  const [placement, setPlacement] = useState<TourPlacement>('bottom');
   const tooltipRef = useRef<HTMLDivElement>(null);
+  /** Which step's target has already been scrolled to, so the scroll fires
+   *  once per beat instead of once per scroll event. */
+  const scrolledForStep = useRef<number | null>(null);
+  const settleFrame = useRef<number | null>(null);
 
   const step = steps[currentStep];
   const isLastStep = currentStep === steps.length - 1;
@@ -97,39 +272,75 @@ export function ProductTour({ steps, isOpen, onClose, onComplete, storageKey = '
         return;
       }
       {
-        // Scroll element into view if needed
-        if (step.scrollIntoView !== false) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const requested = step.placement || 'bottom';
+        const padding = step.highlightPadding || 8;
+        /* Clear space the tooltip keeps between itself and the spotlight. The
+           highlight already extends `padding` past the target, so the visible
+           gap is the extra 16. */
+        const gap = padding + 16;
+
+        /* Scroll ONCE per step, not once per `updatePosition`. This function
+           also runs on every scroll event, and re-issuing a smooth scroll from
+           inside the scroll it started restarts the animation every frame —
+           the target creeps toward the destination and the beat is still
+           moving when the viewer (or a test) looks at it. */
+        if (step.scrollIntoView !== false && scrolledForStep.current !== currentStep) {
+          scrolledForStep.current = currentStep;
+          const tipHeight = tooltipRef.current?.getBoundingClientRect().height ?? 0;
+          scrollTargetIntoPlace(element as HTMLElement, requested, tipHeight, gap);
         }
 
-        // Small delay to allow scrolling to complete
-        setTimeout(() => {
+        /* Place immediately, then keep re-placing until the target stops
+           moving. The old code measured once, 300ms after asking for a smooth
+           scroll, and took whatever it found — which on a page still settling
+           (a chart reflowing, a route's DOM landing late) was a rect the
+           tooltip then sat against for the rest of the beat. A fixed delay
+           cannot know when layout is done; watching the rect can. */
+        const place = () => {
           const rect = element.getBoundingClientRect();
-          setTargetRect(rect);
+          /* Bail out of the state update when nothing moved. `place` now runs
+             every frame while the page settles, and a fresh object each time
+             would re-render the overlay 60x a second for no change. */
+          setTargetRect(prev =>
+            prev && prev.top === rect.top && prev.left === rect.left
+              && prev.width === rect.width && prev.height === rect.height
+              ? prev
+              : rect,
+          );
 
           if (tooltipRef.current) {
             const tooltipRect = tooltipRef.current.getBoundingClientRect();
-            const padding = step.highlightPadding || 8;
+            /* Re-decide against where the scroll ACTUALLY landed. The plan
+               above aims at a destination; the page may not have been able to
+               reach it (short page, another scroll in flight), and the side
+               that renders has to follow the pixels, not the intent. */
+            const resolved = choosePlacement(
+              requested,
+              rect.top - gap,
+              window.innerHeight - rect.bottom - gap,
+              tooltipRect.height,
+            );
+            setPlacement(resolved);
 
             let top = 0;
             let left = 0;
 
-            switch (step.placement || 'bottom') {
+            switch (resolved) {
               case 'top':
-                top = rect.top - tooltipRect.height - padding - 16;
+                top = rect.top - tooltipRect.height - gap;
                 left = rect.left + (rect.width - tooltipRect.width) / 2;
                 break;
               case 'bottom':
-                top = rect.bottom + padding + 16;
+                top = rect.bottom + gap;
                 left = rect.left + (rect.width - tooltipRect.width) / 2;
                 break;
               case 'left':
                 top = rect.top + (rect.height - tooltipRect.height) / 2;
-                left = rect.left - tooltipRect.width - padding - 16;
+                left = rect.left - tooltipRect.width - gap;
                 break;
               case 'right':
                 top = rect.top + (rect.height - tooltipRect.height) / 2;
-                left = rect.right + padding + 16;
+                left = rect.right + gap;
                 break;
               case 'center':
                 top = window.innerHeight / 2 - tooltipRect.height / 2;
@@ -138,12 +349,35 @@ export function ProductTour({ steps, isOpen, onClose, onComplete, storageKey = '
             }
 
             // Ensure tooltip stays on screen
-            left = Math.max(16, Math.min(left, window.innerWidth - tooltipRect.width - 16));
-            top = Math.max(16, Math.min(top, window.innerHeight - tooltipRect.height - 16));
+            left = Math.max(VIEWPORT_MARGIN, Math.min(left, window.innerWidth - tooltipRect.width - VIEWPORT_MARGIN));
+            top = Math.max(VIEWPORT_MARGIN, Math.min(top, window.innerHeight - tooltipRect.height - VIEWPORT_MARGIN));
 
-            setTooltipPosition({ top, left });
+            setTooltipPosition(prev => (prev.top === top && prev.left === left ? prev : { top, left }));
           }
-        }, step.scrollIntoView !== false ? 300 : 0);
+          return `${rect.top}|${rect.left}|${rect.width}|${rect.height}`;
+        };
+
+        /* One settle loop at a time — every scroll frame calls updatePosition,
+           and N overlapping loops would all chase the same rect. The loop ends
+           on a few CONSECUTIVE unchanged frames, not the first one: a smooth
+           scroll's easing can hold still for a frame before it gets going, and
+           stopping there would leave the beat placed against the rect the
+           scroll started from. */
+        if (settleFrame.current !== null) cancelAnimationFrame(settleFrame.current);
+        let seen = place();
+        let frames = 0;
+        let stable = 0;
+        const settle = () => {
+          const now = place();
+          stable = now === seen ? stable + 1 : 0;
+          seen = now;
+          if (stable < SETTLE_STABLE_FRAMES && ++frames < SETTLE_FRAME_BUDGET) {
+            settleFrame.current = requestAnimationFrame(settle);
+          } else {
+            settleFrame.current = null;
+          }
+        };
+        settleFrame.current = requestAnimationFrame(settle);
       }
     };
 
@@ -151,7 +385,14 @@ export function ProductTour({ steps, isOpen, onClose, onComplete, storageKey = '
     const resizeObserver = new ResizeObserver(updatePosition);
     const mutationObserver = new MutationObserver(updatePosition);
 
-    window.addEventListener('resize', updatePosition);
+    /* A resize changes how much room each side has, so the beat has earned a
+       fresh scroll — this is the one event that may re-run the once-per-step
+       scroll above. */
+    const onResize = () => {
+      scrolledForStep.current = null;
+      updatePosition();
+    };
+    window.addEventListener('resize', onResize);
     window.addEventListener('scroll', updatePosition, true);
 
     /* Watch the document ALWAYS, not only when the target happens to be
@@ -165,10 +406,14 @@ export function ProductTour({ steps, isOpen, onClose, onComplete, storageKey = '
     if (element) resizeObserver.observe(element);
 
     return () => {
-      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('resize', onResize);
       window.removeEventListener('scroll', updatePosition, true);
       resizeObserver.disconnect();
       mutationObserver.disconnect();
+      if (settleFrame.current !== null) {
+        cancelAnimationFrame(settleFrame.current);
+        settleFrame.current = null;
+      }
     };
   }, [isOpen, step, currentStep]);
 
@@ -260,23 +505,23 @@ export function ProductTour({ steps, isOpen, onClose, onComplete, storageKey = '
           </div>
 
           {/* Animated pointer based on tooltip placement */}
-          {step.placement && step.placement !== 'center' && (
+          {step.placement && placement !== 'center' && (
             <div
               className="absolute animate-bounce"
               style={{
-                ...(step.placement === 'top' && {
+                ...(placement === 'top' && {
                   top: targetRect.top - (step.highlightPadding || 8) - 40,
                   left: targetRect.left + targetRect.width / 2 - 12,
                 }),
-                ...(step.placement === 'bottom' && {
+                ...(placement === 'bottom' && {
                   top: targetRect.bottom + (step.highlightPadding || 8) + 16,
                   left: targetRect.left + targetRect.width / 2 - 12,
                 }),
-                ...(step.placement === 'left' && {
+                ...(placement === 'left' && {
                   top: targetRect.top + targetRect.height / 2 - 12,
                   left: targetRect.left - (step.highlightPadding || 8) - 40,
                 }),
-                ...(step.placement === 'right' && {
+                ...(placement === 'right' && {
                   top: targetRect.top + targetRect.height / 2 - 12,
                   left: targetRect.right + (step.highlightPadding || 8) + 16,
                 }),
