@@ -18,7 +18,7 @@ import { Sparkles } from 'lucide-react';
 import { Button } from '../common/Button';
 import { useStore } from '../../store/useStore';
 import { usePermissions } from '../../hooks/usePermission';
-import { useCloudControlLive } from '../../engine/react/useCloudControl';
+import { useCloudControl } from '../../engine/react/useCloudControl';
 import { ruleProposals } from '../../features/govern/ruleProposals';
 
 interface NavItem {
@@ -42,7 +42,7 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
   const isATT = activeTenantId === 'TNT-001';
   const { canCreate, canEdit } = usePermissions();
   const [notifications] = useState(3);
-  const proposalCount = useCloudControlLive(c => ruleProposals(c).length);
+  const proposalCount = useCloudControl(c => ruleProposals(c).length);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);

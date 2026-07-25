@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, test, expect, afterEach } from 'vitest';
 import { ProposalBand } from './ProposalBand';
@@ -38,6 +38,25 @@ describe('ProposalBand', () => {
   test('renders nothing when every finding is resolved', () => {
     for (const p of ruleProposals(CC)) CC.enforceRule(p.ruleId);
     renderBand();
+    expect(screen.queryByTestId('proposal-row')).not.toBeInTheDocument();
+    expect(screen.getByTestId('proposal-band-empty')).toBeInTheDocument();
+  });
+
+  // ProposalBand reads through useCloudControl (not useCloudControlLive) -
+  // it must NOT need the 3s telemetry tick to notice an enforcement. Mount
+  // once, enforce every proposal against the SAME live instance (no
+  // re-render in between), and confirm it updates on its own from the
+  // engine's real mutation event alone.
+  test('an already-mounted band updates on its own once every proposal is enforced', () => {
+    renderBand();
+    const before = ruleProposals(CC);
+    expect(before.length).toBeGreaterThan(0);
+    expect(screen.getAllByTestId('proposal-row')).toHaveLength(before.length);
+
+    act(() => {
+      for (const p of before) CC.enforceRule(p.ruleId);
+    });
+
     expect(screen.queryByTestId('proposal-row')).not.toBeInTheDocument();
     expect(screen.getByTestId('proposal-band-empty')).toBeInTheDocument();
   });

@@ -137,6 +137,7 @@ export function AndiPanel() {
                   <button
                     type="button"
                     onClick={() => navigate(`/discover?draft=${cardItem.proposalId}`)}
+                    aria-label={`Enforce it: ${cardItem.title}`}
                     className="mt-3 h-8 rounded-lg bg-fw-ctaPrimary px-4 text-figma-sm font-medium text-white hover:bg-fw-ctaPrimaryHover"
                   >
                     Enforce it

@@ -12,11 +12,14 @@ afterEach(() => { while (CC.canUndo()) CC.undo(); });
 const renderBuilder = () => render(<MemoryRouter><RuleBuilder /></MemoryRouter>);
 
 describe('RuleBuilder as a dialog', () => {
-  test('is a modal dialog and focuses its first field on open', async () => {
+  test('is a dialog and focuses its first field on open', async () => {
     renderBuilder();
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
     const dialog = await screen.findByRole('dialog');
-    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    // The form renders inline in the page flow (no overlay, no focus trap,
+    // a fully tab-reachable background) - aria-modal="true" would tell a
+    // screen reader the rest of the page is unavailable, which is false.
+    expect(dialog).not.toHaveAttribute('aria-modal');
     await waitFor(() => expect(screen.getByLabelText(/rule name/i)).toHaveFocus());
   });
 

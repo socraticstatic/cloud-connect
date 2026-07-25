@@ -174,10 +174,13 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange, seed }: RuleBu
   }, [open]);
 
   // Seeding from "Tighten it": re-derive every field from the named rule's
-  // OWN spec, keyed to seed.ruleId rather than running once on mount — the
-  // same RuleBuilder instance persists across renders in RulesPanel (it is
-  // the parent's controlled dialog), so a second Tighten click while the
-  // first is still open must re-seed too, not silently keep the stale draft.
+  // OWN spec, keyed to seed.ruleId — not a plain mount-once effect, because
+  // the same RuleBuilder instance persists across renders in RulesPanel (it
+  // is the parent's controlled dialog). Keying on seed.ruleId means a SECOND
+  // Tighten click on a DIFFERENT rule while the first is still open re-seeds
+  // correctly; a second click on the SAME rule leaves seed.ruleId unchanged,
+  // so the effect no-ops and the person's in-progress edits survive rather
+  // than being clobbered by a re-seed they didn't ask for.
   // A rule id the engine no longer carries (removed out from under the
   // link) leaves the form untouched rather than seeding garbage.
   useEffect(() => {
@@ -328,7 +331,7 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange, seed }: RuleBu
      screen, so what a person approved and what they commit cannot drift.
      The old flow cleared it on every keystroke, which meant the reviewed
      spec and the committed spec were never the same object. */
-  const preview = open && !groupNeeded && !tagGroupMismatch
+  const preview = !groupNeeded && !tagGroupMismatch
     ? (CC.dryRun(spec()) as Preview)
     : null;
 
@@ -341,7 +344,7 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange, seed }: RuleBu
     : null;
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="New rule">
+    <div role="dialog" aria-label="New rule">
       <form
         onSubmit={e => {
           e.preventDefault();

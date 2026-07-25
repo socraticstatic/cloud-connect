@@ -11,17 +11,27 @@ describe('port matching', () => {
       name: 'port probe', src: { tag: 'any', cloud: 'any' },
       dst: 'any', ports: '443', action: 'deny', chain: [],
     }) as { matched: { flow: { ports: string } }[] };
+    expect(dry.matched.length).toBeGreaterThan(0);
     for (const m of dry.matched) {
       const ports = m.flow.ports.split(',').map(s => s.trim());
       expect(ports).toContain('443');
     }
   });
 
+  // The seeded estate emits a 'dns-exfil' flow with ports:'53' for every
+  // classified-helion workload, as long as the dnsFirewall fix hasn't been
+  // applied yet (state.ts defaults it to false) - see state-rules.ts's
+  // flows(). A rule targeting port 53 with dst:'any' must match at least
+  // that flow, and genuinely carry port 53 - not merely return an array.
   test('port 53 can be targeted', () => {
     const dry = CC.dryRun({
       name: 'dns probe', src: { tag: 'any', cloud: 'any' },
       dst: 'any', ports: '53', action: 'deny', chain: [],
-    }) as { matched: unknown[] };
-    expect(Array.isArray(dry.matched)).toBe(true);
+    }) as { matched: { flow: { ports: string } }[] };
+    expect(dry.matched.length).toBeGreaterThan(0);
+    for (const m of dry.matched) {
+      const ports = m.flow.ports.split(',').map(s => s.trim());
+      expect(ports).toContain('53');
+    }
   });
 });

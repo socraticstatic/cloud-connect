@@ -109,8 +109,14 @@ export function RulesPanel() {
   useEffect(() => {
     const ruleId = searchParams.get('rule');
     if (!ruleId) return;
-    setSeedRuleId(ruleId);
-    setBuilderOpen(true);
+    // An id the engine does not carry (stale link, typo, tampered query
+    // string) must not seed the builder at all - it would otherwise open a
+    // blank dialog whose provenance line names the bogus id as if it were a
+    // real rule Andi proposed.
+    if (CC.ruleList().some((r: { id: string }) => r.id === ruleId)) {
+      setSeedRuleId(ruleId);
+      setBuilderOpen(true);
+    }
     searchParams.delete('rule');
     setSearchParams(searchParams, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps

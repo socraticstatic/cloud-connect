@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ShieldAlert } from 'lucide-react';
-import { useCloudControlLive } from '../../engine/react/useCloudControl';
+import { useCloudControl } from '../../engine/react/useCloudControl';
 import { ruleProposals } from './ruleProposals';
 
 /**
@@ -11,7 +11,7 @@ import { ruleProposals } from './ruleProposals';
  * recomputed from the estate.
  */
 export function ProposalBand() {
-  const cc = useCloudControlLive(c => c);
+  const cc = useCloudControl(c => c);
   const proposals = ruleProposals(cc);
 
   if (!proposals.length) {
