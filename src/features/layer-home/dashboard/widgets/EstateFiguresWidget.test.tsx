@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import { describe, test, expect } from 'vitest';
 import { LayerContext } from '../registry';
 import { EstateFiguresWidget } from './EstateFiguresWidget';
@@ -37,5 +37,33 @@ describe('EstateFiguresWidget', () => {
 
     expect(screen.queryByText('Regions on the fabric')).not.toBeInTheDocument();
     expect(screen.getByText('Model endpoints ready')).toBeInTheDocument();
+  });
+
+  test('tracks a telemetry-driven engine mutation with no surface change', () => {
+    // activateOnramp('nb2') attaches CoreWeave + Nebius and flips gpt-class's
+    // readiness (state-console.ts's modelCatalog keys `ready` off exactly
+    // these three attachment flags) — a genuine, synchronous engine mutation
+    // that moves aiStratum's modelsReady figure without any React prop change.
+    const before = aiStratum(CC);
+
+    render(<LayerContext.Provider value="ai"><EstateFiguresWidget /></LayerContext.Provider>);
+    expect(screen.getByText(`${before.modelsReady}/${before.modelsTotal}`)).toBeInTheDocument();
+
+    try {
+      act(() => {
+        CC.activateOnramp('nb2');
+      });
+
+      const after = aiStratum(CC);
+      expect(after.modelsReady, 'fixture must actually move this figure').toBeGreaterThan(before.modelsReady);
+
+      expect(screen.queryByText(`${before.modelsReady}/${before.modelsTotal}`)).not.toBeInTheDocument();
+      expect(screen.getByText(`${after.modelsReady}/${after.modelsTotal}`)).toBeInTheDocument();
+    } finally {
+      // Leave the shared CC singleton exactly as this test found it.
+      act(() => {
+        CC.undo();
+      });
+    }
   });
 });

@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { Gauge } from 'lucide-react';
 import { WidgetFrame } from '../WidgetFrame';
 import { useLayer, type LayerWidgetProps } from '../registry';
@@ -32,7 +31,7 @@ function estateFigures(cc: CloudControl, surface: 'naas' | 'ai'): Figure[] {
 export function EstateFiguresWidget(_props: LayerWidgetProps) {
   const surface = useLayer();
   const cc = useCloudControlLive(c => c);
-  const figures = useMemo(() => estateFigures(cc, surface), [cc, surface]);
+  const figures = estateFigures(cc, surface);
 
   return (
     <WidgetFrame title="Estate at a glance" icon={Gauge}>
