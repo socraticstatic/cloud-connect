@@ -66,10 +66,25 @@ export function widgetsForSurface(
   return Object.values(reg).filter(w => w.surface === surface || w.surface === 'both');
 }
 
-/** The default board per surface, as an ordered list of widget ids. */
+/**
+ * The default board per surface, as an ordered list of widget ids.
+ *
+ * The layer's own ACTIONABLE widget leads; Standing intents follows it. Standing
+ * intents is the most important idea on this product and its weakest opener: on
+ * an estate where nobody has declared one, it renders its empty state, so
+ * leading with it opens the home page on a blank slate and four setup buttons
+ * while every widget below is already stating figures. Money on the table and
+ * Token budgets each open with a number and a one-click reviewable draft, which
+ * is the product showing it already read the estate. The ask for a declaration
+ * then lands after the payoff instead of before it.
+ *
+ * Seeding intents so the flagship is never empty was the other way to fix this,
+ * and is deliberately not done: a pre-declared standing intent is a promise the
+ * user never made, and this product's whole posture is that a human commits.
+ */
 export const DEFAULT_LAYOUT: Record<Surface, string[]> = {
-  naas: ['standing-intents', 'estate-figures', 'money-on-the-table', 'assessment-findings'],
-  ai:   ['standing-intents', 'estate-figures', 'token-budgets', 'assessment-findings'],
+  naas: ['money-on-the-table', 'standing-intents', 'estate-figures', 'assessment-findings'],
+  ai:   ['token-budgets', 'standing-intents', 'estate-figures', 'assessment-findings'],
 };
 
 // The active layer, provided by LayerDashboard so surface-aware widgets can read
