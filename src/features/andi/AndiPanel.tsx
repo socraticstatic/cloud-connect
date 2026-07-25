@@ -110,13 +110,44 @@ export function AndiPanel() {
           reversible — Undo covers each commit.
         </p>
 
+        {/* Proposal cards always render, thread empty or not - advice that
+            vanishes the moment you ask a question is not advice. The other
+            families keep the empty-thread-only gate below. */}
+        {resolve.some(c => c.move === 'proposal') && (
+          <section data-testid="andi-resolve-proposals">
+            <h3 className="text-figma-sm font-bold text-fw-heading mb-2">Resolve</h3>
+            <div className="space-y-3">
+              {resolve.filter(c => c.move === 'proposal').map(cardItem => (
+                <div
+                  key={cardItem.proposalId}
+                  data-testid={`andi-proposal-${cardItem.proposalId}`}
+                  className="rounded-2xl border border-fw-secondary bg-fw-base p-3 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"
+                >
+                  <p className={`text-figma-xs font-semibold uppercase tracking-[0.08em] ${cardItem.severity === 'crit' ? 'text-fw-red-600' : 'text-fw-bodyLight'}`}>
+                    {cardItem.severity === 'crit' ? 'Critical finding' : 'High finding'}
+                  </p>
+                  <p className="text-figma-sm text-fw-body">{cardItem.title}</p>
+                  <p className="text-figma-sm text-fw-bodyLight">{cardItem.detail}</p>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/discover?draft=${cardItem.proposalId}`)}
+                    className="mt-3 h-8 rounded-lg bg-fw-ctaPrimary px-4 text-figma-sm font-medium text-white hover:bg-fw-ctaPrimaryHover"
+                  >
+                    Enforce it
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {thread.length === 0 && (
           <>
-            {resolve.length > 0 && (
+            {resolve.some(c => c.move !== 'proposal') && (
               <section data-testid="andi-resolve">
                 <h3 className="text-figma-sm font-bold text-fw-heading mb-2">Resolve</h3>
                 <div className="space-y-3">
-                  {resolve.map(cardItem => (
+                  {resolve.filter(c => c.move !== 'proposal').map(cardItem => (
                     <div
                       key={cardItem.move === 'intent' ? cardItem.intentId : cardItem.title}
                       data-testid={cardItem.move === 'intent' ? `andi-intent-${cardItem.intentId}` : undefined}

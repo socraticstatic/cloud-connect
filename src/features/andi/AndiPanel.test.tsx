@@ -4,6 +4,7 @@ import { describe, test, expect, beforeEach } from 'vitest';
 import { AndiPanel, toggleAndi } from './AndiPanel';
 import { CC } from '../../engine';
 import { andiResolveCards } from './andiBrain';
+import { ruleProposals } from '../govern/ruleProposals';
 
 const renderAt = (path: string) =>
   render(<MemoryRouter initialEntries={[path]}><AndiPanel /></MemoryRouter>);
@@ -22,13 +23,37 @@ describe('AndiPanel', () => {
   test('empty state: Resolve cards from the advisor draft, Ask prompts for the layer', () => {
     localStorage.setItem('cc-andi-open', '1');
     renderAt('/ai/observe');
+    // Proposal cards (findings joined to their preventive rule) now lead and
+    // render in their own always-visible section - see
+    // 'proposal cards persist even once the thread is non-empty' below.
+    // This section covers the remaining families (intent/draft), which are
+    // still gated to the empty-thread state.
     const resolve = screen.getByTestId('andi-resolve');
-    const cards = andiResolveCards(CC);
+    const cards = andiResolveCards(CC).filter(c => c.move !== 'proposal');
     expect(within(resolve).getByText(cards[0].title)).toBeInTheDocument();
     const ask = screen.getByTestId('andi-ask');
     expect(within(ask).getByText('Which team is driving most spend?')).toBeInTheDocument();
     // Context chip names the layer and section.
     expect(screen.getByTestId('andi-context').textContent).toBe('AI Fabric · Insights');
+  });
+
+  test('proposal cards persist even once the thread is non-empty', () => {
+    localStorage.setItem('cc-andi-open', '1');
+    renderAt('/ai/home');
+    const proposals = ruleProposals(CC);
+    expect(proposals.length).toBeGreaterThan(0);
+    expect(screen.getByTestId('andi-resolve-proposals')).toBeInTheDocument();
+    expect(screen.getByText(proposals[0].title)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Which team is driving most spend?'));
+
+    // The thread is non-empty now: the intent/draft section and Ask prompts
+    // are gone (their existing gated behavior, unchanged)...
+    expect(screen.queryByTestId('andi-ask')).not.toBeInTheDocument();
+    // ...but the proposal cards are still here. Advice that vanishes the
+    // moment you ask a question is not advice.
+    expect(screen.getByTestId('andi-resolve-proposals')).toBeInTheDocument();
+    expect(screen.getByText(proposals[0].title)).toBeInTheDocument();
   });
 
   test('asking a suggestion renders a grounded answer in the thread', () => {

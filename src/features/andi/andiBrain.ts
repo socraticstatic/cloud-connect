@@ -4,6 +4,7 @@ import { parseIntent, type Command } from '../command/commandRegistry';
 import { aiSpendRows, aiSpendTotals, fmtTokens, fmtUsd } from '../ai-fabric/aiSpend';
 import { advisorDraft, attachOpportunities, steerOpportunities } from '../discover/stackFigures';
 import { workQueue } from '../work/workQueue';
+import { ruleProposals } from '../govern/ruleProposals';
 
 /**
  * Andi's brain — a router over things the ENGINE can ground, never a
@@ -62,21 +63,37 @@ export interface ResolveCard {
   title: string;
   detail: string;
   savingMo: number | null;
-  /** 'draft' opens the advisor draft; an intent card synchronizes itself. */
-  move: 'draft' | 'intent';
+  /** 'draft' opens the advisor draft; an intent card synchronizes itself;
+   *  a 'proposal' card stages the preventive rule for a live finding. */
+  move: 'draft' | 'intent' | 'proposal';
   /** Intent cards only. */
   intentId?: string;
   status?: 'drifting' | 'violated';
   mode?: 'watch' | 'enforce';
   hasMoves?: boolean;
+  /** Proposal cards only. */
+  proposalId?: string;
+  ruleName?: string;
+  severity?: 'crit' | 'high';
 }
 
 /** Resolve cards: a LENS over the one work queue (workQueue.ts) - the same
- *  rows /work lists in full. Intent rows lead (the queue already orders
+ *  rows /work lists in full. Proposal cards (live findings joined to their
+ *  preventive rule) lead, since they are the most severe attention the
+ *  estate can ask for; intent rows follow (the queue already orders
  *  violated first); the top priced advisor rows follow as draft cards. */
 export function andiResolveCards(cc: CloudControl): ResolveCard[] {
   const queue = workQueue(cc);
   const intents = cc.intentList?.() ?? [];
+  const proposalCards: ResolveCard[] = ruleProposals(cc).map(p => ({
+    title: p.title,
+    detail: `${p.detail} Enforcing ${p.ruleName} would match ${p.impact.matched} flows carrying ${p.impact.gbps} Gbps.`,
+    savingMo: null,
+    move: 'proposal',
+    proposalId: p.id,
+    ruleName: p.ruleName,
+    severity: p.severity,
+  }));
   const intentCards: ResolveCard[] = queue
     .filter(r => r.source === 'intent' && r.intentId)
     .map(r => {
@@ -92,7 +109,7 @@ export function andiResolveCards(cc: CloudControl): ResolveCard[] {
         hasMoves: i.reading.moves.length > 0,
       };
     });
-  return [...intentCards, ...draftCards(cc)];
+  return [...proposalCards, ...intentCards, ...draftCards(cc)];
 }
 
 function draftCards(cc: CloudControl): ResolveCard[] {

@@ -49,7 +49,9 @@ describe('andiBrain — every answer is engine-grounded', () => {
   });
 
   it('resolve cards are the advisor draft, priced by the engine', () => {
-    const cards = andiResolveCards(CC);
+    // Scoped to the draft family: proposal and intent cards (also present in
+    // the full andiResolveCards list) are covered by their own tests.
+    const cards = andiResolveCards(CC).filter(c => c.move === 'draft');
     const priced = attachOpportunities(CC).filter(o => o.bucketSavingMo !== null);
     expect(cards.length).toBeGreaterThan(0);
     expect(cards.length).toBeLessThanOrEqual(3);

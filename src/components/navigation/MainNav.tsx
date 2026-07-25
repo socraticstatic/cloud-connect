@@ -18,6 +18,8 @@ import { Sparkles } from 'lucide-react';
 import { Button } from '../common/Button';
 import { useStore } from '../../store/useStore';
 import { usePermissions } from '../../hooks/usePermission';
+import { useCloudControlLive } from '../../engine/react/useCloudControl';
+import { ruleProposals } from '../../features/govern/ruleProposals';
 
 interface NavItem {
   label: string;
@@ -40,6 +42,7 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
   const isATT = activeTenantId === 'TNT-001';
   const { canCreate, canEdit } = usePermissions();
   const [notifications] = useState(3);
+  const proposalCount = useCloudControlLive(c => ruleProposals(c).length);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
@@ -290,16 +293,27 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
                     global action, never an address. Each entry names its
                     layer and lands on that layer's Connect page. */}
                 <CreateMenu />
-                {/* Andi — the assistant, per the AI Gateway header. */}
+                {/* Andi — the assistant, per the AI Gateway header. The badge
+                    is what makes proposal-card advice findable from any
+                    page: the panel stays closed by default, so this count is
+                    the only signal that Andi is holding something. */}
                 <button
                   type="button"
                   data-testid="andi-toggle"
                   aria-label="Ask Andi"
                   title="Ask Andi"
                   onClick={toggleAndi}
-                  className="flex items-center justify-center h-9 w-9 rounded-full bg-[#009fdb] text-white hover:bg-fw-ctaPrimary transition-colors"
+                  className="relative flex items-center justify-center h-9 w-9 rounded-full bg-[#009fdb] text-white hover:bg-fw-ctaPrimary transition-colors"
                 >
                   <Sparkles className="h-4 w-4" />
+                  {proposalCount > 0 && (
+                    <span
+                      data-testid="andi-proposal-badge"
+                      className="absolute -top-1 -right-1 h-4 min-w-4 px-0.5 text-figma-sm flex items-center justify-center text-white bg-fw-error rounded-full"
+                    >
+                      {proposalCount > 99 ? '99+' : proposalCount}
+                    </span>
+                  )}
                 </button>
                 <SearchBar onSearch={onSearch} />
                 <div className="h-5 w-px bg-fw-secondary hidden xl:block mx-0.5" />

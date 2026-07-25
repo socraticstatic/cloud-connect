@@ -79,7 +79,10 @@ describe('the drift queue', () => {
     const reading = CC.intentList()[0].reading;
     expect(reading.status).toBe('violated');
 
-    const cards = andiResolveCards(CC);
+    // Proposal cards (live findings joined to their preventive rule) lead
+    // the whole list ahead of every other family - see andiProposals.test.tsx.
+    // Within what remains, the violated intent still leads.
+    const cards = andiResolveCards(CC).filter(c => c.move !== 'proposal');
     expect(cards[0].move).toBe('intent');
     expect(cards[0].intentId).toBe(declared.id);
     expect(cards[0].status).toBe('violated');
