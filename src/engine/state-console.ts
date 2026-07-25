@@ -199,6 +199,16 @@ function recordDecision(allowed,guarded,detail){
     detail||{}));
   if(decisions.length>400)decisions.shift();
 }
+/* THE scope predicate. promptTrace's gate and any preview that asks "would
+   this scope deny that request" must be the same rule, or a preview can
+   promise something the gate does not do. Returns the engine's own reason
+   fragment, or null when the scope permits. */
+CC.scopeDenies=function(scope,modelId){
+  if(modelId!=='gpt-class')return null;
+  if(scope==='no-external')return 'no external models';
+  if(scope==='self-hosted')return 'model allowlist is self-hosted only';
+  return null;
+};
 CC.promptTrace=function(tag,modelId,prompt){
   const pol=tokenPolicies[tag];
   const model=CC.modelCatalog().find(m=>m.id===modelId);
@@ -224,14 +234,9 @@ CC.promptTrace=function(tag,modelId,prompt){
   }
   // token policy gate
   if(pol){
-    const externalModel=modelId==='gpt-class';
-    if(pol.scope==='no-external'&&externalModel){
-      const why=`${tag}: no external models — request DENIED`;
-      recordDecision(false,false,{tag,modelId,tokens:0,ttftMs:0,path:rpath,reason:why});
-      return {blocked:true,steps:[...steps,{hop:'Token policy',detail:why,ok:false}],tokens:0};
-    }
-    if(pol.scope==='self-hosted'&&externalModel){
-      const why=`${tag}: model allowlist is self-hosted only — request DENIED`;
+    const denial=CC.scopeDenies(pol.scope,modelId);
+    if(denial){
+      const why=`${tag}: ${denial} — request DENIED`;
       recordDecision(false,false,{tag,modelId,tokens:0,ttftMs:0,path:rpath,reason:why});
       return {blocked:true,steps:[...steps,{hop:'Token policy',detail:why,ok:false}],tokens:0};
     }
