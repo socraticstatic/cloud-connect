@@ -1,13 +1,19 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, test, expect, afterEach } from 'vitest';
 import { RuleBuilder } from './RuleBuilder';
 import { CC } from '../../engine';
 
 afterEach(() => { while (CC.canUndo()) CC.undo(); });
 
+// RuleBuilder now navigates (useNavigate) when a seeded submit stages a
+// rule, so every render needs a Router ancestor even where these tests
+// never seed it — the hook itself throws without one.
+const renderBuilder = () => render(<MemoryRouter><RuleBuilder /></MemoryRouter>);
+
 describe('RuleBuilder as a dialog', () => {
   test('is a modal dialog and focuses its first field on open', async () => {
-    render(<RuleBuilder />);
+    renderBuilder();
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
     const dialog = await screen.findByRole('dialog');
     expect(dialog).toHaveAttribute('aria-modal', 'true');
@@ -15,7 +21,7 @@ describe('RuleBuilder as a dialog', () => {
   });
 
   test('Escape closes it', async () => {
-    render(<RuleBuilder />);
+    renderBuilder();
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
     await screen.findByRole('dialog');
     fireEvent.keyDown(document, { key: 'Escape' });
@@ -23,7 +29,7 @@ describe('RuleBuilder as a dialog', () => {
   });
 
   test('an untouched form cannot author the deny-any-to-any default', async () => {
-    render(<RuleBuilder />);
+    renderBuilder();
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
     await screen.findByRole('dialog');
     expect(screen.getByRole('button', { name: /add rule/i })).toBeDisabled();
@@ -42,7 +48,7 @@ describe('RuleBuilder as a dialog', () => {
      restores west-workloads for every later test regardless of this one's
      outcome. */
   test('a failed author is visible and keeps the form open', async () => {
-    render(<RuleBuilder />);
+    renderBuilder();
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
     await screen.findByRole('dialog');
     fireEvent.change(screen.getByLabelText(/rule name/i), { target: { value: 'x' } });

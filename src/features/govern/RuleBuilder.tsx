@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { CC } from '../../engine';
 import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
+import { setPendingRuleSpec } from '../discover/stackFigures';
 
 const ACTIONS = ['deny', 'inspect', 'route-private', 'allow'] as const;
 const PORTS = ['any', '53', '443', '5432', '8443'] as const;
@@ -50,6 +52,26 @@ interface Group {
   id: string;
   label: string;
   kind: string;
+}
+
+/* The shape of an existing rule, as looked up for seeding. Mirrors
+   RulesPanel's Rule/RuleSrc/RuleDst locally rather than importing them —
+   this component only ever reads the four fields it re-encodes into form
+   state, and the two files evolving their own minimal view is cheaper than
+   a shared type neither fully needs. */
+interface SeedRuleSrc {
+  tag?: string;
+  cloud?: string;
+  group?: string;
+}
+type SeedRuleDst = string | { group?: string };
+interface SeedRule {
+  id: string;
+  name: string;
+  src: SeedRuleSrc;
+  dst: SeedRuleDst;
+  ports: string;
+  action: string;
 }
 
 interface MatchedFlow {
@@ -104,10 +126,17 @@ interface RuleBuilderProps {
    *  variant that renders its own "New rule" button. */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Present when the builder was opened from "Tighten it" on a security
+   *  finding (ProposalBand → /naas/govern?rule=<ruleId>). The form seeds
+   *  from that rule's spec rather than starting blank, and its primary
+   *  action stages a spec for the tray instead of authoring in place —
+   *  see the `seed` branch in `submit` below. */
+  seed?: { ruleId: string };
 }
 
-export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderProps = {}) {
+export function RuleBuilder({ open: controlledOpen, onOpenChange, seed }: RuleBuilderProps = {}) {
   const actions = useCloudControlActions();
+  const navigate = useNavigate();
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = controlledOpen ?? internalOpen;
@@ -143,6 +172,41 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
     return () => document.removeEventListener('keydown', onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // Seeding from "Tighten it": re-derive every field from the named rule's
+  // OWN spec, keyed to seed.ruleId rather than running once on mount — the
+  // same RuleBuilder instance persists across renders in RulesPanel (it is
+  // the parent's controlled dialog), so a second Tighten click while the
+  // first is still open must re-seed too, not silently keep the stale draft.
+  // A rule id the engine no longer carries (removed out from under the
+  // link) leaves the form untouched rather than seeding garbage.
+  useEffect(() => {
+    if (!seed) return;
+    const rule = (CC.ruleList() as SeedRule[]).find(r => r.id === seed.ruleId);
+    if (!rule) return;
+    setName(`${rule.name} (tightened)`);
+    setTag(rule.src.tag ?? 'any');
+    setCloud(rule.src.cloud ?? 'any');
+    setGroup(rule.src.group ?? 'any');
+    // A structured dst re-enters the same "group:<id>" encoding the single
+    // destination <select> expects (see GROUP_DST_PREFIX above) — this is
+    // the mirror image of spec()'s own decode a few lines down.
+    setDst(
+      rule.dst && typeof rule.dst === 'object'
+        ? rule.dst.group
+          ? `${GROUP_DST_PREFIX}${rule.dst.group}`
+          : 'any'
+        : rule.dst,
+    );
+    setPorts(rule.ports);
+    setAction(rule.action);
+    setFailed(false);
+    // setOpen routes through onOpenChange when the parent controls this
+    // dialog (RulesPanel) and through internal state otherwise (this
+    // component's own uncontrolled test) — either way, seeding opens it.
+    setOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seed?.ruleId]);
 
   // Subscribed via useCloudControl (not useCloudControlActions, which hands
   // back the engine handle without wiring a re-render). A group added or
@@ -197,6 +261,18 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
     // too so the silent-zero-match rule stays unreachable even if submit()
     // is ever reached some other way.
     if (groupNeeded || tagGroupMismatch || untouched) return;
+    // The machine stages, never commits: a seeded builder's primary action
+    // hands the spec to the review tray (via the read-once holder in
+    // stackFigures.ts — encoding it in the URL would be long and fragile)
+    // and navigates there, rather than calling addRule itself. A human
+    // still has to press Commit on /discover before anything changes.
+    if (seed) {
+      setPendingRuleSpec(spec());
+      resetForm();
+      setOpen(false);
+      navigate('/discover?draft=rule-new');
+      return;
+    }
     const created = actions.addRule({ ...spec(), enforceNow: false });
     // addRule returns null on an invalid spec (e.g. a destination naming a
     // group that no longer exists) rather than throwing. Discarding that
@@ -256,6 +332,14 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
     ? (CC.dryRun(spec()) as Preview)
     : null;
 
+  // Looked up fresh on every render rather than captured once in the seed
+  // effect above: the provenance line names the rule Andi proposed, and
+  // that name should track a live rename the same way every other engine
+  // name in this component does (see vpcName/flowDstLabel further up).
+  const seededRuleName = seed
+    ? (CC.ruleList() as SeedRule[]).find(r => r.id === seed.ruleId)?.name ?? seed.ruleId
+    : null;
+
   return (
     <div role="dialog" aria-modal="true" aria-label="New rule">
       <form
@@ -275,6 +359,15 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
         onChange={e => onField(setName)(e.target.value)}
         className="w-full h-9 px-3 rounded-lg border border-fw-secondary bg-fw-wash text-figma-sm"
       />
+
+      {/* Where this draft came from — "Tighten it" pre-fills every field
+          below from an existing rule's own spec, and a person editing that
+          draft should never mistake it for one they started from scratch. */}
+      {seed && (
+        <p data-testid="rule-provenance" className="text-figma-xs text-fw-bodyLight">
+          Proposed by Andi from: {seededRuleName}. Edit anything before you stage it.
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         {/* Source group leads the source fields: naming a group is the
@@ -384,7 +477,7 @@ export function RuleBuilder({ open: controlledOpen, onOpenChange }: RuleBuilderP
             : tagGroupMismatch ? 'This source group and tag combination matches nothing'
             : untouched ? 'Edit the form before adding a rule' : undefined}
           className="h-9 px-4 rounded-full text-figma-sm font-medium bg-fw-active text-white hover:bg-fw-linkHover transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-fw-active">
-          Add rule
+          {seed ? 'Stage this rule' : 'Add rule'}
         </button>
         <button type="button" onClick={cancel}
           className="h-9 px-4 rounded-full text-figma-sm font-medium border border-fw-secondary text-fw-body hover:bg-fw-wash transition-colors">

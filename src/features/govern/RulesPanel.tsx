@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Tag, Boxes, ShieldAlert, ShieldCheck, Eye, Wrench } from 'lucide-react';
 import { OverflowMenu, type OverflowMenuItem } from '../../components/common/OverflowMenu';
 import { RuleBuilder } from './RuleBuilder';
@@ -98,6 +99,22 @@ export function RulesPanel() {
 
   const [previews, setPreviews] = useState<Record<string, FixPreview | null>>({});
   const [builderOpen, setBuilderOpen] = useState(false);
+  // "Tighten it" (ProposalBand) lands here as /naas/govern?rule=<ruleId>.
+  // Capture which rule to seed the builder from, then strip the param the
+  // same way StackPanel strips ?draft= — so a refresh of this URL cannot
+  // reopen the builder pre-filled from a link already acted on.
+  const [seedRuleId, setSeedRuleId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    const ruleId = searchParams.get('rule');
+    if (!ruleId) return;
+    setSeedRuleId(ruleId);
+    setBuilderOpen(true);
+    searchParams.delete('rule');
+    setSearchParams(searchParams, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   /* The last act and what it moved. ONE piece of state, and both enforcement
      paths write it — the row overflow menu below and the recommendation
@@ -279,7 +296,17 @@ export function RulesPanel() {
         </table>
       </div>
 
-      <RuleBuilder open={builderOpen} onOpenChange={setBuilderOpen} />
+      <RuleBuilder
+        open={builderOpen}
+        onOpenChange={v => {
+          setBuilderOpen(v);
+          // Closing (Cancel, Escape, or a successful stage) clears the seed
+          // too — reopening via "New rule" afterward must start blank, not
+          // silently carry the last Tighten link's fields forward.
+          if (!v) setSeedRuleId(null);
+        }}
+        seed={seedRuleId ? { ruleId: seedRuleId } : undefined}
+      />
 
       {violations.length > 0 && (
         <div className="rounded-2xl border border-fw-secondary bg-fw-wash px-5 py-3">

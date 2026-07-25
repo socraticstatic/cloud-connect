@@ -110,6 +110,17 @@ export interface RuleSpec {
   chain: string[];
 }
 
+/* A spec handed from the rule builder to the tray. Read-once, like the share
+   proposal (cc.takeProposal()): the builder sets it, StackPanel takes it, and
+   nothing persists, so a refresh cannot re-stage it. Encoding the spec in the
+   URL instead was rejected as long and fragile — this module-level holder is
+   the same idiom the engine already uses for its own read-once handoff. */
+let pendingRuleSpec: RuleSpec | null = null;
+export function setPendingRuleSpec(spec: RuleSpec) { pendingRuleSpec = spec; }
+export function takePendingRuleSpec(): RuleSpec | null {
+  const s = pendingRuleSpec; pendingRuleSpec = null; return s;
+}
+
 export type StagedMove =
   | { kind: 'attach'; regionId: string }
   | { kind: 'steer'; flowId: string; pathId: string }

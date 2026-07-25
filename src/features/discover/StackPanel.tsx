@@ -15,6 +15,7 @@ import {
   stagedDeltas,
   commitMoves,
   advisorDraft,
+  takePendingRuleSpec,
   type StagedMove,
 } from './stackFigures';
 import { ruleProposals } from '../govern/ruleProposals';
@@ -175,6 +176,19 @@ export function StackPanel() {
         setStaged([{ kind: 'enforce', ruleId: proposal.ruleId }]);
         setDesigning(true);
         setProposalNote(`Proposed by Andi · ${proposal.title}`);
+      }
+    } else if (param === 'rule-new') {
+      /* ?draft=rule-new -> the rule builder's "Stage this rule" (seeded from
+         "Tighten it" on a security finding). The spec itself rides the
+         read-once holder, not the URL — see setPendingRuleSpec/
+         takePendingRuleSpec in stackFigures.ts. A direct or refreshed load
+         of this URL with nothing pending stages nothing, same as every
+         other token here once its source has gone stale. */
+      const spec = takePendingRuleSpec();
+      if (spec) {
+        setStaged([{ kind: 'rule', spec }]);
+        setDesigning(true);
+        setProposalNote(`Rule · ${spec.name}`);
       }
     } else {
       return;

@@ -1,13 +1,19 @@
 import { render, screen, within, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, test, expect, afterEach } from 'vitest';
 import { RuleBuilder } from './RuleBuilder';
 import { CC } from '../../engine';
 
 afterEach(() => { while (CC.canUndo()) CC.undo(); });
 
+// RuleBuilder now navigates (useNavigate) when a seeded submit stages a
+// rule, so every render needs a Router ancestor even where these tests
+// never seed it — the hook itself throws without one.
+const renderBuilder = () => render(<MemoryRouter><RuleBuilder /></MemoryRouter>);
+
 describe('RuleBuilder live preview', () => {
   test('recomputes as fields change instead of clearing', async () => {
-    render(<RuleBuilder />);
+    renderBuilder();
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
     await screen.findByRole('dialog');
     fireEvent.change(screen.getByLabelText(/rule name/i), { target: { value: 'live preview rule' } });
@@ -58,7 +64,7 @@ describe('RuleBuilder live preview', () => {
     const uniqueNames = Array.from(new Set(dry.shadowed.map(s => s.by)));
     expect(uniqueNames).toEqual(['Inspect classified egress']);
 
-    render(<RuleBuilder />);
+    renderBuilder();
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
     await screen.findByRole('dialog');
     fireEvent.change(screen.getByLabelText(/rule name/i), { target: { value: spec.name } });

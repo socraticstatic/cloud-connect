@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { RuleBuilder } from './RuleBuilder';
 import { CC } from '../../engine';
+
+// RuleBuilder now navigates (useNavigate) when a seeded submit stages a
+// rule, so every render needs a Router ancestor even where these tests
+// never seed it — the hook itself throws without one.
+const renderBuilder = () => render(<MemoryRouter><RuleBuilder /></MemoryRouter>);
 
 function escapeRegExp(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -25,7 +31,7 @@ describe('RuleBuilder', () => {
   // asks the real engine what the default (untouched) form spec produces
   // without ever clicking anything preview-related.
   it('renders a dry-run preview that matches what CC.dryRun actually returns for the current spec', () => {
-    render(<RuleBuilder />);
+    renderBuilder();
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
 
     // Ask the real engine, independently of the component, what the
@@ -53,7 +59,7 @@ describe('RuleBuilder', () => {
   // dialog is open (RuleBuilder.preview.test.tsx covers this directly, but
   // this keeps the regression pinned alongside the rest of this suite).
   it('changing a field after opening the dialog recomputes the preview instead of clearing it', () => {
-    render(<RuleBuilder />);
+    renderBuilder();
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
     expect(screen.getByTestId('rule-preview')).toBeInTheDocument();
 
@@ -63,7 +69,7 @@ describe('RuleBuilder', () => {
   });
 
   it('Cancel resets the form to its initial state', () => {
-    render(<RuleBuilder />);
+    renderBuilder();
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
 
     fireEvent.change(screen.getByLabelText(/rule name/i), { target: { value: 'half-typed-name' } });
@@ -82,7 +88,7 @@ describe('RuleBuilder', () => {
   });
 
   it('offers intra-group / not-intra-group as destinations now that a source-group control exists', () => {
-    render(<RuleBuilder />);
+    renderBuilder();
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
     const dstSelect = screen.getByLabelText(/destination/i) as HTMLSelectElement;
     const values = Array.from(dstSelect.options).map(o => o.value);
@@ -91,7 +97,7 @@ describe('RuleBuilder', () => {
   });
 
   it('offers every live group as a source', () => {
-    render(<RuleBuilder />);
+    renderBuilder();
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
     const srcGroup = screen.getByLabelText(/source group/i) as HTMLSelectElement;
     const values = Array.from(srcGroup.options).map(o => o.value);
@@ -99,7 +105,7 @@ describe('RuleBuilder', () => {
   });
 
   it('offers every live group as a destination', () => {
-    render(<RuleBuilder />);
+    renderBuilder();
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
     const dstSelect = screen.getByLabelText(/destination/i) as HTMLSelectElement;
     const values = Array.from(dstSelect.options).map(o => o.value);
@@ -111,7 +117,7 @@ describe('RuleBuilder', () => {
      group policy that silently matches nothing is the failure this exists
      to prevent. */
   it('dry-runs a group-to-group rule to the same non-empty result the engine returns', () => {
-    render(<RuleBuilder />);
+    renderBuilder();
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
     fireEvent.change(screen.getByLabelText(/source group/i), { target: { value: 'west-branches' } });
     fireEvent.change(screen.getByLabelText(/destination/i), { target: { value: 'group:west-workloads' } });
@@ -136,7 +142,7 @@ describe('RuleBuilder', () => {
   });
 
   it('persists src.group and dst.group onto the rule it adds', () => {
-    render(<RuleBuilder />);
+    renderBuilder();
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
     fireEvent.change(screen.getByLabelText(/rule name/i), { target: { value: 'group-rule-c2' } });
     fireEvent.change(screen.getByLabelText(/source group/i), { target: { value: 'west-branches' } });
@@ -153,7 +159,7 @@ describe('RuleBuilder', () => {
 
   it('adds a rule to the engine when submitted', () => {
     const before = (CC.ruleList() as unknown[]).length;
-    render(<RuleBuilder />);
+    renderBuilder();
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
     fireEvent.change(screen.getByLabelText(/rule name/i), {
       target: { value: 'test-rule-task1' },
@@ -170,7 +176,7 @@ describe('RuleBuilder', () => {
      that guarantee as an unreachable-state test, not just an annotation. */
   describe('relative destination without a source group', () => {
     it('warns and disables Add rule, announced to assistive tech and tied to the controls it concerns', () => {
-      render(<RuleBuilder />);
+      renderBuilder();
       fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
       fireEvent.change(screen.getByLabelText(/destination/i), { target: { value: 'intra-group' } });
 
@@ -187,7 +193,7 @@ describe('RuleBuilder', () => {
     });
 
     it('clears once a source group is named, and Add rule re-enables', () => {
-      render(<RuleBuilder />);
+      renderBuilder();
       fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
       fireEvent.change(screen.getByLabelText(/destination/i), { target: { value: 'not-intra-group' } });
       expect(screen.getByRole('button', { name: /^add rule$/i })).toBeDisabled();
@@ -200,7 +206,7 @@ describe('RuleBuilder', () => {
 
     it('cannot be committed: clicking a disabled Add rule adds nothing to the engine', () => {
       const before = (CC.ruleList() as unknown[]).length;
-      render(<RuleBuilder />);
+      renderBuilder();
       fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
       fireEvent.change(screen.getByLabelText(/rule name/i), { target: { value: 'should-never-exist' } });
       fireEvent.change(screen.getByLabelText(/destination/i), { target: { value: 'intra-group' } });
@@ -224,7 +230,7 @@ describe('RuleBuilder', () => {
      tag both set". */
   describe('source group combined with a tag that only branches carry', () => {
     it('warns and disables Add rule when the group resolves to branches only', () => {
-      render(<RuleBuilder />);
+      renderBuilder();
       fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
       fireEvent.change(screen.getByLabelText(/source group/i), { target: { value: 'west-branches' } });
       fireEvent.change(screen.getByLabelText(/source tag/i), { target: { value: 'rd-helion' } });
@@ -242,7 +248,7 @@ describe('RuleBuilder', () => {
     });
 
     it('confirms the unsatisfiable spec really does dry-run to zero, proving the warning is honest', () => {
-      render(<RuleBuilder />);
+      renderBuilder();
       fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
       fireEvent.change(screen.getByLabelText(/source group/i), { target: { value: 'west-branches' } });
       fireEvent.change(screen.getByLabelText(/source tag/i), { target: { value: 'rd-helion' } });
@@ -255,7 +261,7 @@ describe('RuleBuilder', () => {
     });
 
     it('does not warn once the tag is cleared back to "any"', () => {
-      render(<RuleBuilder />);
+      renderBuilder();
       fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
       fireEvent.change(screen.getByLabelText(/source group/i), { target: { value: 'west-branches' } });
       fireEvent.change(screen.getByLabelText(/source tag/i), { target: { value: 'rd-helion' } });
@@ -268,7 +274,7 @@ describe('RuleBuilder', () => {
     });
 
     it('does not warn for a group that resolves to at least one VPC, even combined with a tag', () => {
-      render(<RuleBuilder />);
+      renderBuilder();
       fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
       fireEvent.change(screen.getByLabelText(/source group/i), { target: { value: 'west-workloads' } });
       fireEvent.change(screen.getByLabelText(/source tag/i), { target: { value: 'rd-helion' } });
@@ -279,7 +285,7 @@ describe('RuleBuilder', () => {
 
     it('cannot be committed: clicking a disabled Add rule adds nothing to the engine', () => {
       const before = (CC.ruleList() as unknown[]).length;
-      render(<RuleBuilder />);
+      renderBuilder();
       fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
       fireEvent.change(screen.getByLabelText(/rule name/i), { target: { value: 'should-never-exist-2' } });
       fireEvent.change(screen.getByLabelText(/source group/i), { target: { value: 'west-branches' } });
@@ -298,7 +304,7 @@ describe('RuleBuilder', () => {
      added while the builder is open shows up without an unrelated field
      edit forcing a re-render first. */
   it('offers a group added to the engine while the builder is open, without any unrelated field edit', () => {
-    render(<RuleBuilder />);
+    renderBuilder();
     fireEvent.click(screen.getByRole('button', { name: /new rule/i }));
 
     act(() => {
