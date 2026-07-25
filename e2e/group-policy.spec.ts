@@ -46,14 +46,19 @@ test('a person can author, preview, read back and enforce a group-to-group polic
   await page.getByLabel('Destination').selectOption('group:west-workloads');
   await page.getByLabel('Action').selectOption('allow');
 
-  // --- dry run: the blast radius, before anything changes ---
-  await page.getByRole('button', { name: /^Dry run$/i }).click();
-  const dryRun = page.getByTestId('dry-run-result');
+  // --- dry run: the blast radius, before anything changes. The preview is
+  // derived now, not gated behind a button — it is always on screen once the
+  // spec above is expressed, and recomputes from exactly that spec. ---
+  const dryRun = page.getByTestId('rule-preview');
   await expect(dryRun).toBeVisible();
 
   /* A group policy that silently matches nothing is the exact failure this
      feature was built to avoid — so the count is read off the screen and
-     asserted greater than zero, never merely asserted present. */
+     asserted greater than zero, never merely asserted present. Web-first
+     assertion: the preview recomputes on every field change, so wait for
+     the settled text rather than reading textContent the instant the
+     locator resolves. */
+  await expect(dryRun).toContainText(/\d+\s+flows?\s+matched/);
   const summary = (await dryRun.textContent()) ?? '';
   const matched = Number(/(\d+)\s+flows?\s+matched/.exec(summary)?.[1] ?? '0');
   expect(matched).toBeGreaterThan(0);
