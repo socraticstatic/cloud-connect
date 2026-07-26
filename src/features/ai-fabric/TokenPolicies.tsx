@@ -15,6 +15,14 @@ interface TokenPolicy {
   group?: string;
 }
 
+/** What each gating scope actually denies, in the status pill's own words —
+ *  mirrors TokenPolicyBuilder's SCOPES labels but phrased as a statement
+ *  about a policy that already carries the scope, not as a picker option. */
+const SCOPE_DENIES_TEXT: Record<string, string> = {
+  'no-external': 'denies any request to an external model',
+  'self-hosted': 'denies anything off the self-hosted allowlist',
+};
+
 /** A group-scoped row, resolved for rendering. `label` null means the group
  *  id names nothing live — a dangling reference degrades to the raw key with
  *  no resolution line, visible rather than swallowed (same contract as
@@ -141,24 +149,53 @@ export function TokenPolicies() {
                     model whatever this pill says. */}
                 {(() => {
                   const status = !p.enforced ? 'Draft' : p.capEnforced ? 'Enforcing' : 'Armed';
+                  const scopeGates = p.scope === 'no-external' || p.scope === 'self-hosted';
+                  /* Armed always gets an explanation - it is the entire
+                     reason this pill has three states instead of two.
+                     Draft gets one only when the scope itself already
+                     gates something: a Draft policy on a descriptive-only
+                     scope really does nothing yet, so nothing needs saying.
+                     Enforcing is left alone - it accurately claims budget
+                     enforcement and nothing more, so it is not the state
+                     misrepresenting anything. The scope gate is independent
+                     of the enforced flag either way (see the comment
+                     above), so Draft is where the gap between "looks idle"
+                     and "already denies something" is sharpest. */
+                  const description =
+                    status === 'Armed'
+                      ? 'Enforced, but no enforce-mode cap-token-spend intent covers this identity yet - the budget gate denies nothing until one is declared.'
+                      : status === 'Draft' && scopeGates
+                      ? `Draft describes the budget gate only - this policy's ${p.scope} scope already ${SCOPE_DENIES_TEXT[p.scope]}, independent of whether the policy is enforced.`
+                      : undefined;
+                  const descId = `policy-status-desc-${p.tag}`;
                   return (
-                    <span
-                      data-testid="policy-status"
-                      title={
-                        status === 'Armed'
-                          ? 'Enforced, but no enforce-mode cap-token-spend intent covers this identity yet - the budget gate denies nothing until one is declared.'
-                          : undefined
-                      }
-                      className={`inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium whitespace-nowrap ${
-                        status === 'Enforcing'
-                          ? 'bg-fw-successLight text-fw-success'
-                          : status === 'Armed'
-                          ? 'bg-fw-warnLight text-fw-warn'
-                          : 'bg-fw-neutral text-fw-bodyLight'
-                      }`}
-                    >
-                      {status}
-                    </span>
+                    <>
+                      <span
+                        data-testid="policy-status"
+                        aria-describedby={description ? descId : undefined}
+                        title={description}
+                        className={`inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium whitespace-nowrap ${
+                          status === 'Enforcing'
+                            ? 'bg-fw-successLight text-fw-success'
+                            : status === 'Armed'
+                            ? 'bg-fw-warnLight text-fw-warn'
+                            : 'bg-fw-neutral text-fw-bodyLight'
+                        }`}
+                      >
+                        {status}
+                      </span>
+                      {/* The explanation itself, reachable by assistive
+                          technology through aria-describedby rather than
+                          only by hovering for the title tooltip - same
+                          idiom TokenPolicyBuilder uses for its budget and
+                          softPct warnings (a separate element, an id, and
+                          aria-describedby on the control it concerns). */}
+                      {description && (
+                        <span id={descId} className="sr-only">
+                          {description}
+                        </span>
+                      )}
+                    </>
                   );
                 })()}
               </td>

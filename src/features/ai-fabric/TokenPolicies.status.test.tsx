@@ -60,6 +60,34 @@ describe('the token-policy status pill', () => {
     });
   });
 
+  /* Finding: the Armed explanation lived only in a `title` attribute, which
+     screen readers generally do not announce on an element that already has
+     an accessible name from its own visible text ("Armed"). Assert the
+     structural fix (aria-describedby wiring a real description) rather than
+     the title's content, which the accessible-description algorithm would
+     already have picked up as a fallback and so would not tell title and
+     aria-describedby apart. */
+  test('Armed exposes its explanation via aria-describedby, not title alone', () => {
+    withRestoredPolicy('rd-helion', () => {
+      CC.setTokenPolicy('rd-helion', { enforced: true });
+      show();
+      const pill = within(rowFor('rd-helion')).getByTestId('policy-status');
+      expect(pill).toHaveAttribute('aria-describedby');
+      expect(pill).toHaveAccessibleDescription(/no enforce-mode cap-token-spend intent/i);
+    });
+  });
+
+  /* rd-helion's seeded scope is self-hosted (a gating scope) and it starts
+     unenforced — a Draft policy that reads as "nothing happens yet" while
+     the scope gate already denies anything off the self-hosted allowlist,
+     independent of the enforced flag. That gap gets the same treatment. */
+  test('Draft on a gating scope explains the scope gate is independent of enforced state', () => {
+    show();
+    const pill = within(rowFor('rd-helion')).getByTestId('policy-status');
+    expect(pill).toHaveAttribute('aria-describedby');
+    expect(pill).toHaveAccessibleDescription(/self-hosted/i);
+  });
+
   test('Enforce stages instead of mutating', () => {
     const before = JSON.stringify(CC.tokenPolicyList());
     show();
