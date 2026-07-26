@@ -50,7 +50,15 @@ describe('TokenPolicyBuilder', () => {
     expect(JSON.stringify(CC.tokenPolicyList())).toBe(before);
   });
 
-  test('edit mode seeds from the existing policy and locks the identity', async () => {
+  // Finding 2: the locked identity field used to carry BOTH `disabled` and
+  // `readOnly`. `disabled` wins, so the field was unfocusable and most
+  // screen readers skip a disabled control entirely - a screen-reader user
+  // had no way to discover which identity was being edited. `readOnly`
+  // alone keeps the field focusable and announced while still blocking
+  // edits, so the assertion here is accessibility-oriented (focus +
+  // read-only), never a `.toBeDisabled()` check - that check would pass on
+  // the very bug this finding fixes.
+  test('edit mode seeds from the existing policy and locks the identity via readOnly, not disabled', async () => {
     render(
       <MemoryRouter>
         <TokenPolicyBuilder open onOpenChange={() => {}} editTag="rd-helion" />
@@ -59,7 +67,13 @@ describe('TokenPolicyBuilder', () => {
     await screen.findByRole('dialog');
     const existing = CC.tokenPolicy('rd-helion') as { budget: number; scope: string };
     expect((screen.getByLabelText(/budget/i) as HTMLInputElement).value).toBe(String(existing.budget));
-    expect(screen.getByLabelText(/identity/i)).toBeDisabled();
+    const identityField = screen.getByLabelText(/identity/i);
+    expect(identityField).toHaveAttribute('readonly');
+    expect(identityField).not.toBeDisabled();
+    // A disabled control cannot be focused; a read-only one can - and the
+    // dialog's focus-on-open effect (which no-ops on a disabled element)
+    // must actually land here in edit mode.
+    await waitFor(() => expect(identityField).toHaveFocus());
   });
 
   // Finding 1: Number('') coerces a cleared Budget field to 0. The engine's
@@ -167,5 +181,30 @@ describe('TokenPolicyBuilder', () => {
     expect(stage).toBeDisabled();
     expect(stage).toHaveAccessibleDescription(/edit the form before staging/i);
     expect(stage).not.toHaveAttribute('title');
+  });
+
+  // Finding 3: the untouched-form hint rendered with role="alert" on the
+  // PRISTINE form's first paint - nothing had happened yet for it to be
+  // reacting to. role="alert" is for state that becomes true in response to
+  // something; on initial render it does not even announce, and visually it
+  // read as an error before a person had typed anything. The invalid-budget
+  // and invalid-softPct warnings ARE genuine alerts (they react to an edit)
+  // and must keep their role.
+  test('the untouched hint is not an alert on first paint, but stays wired to Stage', async () => {
+    open();
+    await screen.findByRole('dialog');
+    // Fresh, untouched form: nothing here should announce as an alert.
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    // The hint text still exists and the Stage button is still described by
+    // it - only the alert semantics are gone, not the wiring.
+    expect(screen.getByText(/edit the form before staging/i)).toBeInTheDocument();
+    expect(screen.getByTestId('policy-stage')).toHaveAccessibleDescription(/edit the form before staging/i);
+  });
+
+  test('a genuinely invalid budget still announces as an alert', async () => {
+    open();
+    await screen.findByRole('dialog');
+    fireEvent.change(screen.getByLabelText(/budget/i), { target: { value: '' } });
+    expect(screen.getByRole('alert')).toHaveTextContent(/budget/i);
   });
 });

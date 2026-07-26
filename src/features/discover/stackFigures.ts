@@ -339,6 +339,66 @@ export function advisorDraft(cc: CloudControl): { moves: StagedMove[]; deltas: S
   return { moves, deltas: stagedDeltas(cc, moves) };
 }
 
+/* Whether committing a move of this KIND pushes an undo entry - established
+ * by reading, for each kind, the exact engine mutation `commitMoves` below
+ * calls, and checking THAT function for a `pushUndo`/`_.pushUndo` call:
+ *
+ *   attach  -> cc.provisionRegion -> CC.activateOnramp(id)
+ *              state.ts:174-188 (activateOnramp) - `if(!silent)pushUndo(...)`
+ *              runs before the ramp is flipped active. provisionRegion never
+ *              passes `silent`, and attachOpportunities() only ever offers a
+ *              region with an inactive ramp to activate, so this path always
+ *              pushes.                                              COVERED
+ *
+ *   steer   -> cc.steerFlow -> state-routing.ts `steerFlow`
+ *              Reads `steered[rowId]=pathId;` then `_.emit(...)` - no
+ *              `pushUndo` call anywhere in state-routing.ts, and `steered`
+ *              is not part of state.ts's snapshot()/restore() pair either.
+ *              Undo cannot revert this at any point.             NOT COVERED
+ *
+ *   fix     -> cc.applyFix -> state.ts:189-196 `applyFix`
+ *              `if(!silent)pushUndo('Fix '+key);` before `fixes[key]=true`.
+ *              commitMoves never passes `silent`.                   COVERED
+ *
+ *   enforce -> cc.enforceAny -> state-rules.ts:449-452 `enforceAny`
+ *              Routes to `enforceRule` (pushes: state-rules.ts:413-416,
+ *              unconditional on !silent) when the id names a RULE, or to
+ *              `enforcePolicy` (state-rules.ts:88-94 - no pushUndo at all)
+ *              when it does not. This tray's only source of an 'enforce'
+ *              move's ruleId is ruleProposals() (ruleProposals.ts:41,57),
+ *              which reads `rule.id` off `cc.ruleList()` itself - so the id
+ *              always names a real rule and the enforcePolicy branch is
+ *              never reached from here.                              COVERED
+ *
+ *   policy  -> cc.setTokenPolicy -> state-console.ts:95-99
+ *              Shallow-merges the patch and emits - no pushUndo. The
+ *              original finding this table exists to generalize.  NOT COVERED
+ *
+ *   rule    -> cc.addRule -> state-rules.ts:402-412 `addRule`
+ *              `_.pushUndo('Author rule');` runs unconditionally, before
+ *              `enforceNow` is even consulted - authoring is undo-covered
+ *              regardless of whether enforcement follows immediately.
+ *                                                                     COVERED
+ *
+ * A move kind added to StagedMove must get an explicit entry here - there is
+ * no default and no fallback, so a forgotten kind is a type error rather
+ * than a silent (and possibly wrong) "covered".
+ */
+const UNDO_COVERED: Record<StagedMove['kind'], boolean> = {
+  attach: true,
+  steer: false,
+  fix: true,
+  enforce: true,
+  policy: false,
+  rule: true,
+};
+
+/** True when actually committing this exact move pushes an undo entry - see
+ *  UNDO_COVERED above for the per-kind truth table and how it was derived. */
+export function isUndoCovered(move: StagedMove): boolean {
+  return UNDO_COVERED[move.kind];
+}
+
 /** Apply staged moves through the real engine actions, in order. Returns the
  *  moves that failed — the caller states them, never swallows them. */
 export function commitMoves(cc: CloudControl, moves: StagedMove[]): StagedMove[] {

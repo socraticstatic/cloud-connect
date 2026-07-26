@@ -32,6 +32,11 @@ test('a person can author a token policy end to end', async ({ page }) => {
   await expect(page.getByText(/Token policy · /i)).toBeVisible();
   await page.getByTestId('design-commit').click();
 
+  // Finding 1: this is a policy-only commit, and CC.setTokenPolicy pushes no
+  // undo entry - the banner must say so honestly rather than claiming Undo
+  // reverts it.
+  await expect(page.getByTestId('design-tray')).toHaveText(/committed to the estate\. Undo will not revert this/i);
+
   await page.goto('/#/ai/govern', { waitUntil: 'domcontentloaded' });
   await expect(page.getByText('750,000')).toBeVisible();
 });

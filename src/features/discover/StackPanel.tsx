@@ -14,6 +14,7 @@ import {
   steerOpportunities,
   stagedDeltas,
   commitMoves,
+  isUndoCovered,
   advisorDraft,
   takePendingRuleSpec,
   takePendingPolicySpec,
@@ -297,20 +298,22 @@ export function StackPanel() {
   const commit = () => {
     const failed = commitMoves(cc, staged);
     if (failed.length === 0) {
-      // A policy move rides setTokenPolicy, which shallow-merges straight
-      // onto the estate and pushes no undo entry (verified against
-      // state-console.ts) - every other move kind here pushes one before it
-      // mutates. Undo can only ever revert the non-policy moves in this
-      // batch, so the banner states that instead of a blanket promise the
-      // engine will not keep. Re-editing is the real undo for a policy.
-      const committedPolicy = staged.some(m => m.kind === 'policy');
-      const committedOther = staged.some(m => m.kind !== 'policy');
+      // Some move kinds push no undo entry when they commit - setTokenPolicy
+      // and steerFlow today, see isUndoCovered in stackFigures.ts for the
+      // full per-kind table and how each entry was determined by reading the
+      // engine mutation itself. Keying off that table (rather than a
+      // hardcoded kind check) is what stops a future move kind from silently
+      // inheriting the wrong claim: the banner states exactly what THIS
+      // commit's Undo can and cannot revert, never a blanket promise.
+      const covered = staged.filter(isUndoCovered).length;
+      const uncovered = staged.length - covered;
       const base = `${staged.length} move${staged.length === 1 ? '' : 's'} committed to the estate.`;
-      const undoNote = !committedPolicy
-        ? ' Undo reverts them.'
-        : committedOther
-        ? ' Undo reverts the other moves, not the token policy - re-edit the policy to change it back.'
-        : ' Undo will not revert this - re-edit the token policy to change it back.';
+      const undoNote =
+        uncovered === 0
+          ? ' Undo reverts them.'
+          : covered === 0
+          ? ' Undo will not revert this - re-edit to change it back.'
+          : ' Undo reverts the other moves, not all of them - re-edit the rest to change them back.';
       setCommitNote(base + undoNote);
     } else {
       setCommitNote(`${staged.length - failed.length} committed · ${failed.length} refused by the engine.`);

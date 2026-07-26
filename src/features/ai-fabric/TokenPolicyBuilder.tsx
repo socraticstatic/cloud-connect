@@ -256,6 +256,17 @@ export function TokenPolicyBuilder({ open, onOpenChange, editTag }: TokenPolicyB
     'w-full h-9 px-2 rounded-lg border border-fw-secondary bg-fw-wash text-figma-sm disabled:opacity-40';
   const inputClass =
     'w-full h-9 px-3 rounded-lg border border-fw-secondary bg-fw-wash text-figma-sm tabular-nums';
+  /* The locked identity field in edit mode: readOnly, not disabled (Finding
+     2 - `disabled` wins over `readOnly` when both are set, and a disabled
+     control is unfocusable and skipped by most screen readers, so the field
+     naming WHICH identity is being edited was unreachable to assistive
+     tech). readOnly alone keeps it focusable and announced while still
+     blocking edits. Carries its own locked look (text-fw-bodyLight,
+     cursor-not-allowed) since it no longer qualifies for the select's
+     `disabled:opacity-40` and would otherwise render indistinguishable from
+     an editable field. */
+  const lockedInputClass =
+    'w-full h-9 px-3 rounded-lg border border-fw-secondary bg-fw-wash text-figma-sm tabular-nums text-fw-bodyLight cursor-not-allowed';
 
   /* The preview is derived, not stored: it describes exactly the spec on
      screen, so what a person reviews and what they stage cannot drift. */
@@ -288,9 +299,8 @@ export function TokenPolicyBuilder({ open, onOpenChange, editTag }: TokenPolicyB
                 ref={identityRef as React.RefObject<HTMLInputElement>}
                 type="text"
                 value={identityLabel}
-                disabled
                 readOnly
-                className={inputClass}
+                className={lockedInputClass}
               />
             ) : (
               <select
@@ -407,15 +417,20 @@ export function TokenPolicyBuilder({ open, onOpenChange, editTag }: TokenPolicyB
           </p>
         )}
 
-        {/* Same idiom as the budget/softPct warnings above, not a fourth
-            `title`-only disabled reason: role="alert" so it announces, and
-            the Stage button's aria-describedby below points at it so the
-            reason survives even though a disabled button cannot be
-            focused. untouched and specInvalid never hold at once (every
-            INITIAL_FORM value is itself valid), so at most one of the
-            three warnings below is visible at a time. */}
+        {/* Same aria-describedby idiom as the budget/softPct warnings above,
+            but deliberately NOT role="alert" (Finding 3): this is the form's
+            PRISTINE state on first paint, not something that became true in
+            response to an action - role="alert" is for the latter, and on
+            initial render it does not announce anyway, while visually it
+            still reads as an error before anyone has typed anything. The
+            Stage button's aria-describedby below still points at this
+            paragraph's id, so the reason survives even though a disabled
+            button cannot be focused - only the alert semantics are gone.
+            untouched and specInvalid never hold at once (every INITIAL_FORM
+            value is itself valid), so at most one of the three warnings
+            below is visible at a time. */}
         {untouched && (
-          <p id={UNTOUCHED_WARNING_ID} role="alert" className="text-figma-xs text-fw-body">
+          <p id={UNTOUCHED_WARNING_ID} className="text-figma-xs text-fw-body">
             Edit the form before staging a token policy - nothing has changed from the default yet.
           </p>
         )}
