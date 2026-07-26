@@ -24,7 +24,6 @@ export interface TokenPolicyPreview {
   proposedPct: number | null;
   wouldDeny: { count: number; total: number; reasons: string[] };
   boundAgents: string[];
-  routePath: string | null;
   capIntentEnforced: boolean;
   unmetered: boolean;
 }
@@ -32,7 +31,6 @@ export interface TokenPolicyPreview {
 interface Meter { tag: string; today: number; budget: number; pct: number }
 interface Decision { tag: string | null; modelId: string | null }
 interface Agent { name: string; app: string }
-interface Route { tag?: string; path?: string }
 
 export function tokenPolicyPreview(cc: CloudControl, spec: TokenPolicySpec): TokenPolicyPreview {
   const meters = (cc.tokenMeterList?.() ?? []) as Meter[];
@@ -49,15 +47,12 @@ export function tokenPolicyPreview(cc: CloudControl, spec: TokenPolicySpec): Tok
   ));
 
   const agents = (cc.agentList?.() ?? []) as Agent[];
-  const routes = (cc.modelRoutes?.() ?? []) as Route[];
-  const route = routes.find(r => r.tag === spec.tag) ?? null;
 
   return {
     meter: m ? { today: m.today, budget: m.budget, pct: m.pct } : null,
     proposedPct: m && spec.budget > 0 ? Math.round((m.today / spec.budget) * 100) : null,
     wouldDeny: { count: denied.length, total: mine.length, reasons },
     boundAgents: agents.filter(a => a.app === spec.tag).map(a => a.name),
-    routePath: route && route.path ? route.path : null,
     capIntentEnforced: !!cc.intentCapEnforced?.(spec.tag),
     unmetered,
   };

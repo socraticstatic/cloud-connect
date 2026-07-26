@@ -115,4 +115,57 @@ describe('TokenPolicyBuilder', () => {
     await screen.findByRole('dialog');
     expect(screen.getByTestId('policy-stage')).not.toBeDisabled();
   });
+
+  // Finding 3: in edit mode the identity control was a <select> locked via
+  // `disabled`, whose value the seeding effect sets from the policy's OWN
+  // group (independent of groupList()). When that group id is not among the
+  // rendered <option>s - e.g. a policy carrying a group the estate no
+  // longer lists, a state the policy table already renders as a live row
+  // with an Edit button - the browser falls back to selectedIndex 0 and
+  // displays a DIFFERENT identity than the one actually staged. West
+  // Workloads already carries group:'west-workloads'; patching it to a
+  // ghost id reproduces exactly that state without inventing a new policy
+  // shape. setTokenPolicy pushes no undo entry, so the patched tag is
+  // restored explicitly, same idiom as TokenPolicies.status.test.tsx's
+  // withRestoredPolicy.
+  test('edit mode displays the staged identity even when its group is not among the rendered options', async () => {
+    const tag = 'west-workloads';
+    const original = { ...(CC.tokenPolicy!(tag) as Record<string, unknown>) };
+    try {
+      CC.setTokenPolicy!(tag, { group: 'ghost-group' });
+      const groups = CC.groupList!() as { id: string }[];
+      expect(groups.some(g => g.id === 'ghost-group')).toBe(false);
+
+      render(
+        <MemoryRouter>
+          <TokenPolicyBuilder open onOpenChange={() => {}} editTag={tag} />
+        </MemoryRouter>,
+      );
+      await screen.findByRole('dialog');
+
+      const identityControl = screen.getByLabelText(/identity/i) as HTMLInputElement | HTMLSelectElement;
+      // The staged identity is the ghost group, not whatever option a
+      // <select> falls back to (selectedIndex 0) when its value is not
+      // among its <option>s.
+      expect(identityControl.value).toMatch(/ghost-group/i);
+    } finally {
+      const live = CC.tokenPolicy!(tag) as Record<string, unknown>;
+      Object.keys(live).forEach(k => { delete live[k]; });
+      Object.assign(live, original);
+    }
+  });
+
+  // Finding 4: the untouched-form reason lived only in a `title` attribute
+  // on the disabled Stage button - unfocusable and unannounced. The invalid-
+  // budget and invalid-softPct cases already do this correctly with
+  // role="alert" + aria-describedby; the untouched case gets the same
+  // idiom rather than a fourth instance of the same shape of bug.
+  test('the untouched-form reason is exposed to assistive tech, not just a title', async () => {
+    open();
+    await screen.findByRole('dialog');
+    const stage = screen.getByTestId('policy-stage');
+    expect(stage).toBeDisabled();
+    expect(stage).toHaveAccessibleDescription(/edit the form before staging/i);
+    expect(stage).not.toHaveAttribute('title');
+  });
 });

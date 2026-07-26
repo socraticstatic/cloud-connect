@@ -140,7 +140,17 @@ export type StagedMove =
      budget/guardrail changes), never as invented dollars. */
   | { kind: 'fix'; fixKey: string }
   | { kind: 'enforce'; ruleId: string }
-  | { kind: 'policy'; tag: string; patch: { scope?: string; budget?: number; guardrail?: boolean; enforced?: boolean } }
+  | {
+      kind: 'policy';
+      tag: string;
+      /* Every field TokenPolicyBuilder's spec can carry and StackPanel spreads
+         into the patch (see the policy-new branch below) - softPct and group
+         included. setTokenPolicy shallow-merges whatever is here straight
+         onto the estate, so a field missing from this type is a field that
+         can be committed while never appearing in moveLabel's sentence
+         below - staged without ever being reviewed. */
+      patch: { scope?: string; budget?: number; softPct?: number; guardrail?: boolean; enforced?: boolean; group?: string };
+    }
   /* A rule the human authored (or tightened from a proposal) and staged rather
      than committed. Its consequence is stated in dryRun's own figures; it never
      claims a dollar the engine does not price. */
@@ -238,9 +248,11 @@ export function moveLabel(cc: CloudControl, move: StagedMove): { label: string; 
     case 'policy': {
       const parts: string[] = [];
       if (move.patch.budget !== undefined) parts.push(`budget ${move.patch.budget.toLocaleString()} tokens/day`);
+      if (move.patch.softPct !== undefined) parts.push(`alert at ${move.patch.softPct}%`);
       if (move.patch.guardrail !== undefined) parts.push(move.patch.guardrail ? 'guardrail on' : 'guardrail off');
       if (move.patch.enforced !== undefined) parts.push(move.patch.enforced ? 'enforced' : 'draft');
       if (move.patch.scope !== undefined) parts.push(`scope ${move.patch.scope}`);
+      if (move.patch.group !== undefined) parts.push(`group ${move.patch.group}`);
       return { label: `Token policy · ${move.tag}`, detail: parts.join(' · ') };
     }
     case 'rule': {

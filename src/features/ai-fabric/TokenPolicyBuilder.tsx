@@ -33,6 +33,14 @@ const BUDGET_WARNING_ID = 'tpb-budget-warning';
    anything downstream reads it yet. */
 const SOFTPCT_WARNING_ID = 'tpb-softpct-warning';
 
+/* id of the "edit the form before staging" reason. Same idiom as the two
+   above - this is the fourth instance of the same shape of bug on this
+   project (a disabled control's only stated reason living in a `title`,
+   which a disabled element cannot receive focus for and no screen reader
+   announces), so it gets the same role="alert" + aria-describedby fix
+   rather than a fourth unannounced title. */
+const UNTOUCHED_WARNING_ID = 'tpb-untouched-warning';
+
 /* The closed set of four scope strings the engine understands. Only two of
    them gate anything - CC.scopeDenies returns a reason for 'no-external' and
    'self-hosted' only; 'external-allowed' and 'private-only' are the engine's
@@ -97,7 +105,7 @@ export function TokenPolicyBuilder({ open, onOpenChange, editTag }: TokenPolicyB
   // draft; false for a brand-new policy, matching the engine's own default
   // for an unseen tag (CC.setTokenPolicy's fallback).
   const [enforced, setEnforced] = useState(false);
-  const identityRef = useRef<HTMLSelectElement>(null);
+  const identityRef = useRef<HTMLSelectElement | HTMLInputElement>(null);
 
   // Focus moves to the identity field the moment the dialog opens - the
   // trigger that opened it lives elsewhere on the page, so without this a
@@ -156,6 +164,19 @@ export function TokenPolicyBuilder({ open, onOpenChange, editTag }: TokenPolicyB
      are the SAME string (state-console.groupPolicy.test.ts). */
   const isGroupIdentity = identity.startsWith(GROUP_IDENTITY_PREFIX);
   const tag = isGroupIdentity ? identity.slice(GROUP_IDENTITY_PREFIX.length) : identity;
+
+  /* What the identity control shows in edit mode. A <select> locked via
+     `disabled` falls back to selectedIndex 0 whenever the seeded value is
+     not among its rendered <option>s - reachable the moment a policy
+     carries a group id groupList() no longer returns (the group was
+     removed or renamed), which the policy table already renders as a live
+     row with an Edit button. Reading the label straight off `groups`
+     rather than off a <select>'s DOM value means what is displayed is
+     always exactly what `tag` (and therefore spec()) already holds,
+     whether or not that identity still has a live option to match. */
+  const identityLabel = isGroupIdentity
+    ? groups.find(g => g.id === tag)?.label ?? `${tag} (group not in the estate)`
+    : identity;
 
   const spec = (): TokenPolicySpec => ({
     tag,
@@ -255,25 +276,42 @@ export function TokenPolicyBuilder({ open, onOpenChange, editTag }: TokenPolicyB
             <label className="block text-figma-xs text-fw-bodyLight" htmlFor="tpb-identity">
               Identity
             </label>
-            <select
-              id="tpb-identity"
-              ref={identityRef}
-              value={identity}
-              disabled={!!editTag}
-              onChange={e => setIdentity(e.target.value)}
-              className={selectClass}
-            >
-              <optgroup label="Workloads">
-                {Object.keys(CC.TAGS).map(t => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </optgroup>
-              <optgroup label="Groups">
-                {groups.map(g => (
-                  <option key={g.id} value={`${GROUP_IDENTITY_PREFIX}${g.id}`}>{g.label}</option>
-                ))}
-              </optgroup>
-            </select>
+            {editTag ? (
+              // Locked text, not a locked <select>: a <select> whose value
+              // is not among its rendered <option>s falls back to
+              // selectedIndex 0 and displays a DIFFERENT identity than the
+              // one actually staged (Finding 3). Rendering the identity as
+              // plain text sidesteps that failure mode entirely - there is
+              // no option list for the staged value to fall out of.
+              <input
+                id="tpb-identity"
+                ref={identityRef as React.RefObject<HTMLInputElement>}
+                type="text"
+                value={identityLabel}
+                disabled
+                readOnly
+                className={inputClass}
+              />
+            ) : (
+              <select
+                id="tpb-identity"
+                ref={identityRef as React.RefObject<HTMLSelectElement>}
+                value={identity}
+                onChange={e => setIdentity(e.target.value)}
+                className={selectClass}
+              >
+                <optgroup label="Workloads">
+                  {Object.keys(CC.TAGS).map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Groups">
+                  {groups.map(g => (
+                    <option key={g.id} value={`${GROUP_IDENTITY_PREFIX}${g.id}`}>{g.label}</option>
+                  ))}
+                </optgroup>
+              </select>
+            )}
             {/* A policy's identity is how every other surface addresses it -
                 changing it here would orphan the policy being edited, so the
                 lock is stated, not just silently enforced. */}
@@ -369,18 +407,33 @@ export function TokenPolicyBuilder({ open, onOpenChange, editTag }: TokenPolicyB
           </p>
         )}
 
+        {/* Same idiom as the budget/softPct warnings above, not a fourth
+            `title`-only disabled reason: role="alert" so it announces, and
+            the Stage button's aria-describedby below points at it so the
+            reason survives even though a disabled button cannot be
+            focused. untouched and specInvalid never hold at once (every
+            INITIAL_FORM value is itself valid), so at most one of the
+            three warnings below is visible at a time. */}
+        {untouched && (
+          <p id={UNTOUCHED_WARNING_ID} role="alert" className="text-figma-xs text-fw-body">
+            Edit the form before staging a token policy - nothing has changed from the default yet.
+          </p>
+        )}
+
         <div className="flex gap-2">
           <button
             type="submit"
             data-testid="policy-stage"
             disabled={untouched || specInvalid}
             aria-disabled={untouched || specInvalid}
-            title={
-              specInvalid
-                ? 'Fix the invalid budget or alert percent before staging a token policy'
-                : untouched
-                ? 'Edit the form before staging a token policy'
-                : undefined
+            aria-describedby={
+              [
+                budgetInvalid ? BUDGET_WARNING_ID : null,
+                softPctInvalid ? SOFTPCT_WARNING_ID : null,
+                untouched ? UNTOUCHED_WARNING_ID : null,
+              ]
+                .filter(Boolean)
+                .join(' ') || undefined
             }
             className="h-9 px-4 rounded-full text-figma-sm font-medium bg-fw-active text-white hover:bg-fw-linkHover transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-fw-active"
           >

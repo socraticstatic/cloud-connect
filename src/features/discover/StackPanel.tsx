@@ -296,11 +296,25 @@ export function StackPanel() {
 
   const commit = () => {
     const failed = commitMoves(cc, staged);
-    setCommitNote(
-      failed.length === 0
-        ? `${staged.length} move${staged.length === 1 ? '' : 's'} committed to the estate. Undo reverts them.`
-        : `${staged.length - failed.length} committed · ${failed.length} refused by the engine.`,
-    );
+    if (failed.length === 0) {
+      // A policy move rides setTokenPolicy, which shallow-merges straight
+      // onto the estate and pushes no undo entry (verified against
+      // state-console.ts) - every other move kind here pushes one before it
+      // mutates. Undo can only ever revert the non-policy moves in this
+      // batch, so the banner states that instead of a blanket promise the
+      // engine will not keep. Re-editing is the real undo for a policy.
+      const committedPolicy = staged.some(m => m.kind === 'policy');
+      const committedOther = staged.some(m => m.kind !== 'policy');
+      const base = `${staged.length} move${staged.length === 1 ? '' : 's'} committed to the estate.`;
+      const undoNote = !committedPolicy
+        ? ' Undo reverts them.'
+        : committedOther
+        ? ' Undo reverts the other moves, not the token policy - re-edit the policy to change it back.'
+        : ' Undo will not revert this - re-edit the token policy to change it back.';
+      setCommitNote(base + undoNote);
+    } else {
+      setCommitNote(`${staged.length - failed.length} committed · ${failed.length} refused by the engine.`);
+    }
     setStaged([]);
     setDesigning(false);
     setProposalNote(null);

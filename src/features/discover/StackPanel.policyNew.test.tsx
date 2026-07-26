@@ -67,4 +67,24 @@ describe('?draft=policy-new', () => {
     expect(await screen.findByText(/draft/i)).toBeInTheDocument();
     expect(screen.queryByText(/·\s*enforced\b/i)).not.toBeInTheDocument();
   });
+
+  // Finding 2: StackPanel spreads the WHOLE spec into the patch (softPct and
+  // group included), and setTokenPolicy shallow-merges the whole patch onto
+  // the estate - but the patch type only named scope/budget/guardrail/
+  // enforced, so moveLabel never stated softPct or group and a reviewer
+  // committed both fields sight unseen. Widening the patch type and
+  // moveLabel closes that gap; this proves the tray now says both.
+  test('the tray states the alert threshold and the group a policy patch would commit', async () => {
+    setPendingPolicySpec({
+      tag: 'west-workloads', scope: 'private-only', budget: 1_200_000,
+      softPct: 65, guardrail: true, enforced: false, group: 'west-workloads',
+    });
+    render(
+      <MemoryRouter initialEntries={['/discover?draft=policy-new']}>
+        <StackPanel />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText(/alert at 65%/i)).toBeInTheDocument();
+    expect(await screen.findByText(/group west-workloads/i)).toBeInTheDocument();
+  });
 });
