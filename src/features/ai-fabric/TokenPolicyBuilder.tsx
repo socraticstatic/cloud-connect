@@ -13,6 +13,26 @@ import { setPendingPolicySpec } from '../discover/stackFigures';
    SAME string). Same idiom as RuleBuilder's GROUP_DST_PREFIX. */
 const GROUP_IDENTITY_PREFIX = 'group:';
 
+/* id of the "budget must be a positive number" warning — shared between the
+   <p> that renders it and the aria-describedby on the Budget input it
+   concerns, same idiom as RuleBuilder's *_WARNING_ID constants. A budget
+   that is not a positive number is not "an unusually permissive budget" -
+   it is a spec the engine cannot meter. tokenPolicyPreview only proposes a
+   percent when spec.budget > 0; a cleared field coerces to 0 via
+   Number(''), and a committed budget of 0 makes the engine's own meter
+   (today / budget * 100) read as 100% of budget immediately. Combined with
+   an enforced policy and an enforce-mode cap-token-spend intent, that
+   denies every request for the identity - reachable by clearing a field
+   and pressing Stage, with nothing on screen to say so. */
+const BUDGET_WARNING_ID = 'tpb-budget-warning';
+
+/* id of the "Alert at must be a percent between 1 and 100" warning. Same
+   idiom. softPct has no consumer in this preview today (nothing reads it
+   to gate anything), but it has the identical Number('') === 0 coercion as
+   Budget, and a percent outside 1-100 is meaningless regardless of whether
+   anything downstream reads it yet. */
+const SOFTPCT_WARNING_ID = 'tpb-softpct-warning';
+
 /* The closed set of four scope strings the engine understands. Only two of
    them gate anything - CC.scopeDenies returns a reason for 'no-external' and
    'self-hosted' only; 'external-allowed' and 'private-only' are the engine's
@@ -175,10 +195,19 @@ export function TokenPolicyBuilder({ open, onOpenChange, editTag }: TokenPolicyB
     softPct === INITIAL_FORM.softPct &&
     guardrail === INITIAL_FORM.guardrail;
 
+  // A budget that is not a positive number, or an alert percent outside
+  // 1-100, is an impossible spec regardless of whether anything else on
+  // the form has changed. `!(budget > 0)` (rather than `budget <= 0`)
+  // also catches NaN from a non-numeric Number() coercion, the same way
+  // `!(softPct >= 1 && softPct <= 100)` catches it for softPct.
+  const budgetInvalid = !(budget > 0);
+  const softPctInvalid = !(softPct >= 1 && softPct <= 100);
+  const specInvalid = budgetInvalid || softPctInvalid;
+
   const submit = () => {
     // Defense in depth: the Stage button is disabled in this state, but a
     // disabled control is a UI affordance, not a contract.
-    if (untouched) return;
+    if (untouched || specInvalid) return;
     // The machine stages, never commits: the primary action hands the spec
     // to the review tray (via the read-once holder in stackFigures.ts) and
     // navigates there, rather than calling setTokenPolicy itself. A human
@@ -269,6 +298,8 @@ export function TokenPolicyBuilder({ open, onOpenChange, editTag }: TokenPolicyB
               type="number"
               value={budget}
               onChange={e => setBudget(Number(e.target.value))}
+              aria-describedby={budgetInvalid ? BUDGET_WARNING_ID : undefined}
+              aria-invalid={budgetInvalid}
               className={inputClass}
             />
             {/* The engine hardcodes a daily window - it never meters a week
@@ -288,6 +319,8 @@ export function TokenPolicyBuilder({ open, onOpenChange, editTag }: TokenPolicyB
               type="number"
               value={softPct}
               onChange={e => setSoftPct(Number(e.target.value))}
+              aria-describedby={softPctInvalid ? SOFTPCT_WARNING_ID : undefined}
+              aria-invalid={softPctInvalid}
               className={inputClass}
             />
           </div>
@@ -306,13 +339,38 @@ export function TokenPolicyBuilder({ open, onOpenChange, editTag }: TokenPolicyB
           </div>
         </div>
 
+        {/* A budget that is not a positive number is not a permissive
+            ceiling - it's a spec the engine cannot meter, and a committed
+            0 reads as "at capacity" the instant the policy is enforced.
+            Named explicitly rather than left for the preview to silently
+            go blank over. */}
+        {budgetInvalid && (
+          <p id={BUDGET_WARNING_ID} role="alert" className="text-figma-xs text-fw-body">
+            Budget must be a positive number of tokens. A cleared or zero budget is not a permissive
+            ceiling - the engine reads it as fully spent the instant this policy is enforced, and an
+            enforce-mode cap-token-spend intent would then deny every request for this identity.
+          </p>
+        )}
+
+        {softPctInvalid && (
+          <p id={SOFTPCT_WARNING_ID} role="alert" className="text-figma-xs text-fw-body">
+            Alert at must be a percent between 1 and 100.
+          </p>
+        )}
+
         <div className="flex gap-2">
           <button
             type="submit"
             data-testid="policy-stage"
-            disabled={untouched}
-            aria-disabled={untouched}
-            title={untouched ? 'Edit the form before staging a token policy' : undefined}
+            disabled={untouched || specInvalid}
+            aria-disabled={untouched || specInvalid}
+            title={
+              specInvalid
+                ? 'Fix the invalid budget or alert percent before staging a token policy'
+                : untouched
+                ? 'Edit the form before staging a token policy'
+                : undefined
+            }
             className="h-9 px-4 rounded-full text-figma-sm font-medium bg-fw-active text-white hover:bg-fw-linkHover transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-fw-active"
           >
             Stage this policy
@@ -339,7 +397,12 @@ export function TokenPolicyBuilder({ open, onOpenChange, editTag }: TokenPolicyB
             Preview · nothing has changed yet
           </div>
 
-          {preview.unmetered ? (
+          {budgetInvalid ? (
+            <p className="text-figma-sm text-fw-body">
+              Budget is not a positive number, so there is nothing to project against today's usage -
+              see the warning above before staging this policy.
+            </p>
+          ) : preview.unmetered ? (
             <p className="text-figma-sm text-fw-body">
               This identity is not metered, so a budget here is a ceiling with no gauge.
             </p>
