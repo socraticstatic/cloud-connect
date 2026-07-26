@@ -1,7 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { TokenPolicies } from './TokenPolicies';
 import { CC } from '../../engine';
+
+/* TokenPolicies now renders react-router <Link>s (the staged Enforce
+   action, Task 6) instead of buttons that mutated directly — it needs a
+   Router context to render at all, which this file did not previously
+   provide. Wrapped here rather than changed elsewhere so every existing
+   assertion below keeps testing exactly what it tested before. */
+const renderPolicies = () => render(<MemoryRouter><TokenPolicies /></MemoryRouter>);
 
 /* The group-scoped token policy row must render the SAME resolves-to idiom
    Govern's Groups tab established: the group label leads, the stored id sits
@@ -14,7 +22,7 @@ describe('TokenPolicies · group-scoped rows', () => {
   const liveCount = () => (CC.resolveGroup('west-workloads') as { count: number }).count;
 
   it('renders the group label with a resolution count that agrees with the engine', () => {
-    render(<TokenPolicies />);
+    renderPolicies();
     const row = screen.getByText('West workloads').closest('tr') as HTMLTableRowElement;
     expect(row).toBeTruthy();
     const n = liveCount();
@@ -25,14 +33,14 @@ describe('TokenPolicies · group-scoped rows', () => {
   });
 
   it('keeps the tag-scoped rows exactly as before — no resolution line', () => {
-    render(<TokenPolicies />);
+    renderPolicies();
     const row = screen.getByText('rd-helion').closest('tr') as HTMLTableRowElement;
     expect(row.textContent).not.toContain('resolves to');
   });
 
   // Mutations from here down.
   it('re-renders the count when the estate changes underneath it', () => {
-    render(<TokenPolicies />);
+    renderPolicies();
     const before = liveCount();
     // The gcp rescan surfaces vpc-ml-suite, which carries Region:west — so
     // west-workloads genuinely grows, through the engine, not a prop.
@@ -51,7 +59,7 @@ describe('TokenPolicies · group-scoped rows', () => {
       CC.setTokenPolicy('tmp-ui-grp', { group: 'tmp-ui-grp', scope: 'private-only', budget: 500000 });
       CC.removeGroup('tmp-ui-grp');
     });
-    render(<TokenPolicies />);
+    renderPolicies();
     const row = screen.getByText('tmp-ui-grp').closest('tr') as HTMLTableRowElement;
     expect(row).toBeTruthy();
     expect(row.textContent).not.toContain('resolves to');

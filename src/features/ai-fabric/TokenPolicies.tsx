@@ -1,6 +1,9 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Boxes } from 'lucide-react';
 import { AttIcon } from '../../components/icons/AttIcon';
-import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
+import { useCloudControl } from '../../engine/react/useCloudControl';
+import { TokenPolicyBuilder } from './TokenPolicyBuilder';
 
 interface TokenPolicy {
   tag: string;
@@ -19,26 +22,44 @@ interface TokenPolicy {
 interface PolicyRow extends TokenPolicy {
   groupLabel: string | null;
   resolvedCount: number | null;
+  /** Whether an enforce-mode cap-token-spend intent covers this tag right
+   *  now — the missing piece the old two-state pill could not name. */
+  capEnforced: boolean;
 }
 
 export function TokenPolicies() {
-  /* ONE subscribing selector for the policies and their group resolutions,
-     so the "resolves to N right now" figure is a CC derivation taken at
-     render — the estate changing re-renders it. Resolution is never stored
-     on the policy; the engine hands back only the group id. */
+  /* ONE subscribing selector for the policies, their group resolutions, and
+     their cap-intent coverage, so every figure the row renders is a CC
+     derivation taken at render — the estate changing re-renders it.
+     Resolution is never stored on the policy; the engine hands back only
+     the group id and (via intentCapEnforced) a live yes/no. */
   const policies = useCloudControl(cc =>
     (cc.tokenPolicyList() as TokenPolicy[]).map((p): PolicyRow => {
-      if (!p.group) return { ...p, groupLabel: null, resolvedCount: null };
+      const capEnforced = cc.intentCapEnforced(p.tag);
+      if (!p.group) return { ...p, groupLabel: null, resolvedCount: null, capEnforced };
       const g = (cc.groupList() as { id: string; label: string }[]).find(x => x.id === p.group);
-      if (!g) return { ...p, groupLabel: null, resolvedCount: null };
+      if (!g) return { ...p, groupLabel: null, resolvedCount: null, capEnforced };
       return {
         ...p,
         groupLabel: g.label,
         resolvedCount: (cc.resolveGroup(p.group) as { count: number }).count,
+        capEnforced,
       };
     }),
   );
-  const actions = useCloudControlActions();
+
+  // Builder state lives here, not in the engine — opening it stages nothing
+  // by itself. undefined editTag means "New policy"; a tag means "Edit that
+  // row". Closing (Cancel, Escape, or a successful stage) clears the tag too,
+  // so reopening via "New policy" afterward starts blank rather than
+  // silently carrying the last edited row forward — same idiom as
+  // RulesPanel's seedRuleId.
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [editTag, setEditTag] = useState<string | undefined>(undefined);
+  const openBuilder = (tag?: string) => {
+    setEditTag(tag);
+    setBuilderOpen(true);
+  };
 
   return (
     <div className="rounded-2xl border border-fw-secondary bg-fw-base overflow-hidden" data-tour="aifabric-policies">
@@ -48,6 +69,15 @@ export function TokenPolicies() {
         <span className="text-figma-xs text-fw-bodyLight">
           {policies.filter(p => p.enforced).length} / {policies.length} enforced
         </span>
+        {/* Create action belongs in the card header, not trailing the table
+            — same placement RulesPanel's "New rule" uses. */}
+        <button
+          type="button"
+          onClick={() => openBuilder(undefined)}
+          className="ml-auto inline-flex items-center h-8 px-3.5 rounded-full text-figma-xs font-medium bg-fw-active text-white hover:bg-fw-linkHover transition-colors"
+        >
+          New policy
+        </button>
       </div>
 
       <table className="w-full text-figma-sm">
@@ -87,44 +117,92 @@ export function TokenPolicies() {
               <td className="px-5 py-3 text-fw-body">{p.scope}</td>
               <td className="px-5 py-3 text-fw-body tabular-nums">{p.budget.toLocaleString()}</td>
               <td className="px-5 py-3">
-                <button
-                  type="button"
-                  onClick={() => actions.setTokenPolicy(p.tag, { guardrail: !p.guardrail })}
-                  className={`inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium transition-colors ${
+                {/* Display only — a one-click flip here bypassed review and
+                    left no undo entry. Guardrail is now a builder field;
+                    changing it goes through Edit below. */}
+                <span
+                  className={`inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium ${
                     p.guardrail
                       ? 'bg-fw-successLight text-fw-success'
                       : 'bg-fw-neutral text-fw-bodyLight'
                   }`}
                 >
                   {p.guardrail ? 'Guardrail on' : 'Guardrail off'}
-                </button>
-              </td>
-              <td className="px-5 py-3 text-center">
-                <span
-                  className={`inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium whitespace-nowrap ${
-                    p.enforced
-                      ? 'bg-fw-successLight text-fw-success'
-                      : 'bg-fw-neutral text-fw-bodyLight'
-                  }`}
-                >
-                  {p.enforced ? 'Enforced' : 'Draft'}
                 </span>
               </td>
               <td className="px-5 py-3 text-center">
-                {!p.enforced && (
+                {/* Three states, because the engine has three. The budget
+                    gate needs the policy enforced AND an enforce-mode
+                    cap-token-spend intent for this tag AND the meter at its
+                    ceiling, so "Enforced" alone was a badge claiming an
+                    enforcement the estate does not have. Armed names the
+                    missing piece. This describes the BUDGET gate only: a
+                    no-external or self-hosted scope denies an external
+                    model whatever this pill says. */}
+                {(() => {
+                  const status = !p.enforced ? 'Draft' : p.capEnforced ? 'Enforcing' : 'Armed';
+                  return (
+                    <span
+                      data-testid="policy-status"
+                      title={
+                        status === 'Armed'
+                          ? 'Enforced, but no enforce-mode cap-token-spend intent covers this identity yet - the budget gate denies nothing until one is declared.'
+                          : undefined
+                      }
+                      className={`inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium whitespace-nowrap ${
+                        status === 'Enforcing'
+                          ? 'bg-fw-successLight text-fw-success'
+                          : status === 'Armed'
+                          ? 'bg-fw-warnLight text-fw-warn'
+                          : 'bg-fw-neutral text-fw-bodyLight'
+                      }`}
+                    >
+                      {status}
+                    </span>
+                  );
+                })()}
+              </td>
+              <td className="px-5 py-3 text-center">
+                <div className="flex items-center justify-center gap-2">
                   <button
                     type="button"
-                    onClick={() => actions.setTokenPolicy(p.tag, { enforced: true })}
-                    className="inline-flex items-center h-8 px-3 rounded-full text-figma-xs font-medium bg-fw-active text-white hover:bg-fw-linkHover transition-colors"
+                    onClick={() => openBuilder(p.tag)}
+                    className="inline-flex items-center h-8 px-3 rounded-full text-figma-xs font-medium border border-fw-secondary text-fw-body hover:bg-fw-wash transition-colors"
                   >
-                    Enforce
+                    Edit
                   </button>
-                )}
+                  {!p.enforced && (
+                    /* Stages the enforce patch into the review tray
+                       (?draft=policy-<tag>, the same token the layer-home
+                       dashboard's Enforce link already uses) instead of
+                       calling setTokenPolicy directly — the machine stages,
+                       never commits, and setTokenPolicy pushes no undo
+                       entry of its own. */
+                    <Link
+                      to={`/discover?draft=policy-${p.tag}`}
+                      className="inline-flex items-center h-8 px-3 rounded-full text-figma-xs font-medium bg-fw-active text-white hover:bg-fw-linkHover transition-colors"
+                    >
+                      Enforce
+                    </Link>
+                  )}
+                </div>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+
+      <TokenPolicyBuilder
+        open={builderOpen}
+        onOpenChange={v => {
+          setBuilderOpen(v);
+          // Closing (Cancel, Escape, or a successful stage) clears the edit
+          // tag too — reopening via "New policy" afterward must start
+          // blank, not silently carry the last edited row's tag forward.
+          if (!v) setEditTag(undefined);
+        }}
+        editTag={editTag}
+      />
     </div>
   );
 }
