@@ -16,6 +16,7 @@ import {
   commitMoves,
   advisorDraft,
   takePendingRuleSpec,
+  takePendingPolicySpec,
   type StagedMove,
 } from './stackFigures';
 import { ruleProposals } from '../govern/ruleProposals';
@@ -153,6 +154,19 @@ export function StackPanel() {
         setStaged(it.reading.moves as StagedMove[]);
         setDesigning(true);
         setProposalNote(`Synchronize · ${it.scope.label} · ${it.reading.moves.length} move${it.reading.moves.length === 1 ? '' : 's'}`);
+      }
+    } else if (param === 'policy-new') {
+      /* ?draft=policy-new -> the token-policy builder's staged spec, handed
+         over in memory rather than in the URL. Everything the builder can
+         change rides one patch, so the tray states the whole policy. This
+         exact-match branch MUST come before the policy-<tag> startsWith
+         branch below, or 'policy-new' would be swallowed as tag "new". */
+      const spec = takePendingPolicySpec();
+      if (spec) {
+        const { tag, ...patch } = spec;
+        setStaged([{ kind: 'policy', tag, patch }]);
+        setDesigning(true);
+        setProposalNote(`Token policy · ${tag}`);
       }
     } else if (param.startsWith('policy-')) {
       // ?draft=policy-shared-services -> the layer-home dashboard's Enforce

@@ -1,6 +1,7 @@
 import type { CloudControl } from '../../engine/types';
 import { aiSpendTotals } from '../ai-fabric/aiSpend';
 import { estimateMonthlySavings, publicGbps, toSavingsRec } from '../cost/costMath';
+import type { TokenPolicySpec } from '../ai-fabric/tokenPolicyPreview';
 
 /**
  * The cross-section's derivations. Every figure the stack panel states comes
@@ -119,6 +120,15 @@ let pendingRuleSpec: RuleSpec | null = null;
 export function setPendingRuleSpec(spec: RuleSpec) { pendingRuleSpec = spec; }
 export function takePendingRuleSpec(): RuleSpec | null {
   const s = pendingRuleSpec; pendingRuleSpec = null; return s;
+}
+
+/* The same read-once handoff the rule builder uses, for a token policy spec:
+   the builder sets it, StackPanel takes it, nothing persists, so a refresh
+   cannot re-stage. */
+let pendingPolicySpec: TokenPolicySpec | null = null;
+export function setPendingPolicySpec(spec: TokenPolicySpec) { pendingPolicySpec = spec; }
+export function takePendingPolicySpec(): TokenPolicySpec | null {
+  const s = pendingPolicySpec; pendingPolicySpec = null; return s;
 }
 
 export type StagedMove =
