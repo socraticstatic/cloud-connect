@@ -188,6 +188,17 @@ export function TokenPolicyBuilder({ open, onOpenChange, editTag }: TokenPolicyB
   // values differ from INITIAL_FORM (unless a policy happens to already
   // match every default), so the button is enabled immediately - the same
   // "accept the seeded draft as-is" idiom RuleBuilder's seed prop uses.
+  //
+  // Deliberately compared against INITIAL_FORM rather than a per-instance
+  // seed baseline (a candidate alternative would be "untouched since the
+  // dialog opened"). Kept as-is because: (1) this guard itself makes the
+  // coincidence self-limiting - a spec can only ever be staged through
+  // this dialog while it differs from INITIAL_FORM in at least one field,
+  // so nothing this dialog ever commits can be edited back to match every
+  // default without re-disabling Stage first; (2) none of the engine's
+  // seeded policies coincide with INITIAL_FORM on every field today; and
+  // (3) editTag is only ever reached from a live policy link, never an
+  // unseen tag. See "edit mode enables Stage immediately" in the test file.
   const untouched =
     identity === INITIAL_FORM.identity &&
     scope === INITIAL_FORM.scope &&
