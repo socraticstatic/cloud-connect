@@ -1,6 +1,8 @@
 import { TourStep } from '../../components/tour/ProductTour';
 import { CC } from '../../engine';
+import type { CloudControl } from '../../engine/types';
 import { DEMO_BEATS } from '../demo/demoScript';
+import { ruleProposals } from '../govern/ruleProposals';
 
 // The Cost beat is the single source of truth for the Cost step's copy — the
 // six-beat demo arc (demoScript.ts) owns the narrative; the Tour renders it.
@@ -78,6 +80,71 @@ const payoffSpec = () => ({
   chain: [] as string[],
 });
 
+/* ------------------- the intent-control thread -------------------
+
+   Declaring an intent and CONTROLLING by one are two different things, and
+   the tour used to show only the first. `declareIntent` always lands in watch
+   mode (IntentThreads' DeclareMenu forces it — "enforcement stays a separate,
+   visible decision on the row"), and watch mode gates nothing: it counts what
+   enforcing WOULD have denied.
+
+   Enforce mode is the control. `setIntentMode(id,'enforce')` calls the
+   catalog entry's `enforceControl`, and today exactly one of the eighteen
+   entries carries one: cap-token-spend, whose control is the token policy's
+   own `enforced` flag. The gate in promptTrace (state-console.ts) then needs
+   all three — policy enforced, meter at or over its ceiling, and an
+   enforce-mode cap intent covering the tag — before a request is denied.
+
+   Both steps are idempotent, for the same reason the groups beats are.
+   declareIntent already returns null on a duplicate (key + scope), and
+   setIntentMode returns false when the mode is already what you asked for, so
+   the second and third rehearsals are free. */
+
+const CAP_INTENT = 'cap-token-spend';
+
+interface Meter { tag: string }
+interface Intent { id: string; key: string; scope: { kind: string; id: string }; mode: string }
+
+/** The identity the cap is declared against. Read from the live meter list
+ *  rather than pinned, so a renamed or removed tag makes this beat a no-op
+ *  instead of a beat narrating a scope the engine would reject. Prefers the
+ *  classified identity — it is the one the closing beat's denial story is
+ *  about — and falls back to whatever the estate does meter. */
+function capTag(): string | null {
+  const tags = (CC.tokenMeterList() as Meter[]).map(m => m.tag);
+  return tags.find(t => t === 'classified-helion') ?? tags[0] ?? null;
+}
+
+/** Declare the cap intent if it is not already declared, then arm it. Leaves
+ *  the estate identical whether it runs once or five times. */
+function ensureEnforcedCapIntent(): void {
+  const tag = capTag();
+  if (!tag) return; // nothing metered: declaring would be rejected anyway
+  const scope = { kind: 'identity', id: tag, label: tag };
+  const declared = () =>
+    (CC.intentList() as Intent[]).find(i => i.key === CAP_INTENT && i.scope.id === tag);
+
+  // declareIntent dedupes on (key, scope) and returns null rather than
+  // throwing, but check first so a second run does not push an undo entry
+  // for a declaration it did not make.
+  if (!declared()) CC.declareIntent(CAP_INTENT, scope, 'watch');
+
+  const it = declared();
+  // Still absent means the engine refused the scope (a tag the catalog does
+  // not offer). Say nothing and change nothing rather than throwing inside a
+  // tour click.
+  if (it && it.mode !== 'enforce') CC.setIntentMode(it.id, 'enforce');
+}
+
+/** Whether Andi currently has anything to propose — an active finding whose
+ *  preventive rule exists and is not already enforced. Read through the same
+ *  derivation the band itself renders (`ruleProposals`, a pure module with a
+ *  type-only engine import, so the tour costs nothing to import it) rather
+ *  than a second copy of the predicate that could drift from it. The band's
+ *  empty state is a bare <p> with a DIFFERENT testid, so an empty estate
+ *  would leave the proposals beat spotlighting nothing. */
+const hasProposals = () => ruleProposals(CC as unknown as CloudControl).length > 0;
+
 function ensurePayoffRule(): void {
   ensureSitesGroup(); // the rule cannot name a group that was never made
   const existing = rules().find(r => r.name === PAYOFF_RULE_NAME);
@@ -100,6 +167,21 @@ function ensurePayoffRule(): void {
  * order is still bound to `DEMO_BEATS` (demoScript.ts): the tour visits those
  * sections in that order and never doubles back to one it has left.
  *
+ * THREE LEGS, matching the layer-first IA the nav shipped. Sections that are
+ * not in DEMO_BEATS were added inside the leg their subject already belongs
+ * to, never between legs:
+ *
+ * - The ESTATE leg (`/discover`, `/tasks`) is everything above the layers.
+ *   Discover is the front door; Tasks is the one queue every layer's work
+ *   drains into, which is why it closes this leg rather than opening a
+ *   layer's.
+ * - The NAAS leg opens on `/naas/home`, because that is what picking a layer
+ *   in the bar actually does now — a layer opens onto its board, never onto
+ *   a verb. Then the four verbs, in lifecycle order.
+ * - The AI leg opens on `/ai/keys`, the gateway's identity surface, for the
+ *   same reason the NaaS leg opens on Connect: you attach and identify
+ *   before you govern. Then Insights, then the token-policy close.
+ *
  * Three beats are threaded INSIDE that spine rather than appended after it,
  * because groups are not an epilogue. Naming a set of premises is something
  * you do while looking at them, so it belongs in Discover; reading the group
@@ -108,20 +190,47 @@ function ensurePayoffRule(): void {
  * would have made the payoff arrive after Cost and the AI Fabric had already
  * closed the story.
  *
- * Four beats meet the surfaces shipped this week, each threaded where the
- * arc already carries its subject rather than bolted onto the end:
+ * Beats that meet surfaces shipped since the demo arc was written, each
+ * threaded where the arc already carries its subject rather than bolted onto
+ * the end:
  *
  * - `assessment` sits right after the Discover opener, because "measure for
  *   14 days first" is the answer to the question the scan raises.
  * - `intents` follows the naming beat on Discover: you named what you have,
  *   now declare what must stay true of it. The standing-intents band is the
  *   surface.
- * - `andi` closes the Discover leg. The intents band's own empty state says
- *   "tell Andi the outcome you want", so the beat that introduces Andi is
- *   the one that follows it. The toggle lives in the top bar, which renders
- *   on every route, so the beat stays on /discover and changes no section.
- * - `insights` opens the AI leg, before the token-policy close: evidence
- *   first, then governance, mirroring the NaaS half of the arc.
+ * - `andi` follows intents. The intents band's own empty state says "tell
+ *   Andi the outcome you want", so the beat that introduces Andi is the one
+ *   that follows it. The toggle lives in the top bar, which renders on every
+ *   route, so the beat stays on /discover and changes no section.
+ * - `twin` follows Andi, and closes /discover. Andi's beat ends on "drafts,
+ *   never commits"; this is the surface that sentence describes — the tray
+ *   where a staged move is priced, shared and committed. Every mutating beat
+ *   later in the tour commits directly, so if this beat is not shown the
+ *   viewer never learns that the product's normal path does not.
+ * - `tasks` closes the estate leg. It is the only surface that spans both
+ *   layers, so it cannot sit inside one of them; and it is the accumulation
+ *   of exactly what the twin beat just explained (one queue, priced, drained
+ *   through the twin), so it reads as that beat's consequence.
+ * - `intent-control` follows Tasks and stays on it, because the Watch/Enforce
+ *   switch exists ONLY in the band's `manage` render, which /tasks carries and
+ *   Discover deliberately does not (IntentThreads: "the cross-section is where
+ *   promises are SEEN, Work is where they are kept"). The `intents` beat on
+ *   Discover therefore could not carry this — it is pointing at a render with
+ *   no switch on it. Declaring and controlling are two beats because they are
+ *   two decisions in the product.
+ * - `layer-home` opens the NaaS leg, ahead of Connect, because it is what
+ *   the bar does: pick a layer, land on its board. It is also the only beat
+ *   that states the IA out loud — layers across, lifecycle down.
+ * - `proposals` opens the Govern leg, ahead of the rules table, which is
+ *   where the band physically sits. It must come BEFORE the `govern` beat
+ *   for a second reason: that beat's action enforces pol-insp, which drains
+ *   the finding behind one of the proposals the band is showing.
+ * - `gateway` opens the AI leg. A token policy is written against an
+ *   identity, so the identities come first — the same order the NaaS leg
+ *   uses when Connect precedes Govern.
+ * - `insights` sits directly before the token-policy close: evidence first,
+ *   then governance, mirroring the NaaS half of the arc.
  *
  * Each step's `targetSelector` is a `data-tour` attribute added to the
  * relevant component, or an existing stable `data-testid` other specs
@@ -132,10 +241,11 @@ function ensurePayoffRule(): void {
  *
  * SKIP MECHANISM. A step may carry `when`; `activeCloudConnectTour()`
  * evaluates it once per launch and leaves the step out of that run when it
- * returns false. It exists for the one anchor that can legitimately be
- * absent — the assessment banner — because a beat whose target is missing
- * renders a flat overlay with nothing spotlighted, which reads as a broken
- * tour. Steps without `when` always run.
+ * returns false. It exists for the anchors that can legitimately be absent —
+ * the assessment banner, and the proposal band on an estate with nothing to
+ * propose — because a beat whose target is missing renders a flat overlay
+ * with nothing spotlighted, which reads as a broken tour. Steps without
+ * `when` always run.
  *
  * A step's target is only spotlighted if it's already in the DOM. Govern's
  * tab is therefore carried in the route (`?tab=groups`) rather than left to
@@ -223,11 +333,84 @@ export const cloudConnectTour: CloudConnectTourStep[] = [
     id: 'andi',
     title: 'Ask in words',
     description:
-      'Andi rides the top bar on every screen. Ask in words and the answer comes from the same engine every figure derives from. Actions come back as proposals you confirm to run: Andi drafts, never commits, and Undo covers every change you accept.',
+      // NOT "Undo covers every change you accept" — it does not. steerFlow
+      // and setTokenPolicy push no undo entry (the per-kind truth table is
+      // isUndoCovered in stackFigures.ts), which is why the commit banner
+      // was taught to state coverage per commit instead of promising it.
+      // The tour was still telling the lie the product had stopped telling.
+      'Andi rides the top bar on every screen. Ask in words and the answer comes from the same engine every figure derives from. Actions come back as proposals you confirm to run: Andi drafts, never commits, and the banner after a commit names exactly which of those moves Undo can take back.',
     route: '/discover',
     targetSelector: '[data-testid="andi-toggle"]',
     placement: 'bottom',
     highlightPadding: 8,
+  },
+  {
+    id: 'twin',
+    title: 'Design on the twin, then commit',
+    description:
+      'This is where a draft lands. Design on the twin and a move stages instead of firing — priced by the same engine the screens read, so the tray can never offer what the estate would refuse. Share proposal mints a link that opens with your moves already staged, for someone else to approve. Commit to the estate is the only control here that changes anything.',
+    route: '/discover',
+    // The toggle, not the tray: the tray renders only while moves are staged,
+    // and this beat stages nothing. The button is always in the panel header.
+    targetSelector: '[data-testid="design-toggle"]',
+    placement: 'bottom',
+    highlightPadding: 10,
+  },
+  {
+    id: 'tasks',
+    title: 'One queue, many doors',
+    description:
+      // NOT "nothing commits on this page". The standing-intents block below
+      // this queue renders in `manage` mode here, and its Watch/Enforce switch
+      // applies a control the moment it is flipped — see the next beat. The
+      // claim is true of the QUEUE ROWS and is scoped to them.
+      'Tasks is state, not a place — the badge beside the bell counts what waits. Every priced move the advisor found and every intent that has drifted lands in this one queue, grouped by the lifecycle stage it belongs to and filterable by layer. No row commits from here: it synchronizes back into the twin, and a human commits it there.',
+    route: '/tasks',
+    targetSelector: '[data-tour="tasks-office"]',
+    placement: 'bottom',
+    highlightPadding: 12,
+  },
+  {
+    id: 'intent-control',
+    title: 'Arm an intent and it controls',
+    description:
+      /* NOT "the pill turns from Armed to Enforcing". Verified in the running
+         app: on a seeded estate the policy is Draft, and arming the intent
+         sets `enforced` (that IS cap-token-spend's enforceControl) at the same
+         moment it makes the cap cover the tag — so the pill goes Draft →
+         Enforcing and never passes through Armed. Armed is the OTHER
+         situation: enforced, but no cap covering it, which the pill's own
+         tooltip calls out as denying nothing on budget. Stated that way here,
+         because it is the reason this beat exists at all. */
+      /* NOT "the switch on ITS row". Seen in the running app on the Next-only
+         path: nothing has been declared, so the band renders its empty state
+         ("Nothing declared yet") and there is no row to carry a switch. The
+         claim is phrased about any declared intent, which is true of an empty
+         band and of a full one — and clicking this beat's action makes a row
+         with that switch appear live, under the spotlight, while the beat is
+         still on screen. Same discipline as the groups thread: a beat may not
+         narrate something a viewer who only presses Next never made. */
+      'Declaring is not controlling. An intent starts in watch mode — counted, changing nothing — and it reports how many requests enforcing would have denied. Each declared intent carries a Watch/Enforce switch, and that is the other half. Armed, the intent applies a standing control: cap token spend enforces that identity’s budget, and the gateway denies a request past the ceiling. Enforcement alone would not do it — a policy no cap covers reads Armed, and denies nothing on budget. Repairs still stage on the twin; arming is not the machine committing moves.',
+    route: '/tasks',
+    // The `manage` render of the band — the Discover one (beat 4) deliberately
+    // has no mode switch, which is exactly why that beat could not carry this.
+    targetSelector: '[data-testid="intent-threads"]',
+    placement: 'top',
+    highlightPadding: 12,
+    action: {
+      label: 'Declare “cap token spend”, and arm it',
+      onClick: ensureEnforcedCapIntent,
+    },
+  },
+  {
+    id: 'layer-home',
+    title: 'Pick a layer, land on its board',
+    description:
+      'Two layers ride the bar — NaaS and the AI Fabric — and each carries the same four verbs down the rail: Connect, Govern, Observe, Cost. Layers across, lifecycle down, and a verb is never a destination you enter through. Picking a layer opens its Home, and this board is live: every widget reads the same getters its verb pages read. The layer’s actionable widget leads, standing intents sits under it. The AI Fabric’s Home is this board with the token layer’s figures.',
+    route: '/naas/home',
+    targetSelector: '[data-tour="layer-board"]',
+    placement: 'top',
+    highlightPadding: 12,
   },
   {
     id: 'connect',
@@ -242,6 +425,20 @@ export const cloudConnectTour: CloudConnectTourStep[] = [
       label: 'Provision & attach the GPU clouds',
       onClick: () => CC.activateOnramp('nb2'),
     },
+  },
+  {
+    id: 'proposals',
+    title: 'Detect, then prevent',
+    description:
+      'Above the rules, Andi states what the estate is doing that deserves one. Each row is a live behavioural finding — GuardDuty, Access Analyzer, Security Hub — joined to the preventive rule that answers it and priced by the same dry-run the builder uses. Enforce it stages that rule on the twin; Tighten it opens the builder pre-filled so you can narrow it first. Nothing here is stored or dismissed: fix the behaviour and the row retires itself.',
+    route: '/naas/govern',
+    targetSelector: '[data-testid="proposal-band"]',
+    placement: 'bottom',
+    highlightPadding: 12,
+    // The band is replaced by a one-line empty state (a different testid) when
+    // no active finding names an unenforced rule — a real state after a
+    // rehearsal that enforced them all.
+    when: hasProposals,
   },
   {
     id: 'govern',
@@ -330,6 +527,31 @@ export const cloudConnectTour: CloudConnectTourStep[] = [
     highlightPadding: 12,
   },
   {
+    id: 'gateway',
+    // Keep the word "group" out of this copy for the same reason the insights
+    // beat does — see the note on that beat.
+    title: 'Who is allowed to call a model',
+    /* Length is load-bearing here, and the ceiling is tighter than the
+       arithmetic suggests. /ai/keys seats the table at y≈140 and the page has
+       almost no scroll below it, so ProductTour cannot lift the target to make
+       room: the tooltip has to fit in the ~340px between the table's bottom
+       edge and the viewport floor. The e2e overlap guard treats "they both fit
+       a 720px viewport" as a promise of ZERO overlap, so a tooltip that only
+       fits in principle fails. Measured: 470px → 0.238, 418px → 0.143, this
+       one → 0. Trim something before adding a sentence here.
+
+       The lifecycle claim this beat used to open with ("the AI rail speaks the
+       same lifecycle as NaaS") was the sentence cut, because the layer-home
+       beat already states it for both layers — this beat keeps only what is
+       true of THIS screen. */
+    description:
+      'A virtual key is an identity: an agent, its app tag, and exactly the scopes it may invoke. Suspend one and the gateway stops honouring it. Providers and Virtual keys sit under Connect in this layer’s rail — and budgets are written against these identities.',
+    route: '/ai/keys',
+    targetSelector: '[data-testid="keys-table"]',
+    placement: 'top',
+    highlightPadding: 10,
+  },
+  {
     id: 'insights',
     title: 'Every figure, derived live',
     // Keep the word "group" out of this copy: the e2e position guard
@@ -346,13 +568,31 @@ export const cloudConnectTour: CloudConnectTourStep[] = [
     id: 'ai-fabric',
     title: 'Token policies under governance',
     description:
-      // One added sentence, and it must stay true on BOTH tour paths: "you
-      // saw in NaaS · Govern" refers to the govern-groups beat reading the seeded
-      // group back — which renders whether or not the viewer clicked any
-      // action — never to a policy the Next-only path did not author. The
-      // tour spec's groups-thread position guard exempts this final beat
-      // deliberately (see tour.spec.ts).
-      'The tokens layer gets the same treatment as bytes: every app has a budget, a scope, and an optional guardrail. The same west-workloads group you saw in NaaS · Govern scopes a token policy here too — resolved live against the estate. Enforce a policy here and a classified request to an external model is denied at the token layer — the network never carries it.',
+      // "you saw in NaaS · Govern" must stay true on BOTH tour paths: it
+      // refers to the govern-groups beat reading the seeded group back —
+      // which renders whether or not the viewer clicked any action — never
+      // to a policy the Next-only path did not author. The tour spec's
+      // groups-thread position guard exempts this final beat deliberately
+      // (see tour.spec.ts), and also forbids claiming the viewer authored
+      // anything here, hence "New policy previews" rather than "the policy
+      // you wrote".
+      //
+      // Length matters on THIS beat specifically: /ai/govern has ~126px of
+      // scroll, so the tooltip and the spotlight cannot be prised apart and
+      // the e2e overlap guard holds this beat to a 0.2 ceiling. Measured, at
+      // 1280x720: 361 chars → 418px tooltip → 0.162; 477 chars → 470px →
+      // 0.216, a failure. Authoring had to be added by tightening the
+      // sentences already here, not by appending to them. Roughly 0.45px of
+      // tooltip per character — budget ~380 chars and re-run the spec.
+      // "Enforce one and a classified request … is denied" was the old close,
+      // and it misattributed the denial. TokenPolicies' own status pill spells
+      // the truth out: the SCOPE gate (no-external / self-hosted) denies
+      // "independent of whether the policy is enforced", while the enforced
+      // flag governs the BUDGET gate — which stays shut until an enforce-mode
+      // cap intent covers the identity, hence the pill's Armed state. The
+      // intent-control beat now carries that half; this one states the scope
+      // gate accurately instead of borrowing its effect for enforcement.
+      'Tokens get the same treatment as bytes: a budget, a scope, an optional guardrail. The west-workloads group you saw in NaaS · Govern scopes a policy here, resolved live. New policy previews the ceiling against real token spend, then stages it on the twin’s tray. A no-external scope denies a classified request whether the policy is enforced or not — the network never carries it.',
     route: '/ai/govern',
     targetSelector: '[data-tour="aifabric-policies"]',
     placement: 'top',

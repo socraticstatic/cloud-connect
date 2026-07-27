@@ -55,7 +55,12 @@ export function TasksPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-10" data-testid="work-page">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      {/* data-tour: the guided tour's Tasks beat anchors HERE, on the header,
+          not on the queue below it. The queue is conditional — an estate with
+          nothing waiting renders the empty <p> instead — and a beat whose
+          target can vanish spotlights nothing. The header carries the two
+          things the beat actually claims: the title and the layer filter. */}
+      <header data-tour="tasks-office" className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-figma-2xl font-bold text-fw-heading tracking-[-0.03em]">Tasks</h1>
           <p className="text-figma-base text-fw-body mt-1 max-w-2xl">

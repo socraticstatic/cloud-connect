@@ -114,12 +114,17 @@ const groupBeatsIn = (beats: Beat[]) => beats.filter(b => /\bgroup/i.test(b.text
 
 interface Grp { id: string }
 interface Rl { id: string; name: string }
+interface Itn { id: string; key: string; mode: string; scope: { id: string } }
+interface Pol { tag: string; enforced: boolean }
 type Win = {
   CC: {
     groupList: () => Grp[];
     ruleList: () => Rl[];
     ruleEnforced: (r: Rl) => boolean;
     resolveGroup: (id: string) => { count: number };
+    intentList: () => Itn[];
+    tokenPolicyList: () => Pol[];
+    intentCapEnforced: (tag: string) => boolean;
   };
 };
 
@@ -128,6 +133,13 @@ const groupIds = (page: Page) =>
 
 const ruleNames = (page: Page) =>
   page.evaluate(() => (window as unknown as Win).CC.ruleList().map(r => r.name));
+
+/** Every declared intent as `key:scope:mode`, so a rehearsal that declared a
+ *  second copy, or left one un-armed, is visible as a changed multiset. */
+const intentKeys = (page: Page) =>
+  page.evaluate(() =>
+    (window as unknown as Win).CC.intentList().map(i => `${i.key}:${i.scope.id}:${i.mode}`),
+  );
 
 test('the tour teaches groups, and every beat finds its target', async ({ page }) => {
   await firstVisit(page);
@@ -344,6 +356,7 @@ test('a second run in the same session completes, and duplicates nothing', async
   const afterFirst = {
     groups: await groupIds(page),
     rules: await ruleNames(page),
+    intents: await intentKeys(page),
   };
 
   const beats = await runTour(page);
@@ -352,12 +365,16 @@ test('a second run in the same session completes, and duplicates nothing', async
   const afterSecond = {
     groups: await groupIds(page),
     rules: await ruleNames(page),
+    intents: await intentKeys(page),
   };
 
   // Not "still contains" — exactly the same multiset. One extra
   // "all-branch-sites" or one extra payoff rule is the failure this catches.
   expect(afterSecond.groups.slice().sort()).toEqual(afterFirst.groups.slice().sort());
   expect(afterSecond.rules.slice().sort()).toEqual(afterFirst.rules.slice().sort());
+  // Same for the intent the control beat declares and arms: declareIntent
+  // dedupes and setIntentMode no-ops, and this is what proves it.
+  expect(afterSecond.intents.slice().sort()).toEqual(afterFirst.intents.slice().sort());
 
   expect(afterSecond.groups.filter(id => id === 'all-branch-sites')).toHaveLength(1);
   expect(
@@ -395,6 +412,17 @@ test('pressing only Next never narrates a group that was never named', async ({ 
   const figures = payoffBeat!.text.match(/\b\d+(?:\.\d+)?\b/g) ?? [];
   expect(figures.some(f => Number(f) > 0)).toBe(true);
   expect(payoffBeat!.text).not.toMatch(/matches 0 modelled flows/);
+
+  /* Same rule, applied to the intent-control beat. On this path nothing was
+     declared, so the standing-intents band under its spotlight renders
+     "Nothing declared yet" — a beat pointing at "the switch on its row" would
+     be naming a row the viewer is looking at the absence of. */
+  const control = beats.find(b => /^arm an intent and it controls$/i.test(b.title))!;
+  expect(control, 'no beat arms an intent').toBeTruthy();
+  expect(control.text, 'the beat names a row that this path never created')
+    .not.toMatch(/\b(?:its|the) row\b/i);
+  // …while still teaching the switch itself, phrased about any declared intent.
+  expect(control.text).toMatch(/watch\/enforce switch/i);
 
   /* The closing beat names west-workloads at the token layer on this path
      too — and it must stay TRUE here: pressing only Next never authored a
@@ -451,6 +479,145 @@ test('the tour meets the assessment, standing intents, Andi, and Insights, each 
   expect(beats[assessment].text).toMatch(/nothing is blocked or routed/i);
   expect(beats[andi].text).toMatch(/drafts, never commits/i);
   expect(beats[insights].text).toMatch(/derives from the engine/i);
+});
+
+/* THE SURFACES THAT SHIPPED AFTER THE ARC. Five more beats joined — the
+   design tray on the twin, the /tasks office, a layer's Home board, Andi's
+   proposal band, and the gateway's virtual keys. Same discipline as the test
+   above: each asserted by POSITION, because threading them into the leg that
+   already carries their subject is the whole point and a bolt-on-the-end
+   regression would still pass a presence check. Walked Next-only, so every
+   claim must hold with no action ever clicked; the walker's own per-step
+   spotlight assertion is what proves each new anchor was found on its route. */
+test('the tour meets the twin, Tasks, layer Home, proposals and the gateway, each in its leg', async ({ page }) => {
+  await firstVisit(page);
+  const beats = await runTourNextOnly(page);
+
+  const find = (name: string, re: RegExp) => {
+    const i = beats.findIndex(b => re.test(b.title) || re.test(b.text));
+    expect(
+      i,
+      `no beat for ${name}; titles were: ${beats.map(b => b.title).join(' | ')}`,
+    ).toBeGreaterThan(-1);
+    return i;
+  };
+
+  const andi = find('Andi', /^ask in words$/i);
+  const twin = find('the twin', /commit to the estate/i);
+  const tasks = find('Tasks', /^one queue, many doors$/i);
+  const control = find('arming an intent', /^arm an intent and it controls$/i);
+  const home = find('layer Home', /layers across, lifecycle down/i);
+  const connect = find('the connect beat', /NaaS in one click/i);
+  const proposals = find('the proposal band', /^detect, then prevent$/i);
+  const govern = find('the govern beat', /^govern with real rules$/i);
+  const gateway = find('virtual keys', /^who is allowed to call a model$/i);
+  const insights = find('Insights', /sankey/i);
+
+  // The estate leg closes on the twin, then Tasks, then the intent switch —
+  // all before a layer opens.
+  expect(twin, 'the twin beat must follow Andi').toBe(andi + 1);
+  expect(tasks, 'Tasks must follow the twin').toBe(twin + 1);
+  expect(control, 'arming an intent must follow the queue, on the same page').toBe(tasks + 1);
+  expect(control, 'the estate leg must close before a layer opens').toBeLessThan(home);
+
+  // The NaaS leg opens on Home, because that is what picking a layer does.
+  expect(home, 'Home must open the NaaS leg, ahead of Connect').toBe(connect - 1);
+
+  // Proposals sit above the rules table, and before the beat whose action
+  // enforces pol-insp and retires one of the rows they show.
+  expect(proposals, 'proposals must precede the rules beat').toBeLessThan(govern);
+  expect(proposals, 'proposals belong on the Govern leg, after Connect').toBeGreaterThan(connect);
+
+  // The AI leg opens on identity; the close stays the close.
+  expect(gateway, 'the gateway beat must open the AI leg').toBeLessThan(insights);
+  expect(insights, 'Insights must still sit directly before the close').toBe(beats.length - 2);
+
+  // Copy honesty, spot-checked against the shipped components' own words.
+  expect(beats[twin].text).toMatch(/share proposal/i);
+  expect(beats[home].text).toMatch(/connect, govern, observe, cost/i);
+  expect(beats[proposals].text).toMatch(/retires itself/i);
+  expect(beats[beats.length - 1].text).toMatch(/new policy/i);
+
+  /* The Tasks page carries the intents band in `manage` mode, and its
+     Watch/Enforce switch applies a control on the spot — so the "commits
+     elsewhere" claim has to be scoped to the queue rows, never to the page. */
+  expect(beats[tasks].text).toMatch(/no row commits from here/i);
+  expect(beats[tasks].text).not.toMatch(/nothing commits on this page/i);
+
+  // Watch versus enforce, stated as two things rather than one.
+  expect(beats[control].text).toMatch(/watch mode/i);
+  expect(beats[control].text).toMatch(/standing control/i);
+
+  /* And the claim the product stopped making about itself: steerFlow and
+     setTokenPolicy push no undo entry, so no beat may promise that Undo
+     takes back everything a commit did. */
+  for (const b of beats) {
+    expect(
+      b.text,
+      `beat “${b.title}” promises blanket undo coverage`,
+    ).not.toMatch(/undo covers every|undo reverts every/i);
+  }
+});
+
+/* CONTROLLING BY INTENT, not just declaring one. The tour used to stop at
+   "declare an outcome and the estate keeps checking it" — which is watch mode,
+   and watch mode gates nothing. The control is the mode switch, and it lives
+   only in the band's `manage` render on /tasks.
+
+   This walks the tour clicking actions and then asks the ENGINE what changed:
+   an armed cap intent has to have reached the token policy's enforced flag
+   (the standing control cap-token-spend applies), and the budget gate has to
+   agree a cap now covers that identity. Copy asserting itself is not proof. */
+test('arming the intent in the tour applies a standing control the engine agrees with', async ({ page }) => {
+  await firstVisit(page);
+
+  const before = await page.evaluate(() =>
+    (window as unknown as Win).CC.intentList().filter(i => i.key === 'cap-token-spend').length,
+  );
+  expect(before, 'a cap intent was already declared; this test proves nothing').toBe(0);
+
+  await runTour(page);
+
+  const armed = await page.evaluate(() => {
+    const CC = (window as unknown as Win).CC;
+    const caps = CC.intentList().filter(i => i.key === 'cap-token-spend');
+    if (caps.length !== 1) return { count: caps.length };
+    const tag = caps[0].scope.id;
+    return {
+      count: caps.length,
+      mode: caps[0].mode,
+      tag,
+      // The standing control itself — cap-token-spend's enforceControl is
+      // CC.setTokenPolicy(tag, {enforced: true}).
+      policyEnforced: CC.tokenPolicyList().find(p => p.tag === tag)?.enforced,
+      // …and promptTrace's budget gate reading the same fact back.
+      gateCovers: CC.intentCapEnforced(tag),
+    };
+  });
+
+  expect(armed.count, 'the tour declared no cap intent, or declared two').toBe(1);
+  expect(armed.mode, 'the intent was declared but left in watch mode — that controls nothing').toBe('enforce');
+  expect(armed.policyEnforced, 'arming did not reach the token policy').toBe(true);
+  expect(armed.gateCovers, 'the budget gate does not see an enforce-mode cap for this tag').toBe(true);
+});
+
+/* The twin beat points at a control that must actually be there and do what
+   the beat says. `runTourNextOnly` proves the spotlight found it; this proves
+   the thing under the spotlight is the design-mode toggle, and that pressing
+   it opens the tray the beat describes rather than committing anything. */
+test('the control the twin beat spotlights opens a tray, and commits nothing by itself', async ({ page }) => {
+  await firstVisit(page);
+
+  const rulesBefore = await ruleNames(page);
+  const toggle = page.getByTestId('design-toggle');
+  await expect(toggle).toBeVisible();
+  await expect(toggle).toHaveText(/design on the twin/i);
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+
+  // Entering design mode alone changes nothing on the estate.
+  expect(await ruleNames(page)).toEqual(rulesBefore);
 });
 
 /* THE SAME-ROUTE SCROLL CASE. The sites beat sits at the premises table far

@@ -17,6 +17,11 @@ import { IntentThreads } from '../discover/IntentThreads';
 import { InsightsPage } from '../ai-fabric/insights/InsightsPage';
 import { MainNav } from '../../components/navigation/MainNav';
 import { AuthProvider } from '../../contexts/AuthContext';
+import { StackPanel } from '../discover/StackPanel';
+import { TasksPage } from '../work/TasksPage';
+import { LayerDashboard } from '../layer-home/dashboard/LayerDashboard';
+import { ProposalBand } from '../govern/ProposalBand';
+import { AiKeysPage } from '../ai-fabric/GatewayGovernancePages';
 
 /**
  * Every guided-tour step targets a `data-tour` anchor. The Discover and Observe
@@ -43,7 +48,23 @@ const screenFor: Record<string, () => ReactElement> = {
       <MainNav />
     </AuthProvider>
   ),
+  // The twin's entry control lives in the stack panel's header and renders
+  // unconditionally — unlike the tray, which exists only while moves are
+  // staged, and which is why the beat does not point at it.
+  twin: () => <StackPanel />,
+  // The header, not the queue: TasksPage swaps the queue for an empty-state
+  // <p> when nothing waits, and the anchor must survive that.
+  tasks: () => <TasksPage />,
+  // The `manage` render of the intents band — the one with the mode switch.
+  // TasksPage mounts it with the default (manage: true); StackPanel passes
+  // manage={false}, which is why the Discover intents beat cannot carry this.
+  'intent-control': () => <TasksPage />,
+  'layer-home': () => <LayerDashboard surface="naas" />,
   connect: () => <FabricHero model={CC.fabricModel()} />,
+  // ProposalBand renders the band only while a proposal exists; on the seeded
+  // engine four findings are active, and the beat carries a `when` for the
+  // estate where none is.
+  proposals: () => <ProposalBand />,
   govern: () => <RulesPanel />,
   'govern-groups': () => <GroupsPanel />,
   // The payoff beat points back at the rules table — the rule it authors has
@@ -51,6 +72,7 @@ const screenFor: Record<string, () => ReactElement> = {
   'group-policy': () => <RulesPanel />,
   observe: () => <ObservabilityShell binding={networkBinding(CC)} />,
   cost: () => <CostPage />,
+  gateway: () => <AiKeysPage />,
   insights: () => <InsightsPage />,
   'ai-fabric': () => <TokenPolicies />,
 };

@@ -26,14 +26,39 @@ describe('cloudConnectTour', () => {
      never leaves a section and comes back to it — a viewer is walked
      forward, never bounced.
 
-     One section joined since: /ai/observe (the Insights screen), deliberately
-     placed on the AI leg between Cost and the token-policy close — evidence
-     first, then governance, mirroring the NaaS half. Stated here as the exact
-     expected list, so an accidental extra section still fails. */
-  it('visits the DEMO_BEATS sections in order — Insights added on the AI leg — and never doubles back', () => {
-    const expected = DEMO_BEATS.map(b => b.route);
-    expected.splice(expected.indexOf('/ai/govern'), 0, '/ai/observe');
-    expect(sections()).toEqual(expected);
+     Four sections have joined since, each opening the leg whose subject it
+     introduces (see the module doc): /tasks closes the estate leg, /naas/home
+     opens the NaaS leg, /ai/keys and /ai/observe open the AI leg. Stated here
+     as the exact expected list, so an accidental extra section still fails. */
+  const EXPECTED_SECTIONS = [
+    '/discover',
+    '/tasks', // two beats: the queue, then the intent switch that controls
+    '/naas/home',
+    '/naas/connect',
+    '/naas/govern',
+    '/naas/observe',
+    '/naas/cost',
+    '/ai/keys',
+    '/ai/observe',
+    '/ai/govern',
+  ];
+
+  it('visits exactly the expected sections, in order, and never doubles back', () => {
+    expect(sections()).toEqual(EXPECTED_SECTIONS);
+  });
+
+  /* The spine itself. The list above can be edited to anything; this asserts
+     the property the list is supposed to preserve — every DEMO_BEATS section
+     still appears, in the demo's own order, with the additions interleaved
+     rather than reordering the arc. */
+  it('keeps the six demo sections as a subsequence, in the demo’s order', () => {
+    const visited = sections();
+    let cursor = -1;
+    for (const route of DEMO_BEATS.map(b => b.route)) {
+      const next = visited.indexOf(route, cursor + 1);
+      expect(next, `demo section ${route} is missing or out of order`).toBeGreaterThan(cursor);
+      cursor = next;
+    }
   });
 
   it('does not route to /netops (dropped from the MVP demo arc)', () => {
@@ -292,7 +317,7 @@ describe('cloudConnectTour — assessment, intents, Andi, Insights', () => {
   });
 
   it('the new beats point, never mutate — no action, and no thunk, because none of them speaks a figure', () => {
-    for (const id of ['assessment', 'intents', 'andi', 'insights']) {
+    for (const id of ['assessment', 'intents', 'andi', 'insights', 'twin', 'tasks', 'layer-home', 'proposals', 'gateway']) {
       expect(beat(id).action, `${id} must not mutate the estate`).toBeUndefined();
       expect(typeof beat(id).description, `${id} speaks no figure`).toBe('string');
     }
@@ -357,5 +382,224 @@ describe('cloudConnectTour — assessment, intents, Andi, Insights', () => {
     expect(readCopy(beat('andi').description)).toMatch(/drafts, never commits/i);
     expect(readCopy(beat('insights').description)).toMatch(/derives from the engine/i);
     expect(readCopy(beat('insights').description)).toMatch(/sankey/i);
+  });
+
+  /* The claim the product removed from itself and the tour kept telling.
+     steerFlow and setTokenPolicy push no undo entry (isUndoCovered,
+     stackFigures.ts), which is why StackPanel's commit banner states
+     coverage per commit instead of promising it. A tour that promises
+     blanket undo is a demo that gets contradicted live. */
+  it('never promises that Undo covers every committed move', () => {
+    for (const step of cloudConnectTour) {
+      const text = readCopy(step.description);
+      expect(
+        text,
+        `beat "${step.id}" promises blanket undo coverage`,
+      ).not.toMatch(/undo covers every|undo reverts every|undo (?:covers|reverts) (?:all|any) (?:change|move)/i);
+    }
+  });
+});
+
+/* -------------------- the twin, tasks, layer Home, proposals, the gateway --------------------
+
+   Five surfaces shipped after the demo arc was written and after the last
+   tour refresh: the design tray on the twin, the /tasks office, the layer
+   Home widget boards, Andi's proposal band on Govern, and the AI gateway's
+   identity rail. Each is asserted by POSITION as well as presence — the whole
+   argument in the module doc is about where they sit, and "the beat exists"
+   would pass a version that bolted all five onto the end. */
+
+describe('cloudConnectTour — the twin, Tasks, layer Home, proposals, the gateway', () => {
+  const at = (id: string) => cloudConnectTour.findIndex(s => s.id === id);
+  const beat = (id: string) => cloudConnectTour.find(s => s.id === id)!;
+
+  it('carries a beat for every one of them', () => {
+    for (const id of ['twin', 'tasks', 'layer-home', 'proposals', 'gateway']) {
+      expect(beat(id), `missing beat "${id}"`).toBeTruthy();
+    }
+  });
+
+  it('closes the estate leg with the twin then Tasks, before any layer opens', () => {
+    // Andi ends on "drafts, never commits"; the twin is that sentence's surface.
+    expect(at('twin')).toBe(at('andi') + 1);
+    // Tasks is the accumulation of what the twin beat just explained.
+    expect(at('tasks')).toBe(at('twin') + 1);
+    // Both land before a layer is entered at all.
+    expect(at('tasks')).toBeLessThan(at('layer-home'));
+    expect(sectionOf(beat('twin').route)).toBe('/discover');
+    expect(beat('tasks').route).toBe('/tasks');
+  });
+
+  it('opens the NaaS leg on Home, because that is what picking a layer does', () => {
+    expect(beat('layer-home').route).toBe('/naas/home');
+    expect(at('layer-home')).toBe(at('connect') - 1);
+  });
+
+  it('puts the proposal band above the rules table, and before the beat that drains it', () => {
+    expect(beat('proposals').route).toBe('/naas/govern');
+    // Before `govern`, whose action enforces pol-insp and retires the finding
+    // behind one of the rows this beat is pointing at.
+    expect(at('proposals')).toBeLessThan(at('govern'));
+    expect(at('proposals')).toBeGreaterThan(at('connect'));
+  });
+
+  it('opens the AI leg on identity, before evidence and before governance', () => {
+    expect(beat('gateway').route).toBe('/ai/keys');
+    expect(at('gateway')).toBeLessThan(at('insights'));
+    expect(at('insights')).toBeLessThan(at('ai-fabric'));
+  });
+
+  it('anchors each beat to something that renders without a precondition — or carries a `when`', () => {
+    // The twin's toggle, not its tray: the tray exists only while moves are staged.
+    expect(beat('twin').targetSelector).toBe('[data-testid="design-toggle"]');
+    // The Tasks header, not the queue: the queue is swapped for an empty state.
+    expect(beat('tasks').targetSelector).toBe('[data-tour="tasks-office"]');
+    expect(beat('layer-home').targetSelector).toBe('[data-tour="layer-board"]');
+    expect(beat('gateway').targetSelector).toBe('[data-testid="keys-table"]');
+    // The one that genuinely can be absent declares itself skippable.
+    expect(beat('proposals').targetSelector).toBe('[data-testid="proposal-band"]');
+    expect(typeof beat('proposals').when, 'the proposals beat can be dead; it needs a `when`').toBe('function');
+  });
+
+  it('drops the proposals beat once no active finding names an unenforced rule', () => {
+    expect(activeCloudConnectTour().map(s => s.id)).toContain('proposals');
+
+    // Every finding resolved: the band is replaced by its one-line empty
+    // state, and a beat pointing at the band would spotlight nothing.
+    const spy = vi.spyOn(CC, 'threatFindings').mockReturnValue([]);
+    try {
+      const active = activeCloudConnectTour().map(s => s.id);
+      expect(active).not.toContain('proposals');
+      // …and nothing else leaves with it.
+      expect(active).toEqual(cloudConnectTour.map(s => s.id).filter(id => id !== 'proposals'));
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('speaks each surface in its own shipped vocabulary', () => {
+    // The three tray controls, by their real labels.
+    const twin = readCopy(beat('twin').description);
+    expect(twin).toMatch(/design on the twin/i);
+    expect(twin).toMatch(/share proposal/i);
+    expect(twin).toMatch(/commit to the estate/i);
+
+    /* Tasks: state not a place, one queue, stage-grouped, commits elsewhere.
+       The "commits elsewhere" claim is scoped to the QUEUE ROWS on purpose —
+       the standing-intents band below them renders in manage mode on this
+       page, and its Watch/Enforce switch applies a control on the spot. A
+       blanket "nothing commits on this page" is false here. */
+    const tasks = readCopy(beat('tasks').description);
+    expect(tasks).toMatch(/lifecycle stage/i);
+    expect(tasks).toMatch(/no row commits from here/i);
+    expect(tasks, 'the page-wide claim is false — the intent switch commits a control')
+      .not.toMatch(/nothing commits on this page/i);
+
+    // The IA claim the nav actually implements.
+    const home = readCopy(beat('layer-home').description);
+    expect(home).toMatch(/connect, govern, observe, cost/i);
+    expect(home).toMatch(/layers across, lifecycle down/i);
+
+    // The proposal band's own loop: detect, then prevent, and retire itself.
+    const proposals = readCopy(beat('proposals').description);
+    expect(proposals).toMatch(/enforce it/i);
+    expect(proposals).toMatch(/tighten it/i);
+    expect(proposals).toMatch(/retires itself/i);
+
+    // A virtual key is an identity with scopes.
+    expect(readCopy(beat('gateway').description)).toMatch(/scopes/i);
+
+    // Token-policy authoring reached the close.
+    const close = readCopy(beat('ai-fabric').description);
+    expect(close).toMatch(/new policy/i);
+    expect(close).toMatch(/stages? it on the twin/i);
+  });
+
+  /* ------------------------ controlling by intent ------------------------
+
+     Declaring an intent and controlling by one are two decisions in the
+     product, and the tour showed only the first: the Discover band the
+     `intents` beat points at is the `manage={false}` render, which has no
+     mode switch on it at all. */
+
+  it('carries a beat for arming an intent, on the render that actually has the switch', () => {
+    expect(beat('intent-control'), 'nothing in the tour arms an intent').toBeTruthy();
+    // /tasks, not /discover — StackPanel passes manage={false}.
+    expect(beat('intent-control').route).toBe('/tasks');
+    expect(beat('intent-control').targetSelector).toBe('[data-testid="intent-threads"]');
+    // Declaring comes first, on Discover; controlling follows the queue.
+    expect(at('intents')).toBeLessThan(at('intent-control'));
+    expect(at('intent-control')).toBe(at('tasks') + 1);
+  });
+
+  it('separates watch from enforce, and does not claim arming is the machine committing', () => {
+    const text = readCopy(beat('intent-control').description);
+    expect(text).toMatch(/watch mode/i);
+    // Phrased about any declared intent, never "its row" — the Next-only path
+    // looks at an empty band. Guarded end to end in tour.spec.ts too.
+    expect(text).not.toMatch(/\b(?:its|the) row\b/i);
+    // The counterfactual watch mode actually reports.
+    expect(text).toMatch(/would have denied/i);
+    // The standing control, and what Armed actually means.
+    expect(text).toMatch(/standing control/i);
+    expect(text).toMatch(/denies nothing on budget/i);
+    /* Verified against the running app: arming sets `enforced` and makes the
+       cap cover the tag in the same click, so the pill goes Draft → Enforcing
+       and never shows Armed on this path. Copy claiming that transition is a
+       demo that gets contradicted on screen. */
+    expect(text, 'the pill never passes through Armed on this path').not.toMatch(/armed to enforcing/i);
+    // The law the engine states about itself: enforce mode applies standing
+    // controls only; repairs stay moves for the twin's tray.
+    expect(text).toMatch(/repairs still stage/i);
+  });
+
+  it('arms an intent when clicked, and is idempotent across rehearsals', () => {
+    const caps = () =>
+      (CC.intentList() as { key: string; mode: string; scope: { id: string } }[])
+        .filter(i => i.key === 'cap-token-spend');
+
+    expect(caps()).toHaveLength(0);
+
+    beat('intent-control').action!.onClick();
+    const first = caps();
+    expect(first, 'no cap intent was declared').toHaveLength(1);
+    expect(first[0].mode, 'the intent was declared but never armed').toBe('enforce');
+
+    // Twice more — declareIntent dedupes on (key, scope) and setIntentMode is
+    // a no-op on the mode it already holds, but the tour is the thing a person
+    // clicks over and over, so this is asserted rather than assumed.
+    beat('intent-control').action!.onClick();
+    beat('intent-control').action!.onClick();
+    expect(caps()).toHaveLength(1);
+    expect(caps()[0].mode).toBe('enforce');
+    expect(caps()[0].scope.id).toBe(first[0].scope.id);
+  });
+
+  it('arms a tag the engine actually meters, and the arming reaches the token policy', () => {
+    // depends on the beat above having run — same file, same engine singleton.
+    const cap = (CC.intentList() as { key: string; scope: { id: string } }[])
+      .find(i => i.key === 'cap-token-spend')!;
+    const metered = (CC.tokenMeterList() as { tag: string }[]).map(m => m.tag);
+    expect(metered, 'the cap is scoped to a tag the engine does not meter').toContain(cap.scope.id);
+
+    // The standing control cap-token-spend applies is the policy's enforced
+    // flag — this is what turns that row's pill from Armed to Enforcing.
+    const pol = (CC.tokenPolicyList() as { tag: string; enforced: boolean }[])
+      .find(p => p.tag === cap.scope.id);
+    expect(pol, 'the armed identity has no token policy to control').toBeTruthy();
+    expect(pol!.enforced, 'arming the intent did not apply the standing control').toBe(true);
+
+    // …and the gate agrees an enforce-mode cap now covers this tag.
+    expect(CC.intentCapEnforced(cap.scope.id)).toBe(true);
+  });
+
+  /* The e2e position guard treats any beat whose text says "group" as part of
+     the groups thread and exempts only the FINAL beat. `gateway` and
+     `insights` are the two beats nearest that boundary. */
+  it('keeps the word "group" out of the two beats before the close', () => {
+    for (const id of ['gateway', 'insights']) {
+      const text = beat(id).title + ' ' + readCopy(beat(id).description);
+      expect(text, `beat "${id}" joins the groups thread by accident`).not.toMatch(/\bgroup/i);
+    }
   });
 });

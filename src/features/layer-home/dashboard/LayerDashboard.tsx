@@ -6,7 +6,10 @@ export function LayerDashboard({ surface }: { surface: Surface }) {
   const ids = DEFAULT_LAYOUT[surface].filter(id => WIDGET_REGISTRY[id]);
   return (
     <LayerContext.Provider value={surface}>
-      <div data-testid="layer-dashboard" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 auto-rows-min">
+      {/* data-tour: the guided tour's layer-home beat spotlights the board —
+          the claim it makes ("every widget reads the same getters its verb
+          pages read") is about the board, not one widget. */}
+      <div data-testid="layer-dashboard" data-tour="layer-board" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 auto-rows-min">
         {ids.map(id => {
           const def = WIDGET_REGISTRY[id];
           const Widget = def.component;
