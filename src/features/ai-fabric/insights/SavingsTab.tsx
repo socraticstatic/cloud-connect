@@ -208,7 +208,7 @@ function CardFooter({
   return achieved ? (
     <p
       data-testid={`cost-footer-${flagKey}`}
-      className="mt-4 rounded-lg bg-[#e9f5e7] px-3 py-2 text-figma-sm font-medium text-fw-success"
+      className="mt-4 rounded-lg bg-fw-successLight px-3 py-2 text-figma-sm font-medium text-fw-success"
     >
       {doneText}
     </p>

@@ -112,7 +112,7 @@ export function TokenBudgets() {
           {publicPathCount > 0 && (
             <>
               {' '}
-              <Link to="/ai/connect" className="font-medium text-[#0057b8] hover:underline">
+              <Link to="/ai/connect" className="font-medium text-fw-link hover:underline">
                 Attach them in AI Fabric · Connect
               </Link>
               .

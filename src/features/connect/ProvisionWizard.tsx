@@ -52,7 +52,7 @@ export function ProvisionWizard({ region, model, onClose, onProvisioned }: Provi
   return (
     <div
       role="dialog" aria-modal="true" aria-label={`Provision ${region.cloudName} ${region.name}`}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#1d2329]/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-fw-heading/40 p-4"
       onClick={onClose}
     >
       <div
@@ -75,7 +75,7 @@ export function ProvisionWizard({ region, model, onClose, onProvisioned }: Provi
           {steps.map((s, i) => (
             <li key={s} className="flex items-center gap-1">
               <span className={`inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full ${
-                i < step ? 'bg-[#00a862] text-white' : i === step ? 'bg-[#0057b8] text-white' : 'bg-fw-neutral text-fw-bodyLight'
+                i < step ? 'bg-fw-success text-white' : i === step ? 'bg-fw-ctaPrimary text-white' : 'bg-fw-neutral text-fw-bodyLight'
               }`}>{i < step ? <Check size={12} /> : i + 1}</span>
               <span className={i === step ? 'text-fw-heading' : 'text-fw-bodyLight'}>{s}</span>
               {i < steps.length - 1 && <span className="mx-0.5 text-fw-secondary">·</span>}
@@ -93,10 +93,10 @@ export function ProvisionWizard({ region, model, onClose, onProvisioned }: Provi
                     key={t.id} type="button" aria-pressed={attachType === t.id}
                     onClick={() => setAttachType(t.id)}
                     className={`text-left rounded-lg border p-2.5 transition-colors ${
-                      attachType === t.id ? 'border-[#0057b8] bg-[#0057b8]/[0.04] ring-1 ring-[#0057b8]' : 'border-fw-secondary hover:bg-fw-wash'
+                      attachType === t.id ? 'border-fw-active bg-fw-ctaPrimary/[0.04] ring-1 ring-fw-link' : 'border-fw-secondary hover:bg-fw-wash'
                     }`}
                   >
-                    <div className={`text-figma-sm font-medium ${attachType === t.id ? 'text-[#0057b8]' : 'text-fw-heading'}`}>{t.label}</div>
+                    <div className={`text-figma-sm font-medium ${attachType === t.id ? 'text-fw-link' : 'text-fw-heading'}`}>{t.label}</div>
                     <div className="mt-0.5 text-[11px] text-fw-bodyLight">{t.desc}</div>
                   </button>
                 ))}
@@ -116,10 +116,10 @@ export function ProvisionWizard({ region, model, onClose, onProvisioned }: Provi
                   key={o.id} type="button" aria-pressed={onrampId === o.id}
                   onClick={() => setOnrampId(o.id)}
                   className={`w-full text-left rounded-lg border p-2.5 transition-colors ${
-                    onrampId === o.id ? 'border-[#0057b8] bg-[#0057b8]/[0.04] ring-1 ring-[#0057b8]' : 'border-fw-secondary hover:bg-fw-wash'
+                    onrampId === o.id ? 'border-fw-active bg-fw-ctaPrimary/[0.04] ring-1 ring-fw-link' : 'border-fw-secondary hover:bg-fw-wash'
                   }`}
                 >
-                  <div className={`text-figma-sm font-medium ${onrampId === o.id ? 'text-[#0057b8]' : 'text-fw-heading'}`}>{o.name}</div>
+                  <div className={`text-figma-sm font-medium ${onrampId === o.id ? 'text-fw-link' : 'text-fw-heading'}`}>{o.name}</div>
                   <div className="mt-0.5 text-[11px] text-fw-bodyLight">{o.site} · {o.active ? 'active' : 'available capacity'}</div>
                 </button>
               ))}
@@ -137,10 +137,10 @@ export function ProvisionWizard({ region, model, onClose, onProvisioned }: Provi
                   key={String(opt.v)} type="button" aria-pressed={resilient === opt.v}
                   onClick={() => setResilient(opt.v)}
                   className={`w-full text-left rounded-lg border p-2.5 transition-colors ${
-                    resilient === opt.v ? 'border-[#0057b8] bg-[#0057b8]/[0.04] ring-1 ring-[#0057b8]' : 'border-fw-secondary hover:bg-fw-wash'
+                    resilient === opt.v ? 'border-fw-active bg-fw-ctaPrimary/[0.04] ring-1 ring-fw-link' : 'border-fw-secondary hover:bg-fw-wash'
                   }`}
                 >
-                  <div className={`text-figma-sm font-medium ${resilient === opt.v ? 'text-[#0057b8]' : 'text-fw-heading'}`}>{opt.label}</div>
+                  <div className={`text-figma-sm font-medium ${resilient === opt.v ? 'text-fw-link' : 'text-fw-heading'}`}>{opt.label}</div>
                   <div className="mt-0.5 text-[11px] text-fw-bodyLight">{opt.desc}</div>
                 </button>
               ))}
@@ -179,7 +179,7 @@ export function ProvisionWizard({ region, model, onClose, onProvisioned }: Provi
             <button
               type="button" disabled={!canNext}
               onClick={() => setStep(step + 1)}
-              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-figma-sm font-semibold bg-[#0057b8] text-white hover:bg-[#00478f] disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-figma-sm font-semibold bg-fw-ctaPrimary text-white hover:bg-fw-ctaPrimaryHover disabled:opacity-40"
             >
               Next <ArrowRight size={15} />
             </button>
@@ -187,7 +187,7 @@ export function ProvisionWizard({ region, model, onClose, onProvisioned }: Provi
             <button
               type="button" data-testid="provision-confirm"
               onClick={confirm}
-              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-figma-sm font-semibold bg-[#00a862] text-white hover:bg-[#00915a]"
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-figma-sm font-semibold bg-fw-success text-white hover:bg-fw-success"
             >
               <Check size={15} /> Provision &amp; attach
             </button>

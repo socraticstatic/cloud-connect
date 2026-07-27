@@ -66,7 +66,7 @@ export function VpcMap({
                         <div className="flex items-center gap-2">
                           <span className="text-figma-sm font-medium text-fw-heading">{s.name}</span>
                           {s.kind === 'public' ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-[#cbd5e1] bg-[#f8fafc] px-1.5 py-px text-[10px] font-medium text-[#475569]">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-fw-secondary bg-fw-wash px-1.5 py-px text-[10px] font-medium text-fw-bodyLight">
                               <Globe size={10} aria-hidden="true" /> public
                             </span>
                           ) : (
@@ -103,7 +103,7 @@ export function VpcMap({
                 <div
                   key={rt.id}
                   className={`rounded-lg border px-3 py-2 ${
-                    viol ? 'border-[#c70032]/25 bg-[#c70032]/[0.04]' : 'border-fw-secondary bg-fw-base'
+                    viol ? 'border-fw-error/25 bg-fw-error/[0.04]' : 'border-fw-secondary bg-fw-base'
                   }`}
                 >
                   <div className="text-figma-sm font-medium text-fw-heading">{rt.name}</div>
@@ -113,7 +113,7 @@ export function VpcMap({
                   {viol && (
                     <div className="mt-2 space-y-1">
                       {viol.map((v, i) => (
-                        <div key={i} className="flex items-start gap-1.5 text-[11px] font-medium text-[#c70032]">
+                        <div key={i} className="flex items-start gap-1.5 text-[11px] font-medium text-fw-error">
                           <AlertTriangle size={12} className="mt-px shrink-0" aria-hidden="true" />
                           <span>{v.msg}</span>
                         </div>
@@ -160,7 +160,7 @@ export function VpcMap({
       {/* Legend */}
       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-fw-secondary pt-3 text-[11px] text-fw-bodyLight">
         <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full border border-[#cbd5e1] bg-[#f8fafc]" /> public subnet
+          <span className="inline-block h-2.5 w-2.5 rounded-full border border-fw-secondary bg-fw-wash" /> public subnet
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block h-2.5 w-2.5 rounded-full border border-fw-success bg-fw-successLight" /> private subnet
@@ -175,7 +175,7 @@ export function VpcMap({
           </span>
         )}
         {m.violations.length > 0 && (
-          <span className="inline-flex items-center gap-1 font-medium text-[#c70032]">
+          <span className="inline-flex items-center gap-1 font-medium text-fw-error">
             <AlertTriangle size={12} aria-hidden="true" /> {m.violations.length} policy violation
             {m.violations.length > 1 ? 's' : ''}
           </span>

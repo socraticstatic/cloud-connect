@@ -3,9 +3,9 @@ import { CC } from '../../engine';
 import { PathTable } from './PathTable';
 
 // CostChip tone classes (see src/components/viz/CostChip.tsx)
-const CONTROLLED_CLASS = 'text-[#0057b8]';
+const CONTROLLED_CLASS = 'text-fw-link';
 // De-amber: public egress now renders the neutral slate treatment, not amber.
-const PUBLIC_CLASS = 'text-[#475569]';
+const PUBLIC_CLASS = 'text-fw-bodyLight';
 
 afterEach(() => {
   // Undo any steers so tests stay order-independent.

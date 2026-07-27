@@ -9,7 +9,7 @@ interface TelemetryEvent {
 function postureBadgeClass(score: number): string {
   if (score >= 80) return 'bg-fw-successLight text-fw-success';
   // Mid posture → neutral slate attention, no warm tone.
-  if (score >= 60) return 'bg-[#f8fafc] text-[#475569] border border-[#cbd5e1]';
+  if (score >= 60) return 'bg-fw-wash text-fw-bodyLight border border-fw-secondary';
   return 'bg-fw-errorLight text-fw-error';
 }
 

@@ -4,9 +4,9 @@ import type { LucideIcon } from 'lucide-react';
 // 'bad' with slate-600 (no amber), and 'critical' is red — reserved for true
 // errors only, never a routine "needs attention" state.
 const DELTA_TONE = {
-  good: 'text-[#00a862]',
-  neutral: 'text-[#475569]',
-  critical: 'text-[#dc2626]',
+  good: 'text-fw-success',
+  neutral: 'text-fw-bodyLight',
+  critical: 'text-fw-error',
 } as const;
 
 export function StatTile({ label, value, delta, meter }: {
@@ -35,7 +35,7 @@ export function StatTile({ label, value, delta, meter }: {
         <div className="mt-2">
           <div role="meter" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}
                aria-label={meter.label} className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
-            <div className="h-full rounded-full bg-[#0057b8] transition-[width] duration-200 ease-out"
+            <div className="h-full rounded-full bg-fw-ctaPrimary transition-[width] duration-200 ease-out"
                  style={{ width: `${pct}%` }} />
           </div>
           <div className="mt-1 text-[11px] text-slate-500">{meter.label}</div>

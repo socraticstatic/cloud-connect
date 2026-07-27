@@ -3,7 +3,7 @@ import type { ObservabilityBinding, RecordRow } from './ObservabilityBinding';
 
 // Left-border tone indicator per record row. `ok` resolves against
 // tailwind.config.js's `borderColor.fw-success`; the attention tone ("warn"/
-// "bad") uses a neutral slate left-border (#94a3b8) — no warm tone; meaning is
+// "bad") uses a neutral slate left-border (fw-primary) — no warm tone; meaning is
 // carried by position + copy, not a warm hue.
 function toneClass(tone: RecordRow['tone']): string {
   switch (tone) {
@@ -11,7 +11,7 @@ function toneClass(tone: RecordRow['tone']): string {
       return 'border-l-2 border-l-fw-success';
     case 'warn':
     case 'bad':
-      return 'border-l-2 border-l-[#94a3b8]';
+      return 'border-l-2 border-l-fw-primary';
     default:
       return '';
   }
@@ -193,7 +193,7 @@ export function ObservabilityShell({ binding }: { binding: ObservabilityBinding 
           <div className="text-figma-xs uppercase tracking-wide text-fw-bodyLight">{binding.layer === 'ai' ? 'Fabric briefing' : 'Network briefing'}</div>
           <div className="space-y-2 text-figma-sm text-fw-body">
             {brief.narrative.map((b, i) => (
-              <p key={i} className={b.emphasis === 'risk' ? 'text-[#475569] font-medium' : b.emphasis === 'strong' ? 'text-fw-heading font-medium' : ''}>{b.text}</p>
+              <p key={i} className={b.emphasis === 'risk' ? 'text-fw-bodyLight font-medium' : b.emphasis === 'strong' ? 'text-fw-heading font-medium' : ''}>{b.text}</p>
             ))}
           </div>
           <div className="flex flex-wrap gap-2">

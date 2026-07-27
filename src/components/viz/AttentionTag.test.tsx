@@ -7,8 +7,8 @@ describe('AttentionTag', () => {
     render(<AttentionTag>public</AttentionTag>);
     const tag = screen.getByText('public');
     // Neutral: slate-600 text, slate-300 border, slate-50 fill.
-    expect(tag).toHaveClass('text-[#475569]');
-    expect(tag).toHaveClass('border-[#cbd5e1]');
+    expect(tag).toHaveClass('text-fw-bodyLight');
+    expect(tag).toHaveClass('border-fw-secondary');
     expect(tag.className).not.toMatch(/b45309|ea712f|amber|warn/);
   });
 

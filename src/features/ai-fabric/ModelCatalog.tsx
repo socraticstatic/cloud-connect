@@ -46,7 +46,7 @@ export function ModelCatalog() {
         <p className="px-5 py-3 border-b border-fw-secondary text-figma-sm text-fw-bodyLight">
           Attaching governs what comes next, not what already went:{' '}
           {fmtTokens(ungoverned)} tokens have been metered over the public internet today.{' '}
-          <Link to="/ai/cost" className="font-medium text-[#0057b8] hover:underline">
+          <Link to="/ai/cost" className="font-medium text-fw-link hover:underline">
             See the split in AI Fabric · Cost
           </Link>
           .

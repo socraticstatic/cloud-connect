@@ -5,15 +5,15 @@ import { useFlowProgress, type FlowStatus } from './useFlowProgress';
 /* Marker styling per status. Cobalt = current, green = done, slate = upcoming.
    No amber anywhere — attention lives in copy + the forward CTA, not hue. */
 const MARKER: Record<FlowStatus, string> = {
-  current: 'bg-[#0057b8] border-[#0057b8] text-white',
-  done: 'bg-[#00a862] border-[#00a862] text-white',
-  upcoming: 'bg-white border-[#cbd5e1] text-[#94a3b8]',
+  current: 'bg-fw-ctaPrimary border-fw-active text-white',
+  done: 'bg-fw-success border-fw-success text-white',
+  upcoming: 'bg-fw-base border-fw-secondary text-fw-disabled',
 };
 
 const LABEL: Record<FlowStatus, string> = {
-  current: 'text-[#0057b8] font-semibold',
-  done: 'text-[#0f172a] font-medium',
-  upcoming: 'text-[#64748b] font-medium',
+  current: 'text-fw-link font-semibold',
+  done: 'text-fw-heading font-medium',
+  upcoming: 'text-fw-bodyLight font-medium',
 };
 
 /**

@@ -320,13 +320,13 @@ export function RulesPanel() {
               reserved violation tier, #dc2626) is warranted. A leading alert
               icon makes each read as a problem, not ordinary slate copy. */}
           <div className="flex items-center gap-2 font-medium text-fw-heading text-figma-sm mb-1.5">
-            <ShieldAlert size={15} className="shrink-0 text-[#dc2626]" aria-hidden="true" />
+            <ShieldAlert size={15} className="shrink-0 text-fw-error" aria-hidden="true" />
             {violations.length} open violation{violations.length === 1 ? '' : 's'}
           </div>
           <ul className="space-y-1">
             {violations.map((v, i) => (
               <li key={i} className="flex items-start gap-1.5 text-figma-xs text-fw-body">
-                <ShieldAlert size={13} className="mt-0.5 shrink-0 text-[#dc2626]" aria-hidden="true" />
+                <ShieldAlert size={13} className="mt-0.5 shrink-0 text-fw-error" aria-hidden="true" />
                 <span>
                   {v.tag ? <span className="font-medium text-fw-heading">{v.tag}</span> : null}
                   {v.tag ? ' — ' : ''}

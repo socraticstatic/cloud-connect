@@ -15,7 +15,7 @@ import type { FabricRegion } from '../../engine/types';
 function ReliabilityPill({ reliability }: { reliability: FabricRegion['reliability'] }) {
   const map = {
     dual: { t: 'Dual', cls: 'bg-fw-successLight text-fw-success' },
-    single: { t: 'Single', cls: 'bg-[#0057b8]/[0.08] text-[#0057b8]' },
+    single: { t: 'Single', cls: 'bg-fw-ctaPrimary/[0.08] text-fw-link' },
     none: { t: 'None', cls: 'bg-fw-neutral text-fw-bodyLight' },
   } as const;
   const m = map[reliability];
@@ -72,10 +72,10 @@ export function ConnectionsList({ model, selected, onSelect, onProvisioned }: Co
             const isSel = selected?.kind === 'region' && selected.id === region.regionId;
             return (
               <li key={region.regionId}>
-                <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3 ${isSel ? 'bg-[#0057b8]/[0.03]' : ''}`}>
+                <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3 ${isSel ? 'bg-fw-ctaPrimary/[0.03]' : ''}`}>
                   <button
                     type="button" onClick={() => onSelect?.({ kind: 'region', id: region.regionId })}
-                    className="flex items-center gap-2.5 min-w-[180px] flex-1 text-left rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0057b8]/40"
+                    className="flex items-center gap-2.5 min-w-[180px] flex-1 text-left rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-fw-link/40"
                   >
                     <ProviderLogo id={region.cloudId} size={26} />
                     <span className="min-w-0">
@@ -89,7 +89,7 @@ export function ConnectionsList({ model, selected, onSelect, onProvisioned }: Co
                     <ReliabilityPill reliability={region.reliability} />
                     {region.reliability !== 'dual' && (
                       <button type="button" onClick={() => makeDual(region)}
-                        className="text-figma-xs font-medium text-[#0057b8] hover:underline">Make dual</button>
+                        className="text-figma-xs font-medium text-fw-link hover:underline">Make dual</button>
                     )}
                   </div>
 
@@ -97,13 +97,13 @@ export function ConnectionsList({ model, selected, onSelect, onProvisioned }: Co
                   <div className="flex items-center gap-2">
                     <LatencySpark region={region} />
                     <span className="text-figma-sm tabular-nums text-fw-body">{region.latencyMs}ms</span>
-                    <Link to="/naas/observe" className="inline-flex items-center gap-0.5 text-figma-xs font-medium text-[#0057b8] hover:underline">
+                    <Link to="/naas/observe" className="inline-flex items-center gap-0.5 text-figma-xs font-medium text-fw-link hover:underline">
                       View in Observe <ArrowRight size={12} />
                     </Link>
                   </div>
 
                   {/* private / public */}
-                  <span className="inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium bg-[#0057b8]/[0.08] text-[#0057b8]">Private</span>
+                  <span className="inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium bg-fw-ctaPrimary/[0.08] text-fw-link">Private</span>
                 </div>
               </li>
             );

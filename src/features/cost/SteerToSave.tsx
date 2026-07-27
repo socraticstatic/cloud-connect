@@ -28,7 +28,7 @@ export function SteerToSave() {
     <section aria-labelledby="sts-h">
       <h2 id="sts-h" className="text-sm font-semibold text-slate-900">Steer to save</h2>
       {captured > 0 && (
-        <p className="mt-1 text-xs font-medium text-[#00a862]" role="status">
+        <p className="mt-1 text-xs font-medium text-fw-success" role="status">
           ${captured.toLocaleString()}/mo captured this session
         </p>
       )}
@@ -47,7 +47,7 @@ export function SteerToSave() {
             <div className="text-sm text-slate-900">{r.title}</div>
             <div className="mt-0.5 text-xs text-slate-500">{r.detail}</div>
             <button onClick={() => steer(r)}
-              className="mt-2 rounded-md bg-[#0057b8] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#004a9e] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0057b8]">
+              className="mt-2 rounded-md bg-fw-ctaPrimary px-3 py-1.5 text-xs font-medium text-white hover:bg-fw-ctaPrimaryHover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fw-link">
               Steer to save
             </button>
           </li>

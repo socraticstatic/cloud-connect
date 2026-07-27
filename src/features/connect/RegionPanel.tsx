@@ -17,7 +17,7 @@ import type { FabricRegion } from '../../engine/types';
 function ReliabilityPill({ reliability }: { reliability: FabricRegion['reliability'] }) {
   const map = {
     dual: { t: 'Dual · resilient', cls: 'bg-fw-successLight text-fw-success' },
-    single: { t: 'Single path', cls: 'bg-[#0057b8]/[0.08] text-[#0057b8]' },
+    single: { t: 'Single path', cls: 'bg-fw-ctaPrimary/[0.08] text-fw-link' },
     none: { t: 'Not attached', cls: 'bg-fw-neutral text-fw-bodyLight' },
   } as const;
   const m = map[reliability];
@@ -57,7 +57,7 @@ export function RegionPanel({ region, model, onProvision, onProvisioned }: Regio
           <div className="text-figma-xs text-fw-bodyLight leading-tight">{region.cloudName}</div>
         </div>
         <span className={`inline-flex items-center h-6 px-2.5 rounded-full text-figma-xs font-medium ${
-          region.path === 'private' ? 'bg-[#0057b8]/[0.08] text-[#0057b8]' : 'bg-fw-neutral text-fw-bodyLight'
+          region.path === 'private' ? 'bg-fw-ctaPrimary/[0.08] text-fw-link' : 'bg-fw-neutral text-fw-bodyLight'
         }`}>{region.path === 'private' ? 'Private' : 'Public'}</span>
       </header>
 
@@ -70,7 +70,7 @@ export function RegionPanel({ region, model, onProvision, onProvisioned }: Regio
           </div>
           {region.reliability !== 'dual' && region.path === 'private' && (
             <button type="button" onClick={makeDual}
-              className="mt-2 text-figma-xs font-medium text-[#0057b8] hover:underline">Make dual →</button>
+              className="mt-2 text-figma-xs font-medium text-fw-link hover:underline">Make dual →</button>
           )}
         </div>
         {/* Performance states the figure for the path this region is ON, and
@@ -93,10 +93,10 @@ export function RegionPanel({ region, model, onProvision, onProvisioned }: Regio
               read as a second link above the real one. */}
           {region.path === 'public' && (
             <div data-testid="region-latency-fabric" className="text-figma-xs text-fw-bodyLight">
-              <span className="font-semibold text-[#0057b8]">{region.privateMs}ms</span> on the fabric
+              <span className="font-semibold text-fw-link">{region.privateMs}ms</span> on the fabric
             </div>
           )}
-          <Link to="/naas/observe" className="mt-1 inline-flex items-center gap-0.5 text-figma-xs font-medium text-[#0057b8] hover:underline">View in Observe <ArrowRight size={12} /></Link>
+          <Link to="/naas/observe" className="mt-1 inline-flex items-center gap-0.5 text-figma-xs font-medium text-fw-link hover:underline">View in Observe <ArrowRight size={12} /></Link>
         </div>
         <div className="rounded-xl border border-fw-secondary bg-fw-wash p-3">
           <div className="flex items-center gap-1.5 text-figma-xs text-fw-bodyLight"><Layers size={13} /> Reach</div>
@@ -120,9 +120,9 @@ export function RegionPanel({ region, model, onProvision, onProvisioned }: Regio
           {ATTACH_TYPES.map(t => {
             const isActive = activeAttach === t.id;
             return (
-              <div key={t.id} className={`rounded-lg border p-2.5 ${isActive ? 'border-[#0057b8] bg-[#0057b8]/[0.04]' : 'border-fw-secondary bg-fw-base'}`}>
+              <div key={t.id} className={`rounded-lg border p-2.5 ${isActive ? 'border-fw-active bg-fw-ctaPrimary/[0.04]' : 'border-fw-secondary bg-fw-base'}`}>
                 <div className="flex items-center gap-1.5">
-                  <span className={`text-figma-sm font-medium ${isActive ? 'text-[#0057b8]' : 'text-fw-heading'}`}>{t.label}</span>
+                  <span className={`text-figma-sm font-medium ${isActive ? 'text-fw-link' : 'text-fw-heading'}`}>{t.label}</span>
                   {isActive && <span className="ml-auto inline-flex items-center h-5 px-2 rounded-full text-[10px] font-medium bg-fw-successLight text-fw-success shrink-0">On this region</span>}
                 </div>
                 <div className="mt-1 text-[11px] text-fw-bodyLight">{t.desc}</div>
@@ -134,7 +134,7 @@ export function RegionPanel({ region, model, onProvision, onProvisioned }: Regio
 
       <button
         type="button" data-testid="open-provision-wizard" onClick={onProvision}
-        className="w-full inline-flex items-center justify-center gap-1.5 h-10 rounded-lg text-figma-sm font-semibold bg-[#0057b8] text-white hover:bg-[#00478f] transition-colors"
+        className="w-full inline-flex items-center justify-center gap-1.5 h-10 rounded-lg text-figma-sm font-semibold bg-fw-ctaPrimary text-white hover:bg-fw-ctaPrimaryHover transition-colors"
       >
         {region.path === 'private' ? 'Reprovision connectivity' : 'Provision connectivity'} <ArrowRight size={15} />
       </button>

@@ -7,7 +7,7 @@ describe('StatTile', () => {
     render(<StatTile label="Savings identified" value="$4,700/mo" delta={{ text: '+$310 this session', tone: 'good' }} />);
     expect(screen.getByText('Savings identified')).toBeInTheDocument();
     expect(screen.getByText('$4,700/mo')).toBeInTheDocument();
-    expect(screen.getByText('+$310 this session')).toHaveClass('text-[#00a862]');
+    expect(screen.getByText('+$310 this session')).toHaveClass('text-fw-success');
   });
 
   it('renders a meter when provided', () => {
@@ -33,12 +33,12 @@ describe('StatTile', () => {
   it('neutral delta renders slate, never amber', () => {
     render(<StatTile label="Egress spend" value="$9,100/mo" delta={{ text: '+$1,200 this month', tone: 'neutral' }} />);
     const delta = screen.getByText('+$1,200 this month');
-    expect(delta).toHaveClass('text-[#475569]');
+    expect(delta).toHaveClass('text-fw-bodyLight');
     expect(delta.className).not.toMatch(/b45309|ea712f|amber|warn/);
   });
 
   it('critical delta renders red (reserved for true errors)', () => {
     render(<StatTile label="Path health" value="down" delta={{ text: 'circuit down', tone: 'critical' }} />);
-    expect(screen.getByText('circuit down')).toHaveClass('text-[#dc2626]');
+    expect(screen.getByText('circuit down')).toHaveClass('text-fw-error');
   });
 });

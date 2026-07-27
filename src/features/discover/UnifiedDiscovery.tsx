@@ -131,7 +131,7 @@ function SelectBox({
       checked={selected}
       onChange={() => onToggle(id)}
       aria-label={`Select ${name}`}
-      className="h-4 w-4 shrink-0 rounded border-fw-secondary accent-[#0057b8]"
+      className="h-4 w-4 shrink-0 rounded border-fw-secondary accent-fw-link"
     />
   );
 }
@@ -416,7 +416,7 @@ export function UnifiedDiscovery() {
           type="button"
           data-tour="discover-connect"
           onClick={() => setWizardOpen(true)}
-          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[#0057b8] px-4 text-figma-sm font-semibold text-white transition-colors hover:bg-[#00478f]"
+          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-fw-ctaPrimary px-4 text-figma-sm font-semibold text-white transition-colors hover:bg-fw-ctaPrimaryHover"
         >
           <Plus size={16} aria-hidden="true" /> Connect a cloud
         </button>
@@ -461,7 +461,7 @@ export function UnifiedDiscovery() {
               <Link
                 to={d.cta.to}
                 data-testid={`estate-cta-${d.key}`}
-                className="mt-1 inline-flex items-center gap-0.5 text-figma-xs font-medium text-[#0057b8] hover:underline"
+                className="mt-1 inline-flex items-center gap-0.5 text-figma-xs font-medium text-fw-link hover:underline"
               >
                 {d.cta.label}
                 <ChevronRight size={12} aria-hidden="true" />
@@ -721,9 +721,9 @@ export function UnifiedDiscovery() {
           <div
             role="alert"
             style={stagger(clouds.length)}
-            className="flex items-center gap-2 rounded-2xl border border-l-2 border-[#cbd5e1] border-l-[#94a3b8] bg-[#f8fafc] px-4 py-3 text-figma-sm font-medium text-[#475569]"
+            className="flex items-center gap-2 rounded-2xl border border-l-2 border-fw-secondary border-l-fw-primary bg-fw-wash px-4 py-3 text-figma-sm font-medium text-fw-bodyLight"
           >
-            <Globe size={15} className="shrink-0 text-[#64748b]" aria-hidden="true" />
+            <Globe size={15} className="shrink-0 text-fw-bodyLight" aria-hidden="true" />
             {publicWorkloads} workload{publicWorkloads === 1 ? '' : 's'} reachable over the public internet
           </div>
         )}

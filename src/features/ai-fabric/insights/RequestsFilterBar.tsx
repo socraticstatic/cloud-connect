@@ -71,7 +71,7 @@ export function RequestsFilterBar({
             <span
               key={chip.key}
               data-testid={`req-chip-${chip.key}`}
-              className="inline-flex items-center gap-1 rounded-full border border-fw-secondary bg-[#f2fafd] px-2 py-0.5 text-xs font-medium"
+              className="inline-flex items-center gap-1 rounded-full border border-fw-secondary bg-fw-accent px-2 py-0.5 text-xs font-medium"
             >
               <span className="text-fw-blue-functional">{chip.label}: </span>
               <span className="text-fw-heading">{chip.value}</span>

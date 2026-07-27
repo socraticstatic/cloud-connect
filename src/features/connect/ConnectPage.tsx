@@ -18,9 +18,9 @@ function FabricPanel({ model }: { model: FabricModel }) {
   const dual = attached.filter(r => r.reliability === 'dual');
   const publicRegions = model.regions.filter(r => r.path === 'public');
   const stats = [
-    { label: 'On the fabric', value: `${attached.length}`, sub: `of ${model.regions.length} regions`, tone: 'text-[#0057b8]' },
-    { label: 'Dual / resilient', value: `${dual.length}`, sub: 'diverse paths', tone: 'text-[#00a862]' },
-    { label: 'Still public', value: `${publicRegions.length}`, sub: 'on the internet', tone: 'text-[#475569]' },
+    { label: 'On the fabric', value: `${attached.length}`, sub: `of ${model.regions.length} regions`, tone: 'text-fw-link' },
+    { label: 'Dual / resilient', value: `${dual.length}`, sub: 'diverse paths', tone: 'text-fw-success' },
+    { label: 'Still public', value: `${publicRegions.length}`, sub: 'on the internet', tone: 'text-fw-bodyLight' },
     { label: 'Cloud-to-cloud', value: `${model.c2c.length}`, sub: `${model.c2c.filter(c => c.controlled).length} on fabric`, tone: 'text-fw-heading' },
   ];
   return (
@@ -71,8 +71,8 @@ export function ConnectPage() {
         <FlowBar cta={{ label: 'Govern these paths', to: '/naas/govern' }} />
 
         {fromDiscover && (
-          <div role="status" className="flex items-center gap-2 rounded-lg border border-[#cbd5e1] bg-[#f8fafc] px-3 py-2 text-figma-sm text-[#475569]">
-            <Globe size={14} className="shrink-0 text-[#64748b]" aria-hidden="true" />
+          <div role="status" className="flex items-center gap-2 rounded-lg border border-fw-secondary bg-fw-wash px-3 py-2 text-figma-sm text-fw-bodyLight">
+            <Globe size={14} className="shrink-0 text-fw-bodyLight" aria-hidden="true" />
             Attaching the workloads flagged on Discover — select a region and provision it onto the fabric.
           </div>
         )}

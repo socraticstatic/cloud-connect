@@ -45,8 +45,8 @@ export function CostPage() {
               The widening gap, trailing 60 days
             </h2>
             <p className="mb-3 text-xs text-slate-500">
-              <span className="font-medium text-[#0057b8]">At hyperscaler rates</span> vs{' '}
-              <span className="font-medium text-[#007a45]">on the fabric</span> — the band between is your saving.
+              <span className="font-medium text-fw-link">At hyperscaler rates</span> vs{' '}
+              <span className="font-medium text-fw-success">on the fabric</span> — the band between is your saving.
             </p>
             <EgressTrend actual={actual} hyper={hyper} />
           </section>

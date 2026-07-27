@@ -90,7 +90,7 @@ export function InsightsPage() {
           <div
             role="group"
             aria-label="Emphasize a figure"
-            className="flex rounded-xl bg-[#dcf3fa] p-1"
+            className="flex rounded-xl bg-fw-accent p-1"
           >
             {(['tokens', 'requests', 'cost'] as const).map(u => (
               <button

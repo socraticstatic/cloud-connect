@@ -25,7 +25,7 @@ export function SitePanel({ siteId, model }: SitePanelProps) {
   return (
     <section aria-label={site.label} className="rounded-2xl border border-fw-secondary bg-fw-base p-5 space-y-4">
       <header className="flex items-center gap-3">
-        <span className="flex items-center justify-center h-10 w-10 rounded-full bg-[#0057b8]/[0.08] text-[#0057b8] shrink-0">
+        <span className="flex items-center justify-center h-10 w-10 rounded-full bg-fw-ctaPrimary/[0.08] text-fw-link shrink-0">
           {isInternet ? <Radio size={18} /> : <Router size={18} />}
         </span>
         <div className="min-w-0 flex-1">

@@ -307,7 +307,13 @@ export function MainNav({ items = [], onSearch }: MainNavProps) {
                   }
                   title="Ask Andi"
                   onClick={toggleAndi}
-                  className="relative flex items-center justify-center h-9 w-9 rounded-full bg-[#009fdb] text-white hover:bg-fw-ctaPrimary transition-colors"
+                  /* Cobalt, like every other filled control in this bar. This
+                     was a hardcoded #009fdb — the legacy AT&T cyan — and the
+                     only escape from the token palette in the utility cluster.
+                     It sat beside a #0057b8 Create button and, worse, its own
+                     hover was already fw-ctaPrimary, so the button changed
+                     blue when you pointed at it. */
+                  className="relative flex items-center justify-center h-9 w-9 rounded-full bg-fw-ctaPrimary text-white hover:bg-fw-ctaPrimaryHover transition-colors"
                 >
                   <Sparkles className="h-4 w-4" />
                   {proposalCount > 0 && (

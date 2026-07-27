@@ -22,7 +22,7 @@ import type { PathAvailability } from './pathEvidence';
    for what does not exist here. No amber; nothing here is a policy violation. */
 const BADGE: Record<PathAvailability, string> = {
   live: 'bg-fw-successLight text-fw-success',
-  provisionable: 'bg-[#0057b8]/[0.08] text-[#0057b8]',
+  provisionable: 'bg-fw-ctaPrimary/[0.08] text-fw-link',
   none: 'bg-fw-neutral text-fw-bodyLight',
 };
 
@@ -121,7 +121,7 @@ export function PathChoice({ cloudId, regionId }: { cloudId: string; regionId: s
 
               {e.caveats.map(c => (
                 <p key={c} className="mt-2 flex gap-1.5 text-figma-xs text-fw-body">
-                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#0057b8]" aria-hidden />
+                  <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-fw-link" aria-hidden />
                   <span>{c}</span>
                 </p>
               ))}

@@ -99,15 +99,15 @@ describe('PathChoice', () => {
   });
 
   it('no card borrows the cobalt "selected" treatment — these are not selectable', () => {
-    // `border-[#0057b8] bg-[#0057b8]/[0.04]` means SELECTED everywhere else in
+    // `border-fw-active bg-fw-ctaPrimary/[0.04]` means SELECTED everywhere else in
     // this codebase (RegionPanel's attach cards, both wizards). A live card
     // wearing it also disagreed with its own green badge. The badge carries
     // availability; the card stays neutral.
     for (const [cloudId, regionId] of [['aws', 'use1'], ['azure', 'uks'], ['cw', 'cwe']] as const) {
       const { unmount } = render(<PathChoice cloudId={cloudId} regionId={regionId} />);
       for (const id of ['path-managed-direct', 'path-tenanted']) {
-        expect(screen.getByTestId(id).className).not.toContain('bg-[#0057b8]');
-        expect(screen.getByTestId(id).className).not.toContain('border-[#0057b8]');
+        expect(screen.getByTestId(id).className).not.toContain('bg-fw-ctaPrimary');
+        expect(screen.getByTestId(id).className).not.toContain('border-fw-active');
       }
       unmount();
     }
@@ -118,7 +118,7 @@ describe('PathChoice', () => {
     const card = screen.getByTestId('path-managed-direct');
     expect(card).toHaveAttribute('data-availability', 'provisionable');
     const badge = within(card).getByText('Provisionable here');
-    expect(badge.className).toContain('#0057b8');
+    expect(badge.className).toContain('fw-link');
     expect(badge.className).not.toContain('fw-successLight');
   });
 

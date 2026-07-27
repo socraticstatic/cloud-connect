@@ -42,10 +42,16 @@ export interface FabricModel {
  * extends text/bg/border with fw-*, so fill/stroke fw- classes compile to
  * nothing). Cobalt = private/on-fabric, green = dual/resilient, slate =
  * public. No amber anywhere. */
+/* These feed SVG stroke/fill attributes, where a Tailwind class cannot reach,
+   so raw values are correct here — but they must be the PALETTE's values.
+   `green` was #00a862, a second green that existed nowhere in the tokens and
+   competed with fw-success for the same meaning; the fabric lines the tour
+   tells you to "watch turn green" were a different green from every other
+   success signal on the screen. */
 const HEX = {
-  cobalt: '#0057b8',
+  cobalt: '#0057b8',      // fw-ctaPrimary
   cobaltSoft: '#7aa6d6',
-  green: '#00a862',
+  green: '#2d7e24',       // fw-success
   slate: '#94a3b8',
   slateInk: '#475569',
   ink: '#1d2329',
@@ -345,10 +351,10 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
             onClick={() => select({ kind: 'fabric' })}
             onMouseEnter={() => setHover('__fabric__')} onMouseLeave={() => setHover(null)}
             onFocus={() => setHover('__fabric__')} onBlur={() => setHover(null)}
-            className="w-full h-full flex flex-col items-center justify-center rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0057b8]/50"
+            className="w-full h-full flex flex-col items-center justify-center rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-fw-link/50"
           >
-            <span className="text-[11px] font-semibold leading-tight text-[#0057b8]">AT&amp;T</span>
-            <span className="text-[11px] font-semibold leading-tight text-[#0057b8]">Fabric</span>
+            <span className="text-[11px] font-semibold leading-tight text-fw-link">AT&amp;T</span>
+            <span className="text-[11px] font-semibold leading-tight text-fw-link">Fabric</span>
           </button>
         </foreignObject>
 
@@ -364,8 +370,8 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
                   onClick={() => select({ kind: 'site', id: s.id })}
                   onMouseEnter={() => setHover(s.id)} onMouseLeave={() => setHover(null)}
                   onFocus={() => setHover(s.id)} onBlur={() => setHover(null)}
-                  className={`w-full h-full flex flex-col justify-center rounded-lg border px-2.5 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0057b8]/50 ${
-                    isSel ? 'border-[#0057b8] bg-[#0057b8]/[0.05] ring-1 ring-[#0057b8]' : 'border-fw-secondary bg-fw-base hover:bg-fw-wash'
+                  className={`w-full h-full flex flex-col justify-center rounded-lg border px-2.5 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-fw-link/50 ${
+                    isSel ? 'border-fw-active bg-fw-ctaPrimary/[0.05] ring-1 ring-fw-link' : 'border-fw-secondary bg-fw-base hover:bg-fw-wash'
                   }`}
                 >
                   <span className="truncate text-[11px] font-semibold text-fw-heading leading-tight">{s.label.split(' · ')[0]}</span>
@@ -395,8 +401,8 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
                   onMouseLeave={() => { setHover(null); setHoverInfo(null); }}
                   onFocus={() => { setHover(region.regionId); setHoverInfo({ x: x - 8, y: y - NODE_H / 2 - 34, region }); }}
                   onBlur={() => { setHover(null); setHoverInfo(null); }}
-                  className={`w-full h-full flex items-center gap-2 rounded-lg border pl-2 pr-2.5 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0057b8]/50 ${
-                    isSel ? 'border-[#0057b8] bg-[#0057b8]/[0.05] ring-1 ring-[#0057b8]' : 'border-fw-secondary bg-fw-base hover:bg-fw-wash'
+                  className={`w-full h-full flex items-center gap-2 rounded-lg border pl-2 pr-2.5 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-fw-link/50 ${
+                    isSel ? 'border-fw-active bg-fw-ctaPrimary/[0.05] ring-1 ring-fw-link' : 'border-fw-secondary bg-fw-base hover:bg-fw-wash'
                   }`}
                 >
                   <ProviderLogo id={region.cloudId} size={26} />
@@ -414,7 +420,7 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
                         put eight of nine regions at odds with the Observe
                         screen the hover card links to. */}
                     <span className="flex items-center gap-1.5 leading-tight">
-                      <span className={`text-[10px] font-medium ${region.path === 'private' ? 'text-[#0057b8]' : 'text-[#475569]'}`}>
+                      <span className={`text-[10px] font-medium ${region.path === 'private' ? 'text-fw-link' : 'text-fw-bodyLight'}`}>
                         {region.path === 'private' ? 'Private' : 'Public'}
                       </span>
                       <span className="text-[10px] text-fw-bodyLight">· {region.latencyMs}ms</span>
@@ -436,8 +442,8 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
                   onClick={() => select({ kind: 'internet' })}
                   onMouseEnter={() => setHover('e-net')} onMouseLeave={() => setHover(null)}
                   onFocus={() => setHover('e-net')} onBlur={() => setHover(null)}
-                  className={`w-full h-full flex items-center gap-2 rounded-lg border border-dashed pl-2.5 pr-2.5 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0057b8]/50 ${
-                    isSel ? 'border-[#0057b8] bg-[#0057b8]/[0.05] ring-1 ring-[#0057b8]' : 'border-fw-secondary bg-fw-wash hover:bg-fw-neutral'
+                  className={`w-full h-full flex items-center gap-2 rounded-lg border border-dashed pl-2.5 pr-2.5 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-fw-link/50 ${
+                    isSel ? 'border-fw-active bg-fw-ctaPrimary/[0.05] ring-1 ring-fw-link' : 'border-fw-secondary bg-fw-wash hover:bg-fw-neutral'
                   }`}
                 >
                   <span className="flex items-center justify-center h-6 w-6 rounded-md bg-fw-neutral text-fw-bodyLight text-[10px] font-bold shrink-0">SaaS</span>
@@ -482,10 +488,10 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
                   Public today{' '}
                   <span className="font-semibold tabular-nums text-fw-heading">{hoverInfo.region.publicMs}ms</span>
                   {' · on the fabric '}
-                  <span className="font-semibold tabular-nums text-[#0057b8]">{hoverInfo.region.privateMs}ms</span>
+                  <span className="font-semibold tabular-nums text-fw-link">{hoverInfo.region.privateMs}ms</span>
                 </span>
               )}
-              <Link to="/naas/observe" className="font-medium text-[#0057b8] hover:underline">View in Observe →</Link>
+              <Link to="/naas/observe" className="font-medium text-fw-link hover:underline">View in Observe →</Link>
             </div>
           </foreignObject>
         )}

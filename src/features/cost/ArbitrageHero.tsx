@@ -60,7 +60,7 @@ export function ArbitrageHero() {
     <section
       aria-label="AT&T fabric arbitrage summary"
       data-tour="cost-hero"
-      className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-white to-[#0057b8]/[0.04] p-6 shadow-sm"
+      className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-white to-fw-ctaPrimary/[0.04] p-6 shadow-sm"
     >
       <div className="flex flex-wrap items-end gap-x-10 gap-y-5">
         <div>
@@ -75,15 +75,15 @@ export function ArbitrageHero() {
         <ArrowRight size={26} className="mb-1 shrink-0 text-slate-300" aria-hidden="true" />
 
         <div>
-          <div className="text-[11px] font-medium uppercase tracking-wide text-[#0057b8]">
+          <div className="text-[11px] font-medium uppercase tracking-wide text-fw-link">
             On the AT&amp;T fabric
           </div>
-          <div data-testid="hero-cc-bill" className="mt-1 text-4xl font-bold tabular-nums text-[#0057b8]">
+          <div data-testid="hero-cc-bill" className="mt-1 text-4xl font-bold tabular-nums text-fw-link">
             {k(cloudConnect)}<span className="text-lg font-medium text-slate-500">/mo</span>
           </div>
         </div>
 
-        <div className="mb-1 inline-flex items-center gap-1.5 rounded-full bg-[#00a862]/10 px-3 py-1.5 text-[#007a45]"
+        <div className="mb-1 inline-flex items-center gap-1.5 rounded-full bg-fw-success/10 px-3 py-1.5 text-fw-success"
              role="status" aria-label={`Saving ${k(savings)} per month, ${arb.savingsPct} percent`}>
           <TrendingDown size={16} className="shrink-0" aria-hidden="true" />
           <span data-testid="hero-savings" className="text-sm font-semibold tabular-nums">
@@ -93,7 +93,7 @@ export function ArbitrageHero() {
       </div>
 
       {avail > 0 && (
-        <p className="mt-4 flex items-center gap-1.5 text-sm text-[#0057b8]">
+        <p className="mt-4 flex items-center gap-1.5 text-sm text-fw-link">
           <span className="font-semibold tabular-nums">{k(avail)}/mo</span>
           <span className="text-slate-600">more on the table — attach the paths below.</span>
         </p>

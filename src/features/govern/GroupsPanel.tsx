@@ -127,11 +127,11 @@ export function GroupsPanel() {
                            explicitly NOT red — an empty resolution is not a
                            policy violation, and dressing it as one would
                            spend the one colour reserved for real ones. */
-                        <div className="rounded-lg border border-[#cbd5e1] bg-[#f8fafc] px-3 py-2">
-                          <div className="font-medium text-[#475569] text-figma-sm">
+                        <div className="rounded-lg border border-fw-secondary bg-fw-wash px-3 py-2">
+                          <div className="font-medium text-fw-bodyLight text-figma-sm">
                             Nothing right now
                           </div>
-                          <p className="mt-0.5 text-figma-xs text-[#475569]">
+                          <p className="mt-0.5 text-figma-xs text-fw-bodyLight">
                             No workload or site in the estate matches this definition, so every policy
                             naming this group matches nothing either.
                           </p>

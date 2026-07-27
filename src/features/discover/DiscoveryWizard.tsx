@@ -89,7 +89,7 @@ export function DiscoveryWizard({ onClose, onDiscovered }: DiscoveryWizardProps)
   return (
     <div
       role="dialog" aria-modal="true" aria-label="Connect a cloud"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#1d2329]/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-fw-heading/40 p-4"
       onClick={onClose}
     >
       <div
@@ -115,7 +115,7 @@ export function DiscoveryWizard({ onClose, onDiscovered }: DiscoveryWizardProps)
           {STEP_ORDER.map((s, i) => (
             <li key={s} className="flex items-center gap-1">
               <span className={`inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full ${
-                i < activeIdx || step === 'done' ? 'bg-[#00a862] text-white' : i === activeIdx ? 'bg-[#0057b8] text-white' : 'bg-fw-neutral text-fw-bodyLight'
+                i < activeIdx || step === 'done' ? 'bg-fw-success text-white' : i === activeIdx ? 'bg-fw-ctaPrimary text-white' : 'bg-fw-neutral text-fw-bodyLight'
               }`}>{(i < activeIdx || step === 'done') ? <Check size={12} /> : i + 1}</span>
               <span className={i === activeIdx && step !== 'done' ? 'text-fw-heading' : 'text-fw-bodyLight'}>{STEP_LABELS[s]}</span>
               {i < STEP_ORDER.length - 1 && <span className="mx-0.5 text-fw-secondary">·</span>}
@@ -134,11 +134,11 @@ export function DiscoveryWizard({ onClose, onDiscovered }: DiscoveryWizardProps)
                     key={p.id} type="button" aria-pressed={providerId === p.id}
                     onClick={() => setProviderId(p.id)}
                     className={`flex flex-col items-center gap-1.5 rounded-lg border p-2.5 transition-colors ${
-                      providerId === p.id ? 'border-[#0057b8] bg-[#0057b8]/[0.04] ring-1 ring-[#0057b8]' : 'border-fw-secondary hover:bg-fw-wash'
+                      providerId === p.id ? 'border-fw-active bg-fw-ctaPrimary/[0.04] ring-1 ring-fw-link' : 'border-fw-secondary hover:bg-fw-wash'
                     }`}
                   >
                     <ProviderLogo id={p.id} size={30} />
-                    <span className={`text-[11px] font-medium ${providerId === p.id ? 'text-[#0057b8]' : 'text-fw-heading'}`}>{p.name}</span>
+                    <span className={`text-[11px] font-medium ${providerId === p.id ? 'text-fw-link' : 'text-fw-heading'}`}>{p.name}</span>
                   </button>
                 ))}
               </div>
@@ -164,12 +164,12 @@ export function DiscoveryWizard({ onClose, onDiscovered }: DiscoveryWizardProps)
                 onChange={e => setCredential(e.target.value)}
                 placeholder={provider.credPlaceholder}
                 aria-invalid={credential.length > 0 && !credValid}
-                className={`w-full rounded-lg border bg-fw-base px-3 py-2 font-mono text-figma-xs text-fw-heading outline-none transition-colors focus:ring-2 focus:ring-[#0057b8]/40 ${
-                  credential.length > 0 && !credValid ? 'border-[#c70032]' : 'border-fw-secondary'
+                className={`w-full rounded-lg border bg-fw-base px-3 py-2 font-mono text-figma-xs text-fw-heading outline-none transition-colors focus:ring-2 focus:ring-fw-link/40 ${
+                  credential.length > 0 && !credValid ? 'border-fw-error' : 'border-fw-secondary'
                 }`}
               />
               {credential.length > 0 && !credValid && (
-                <p className="text-[11px] text-[#c70032]">
+                <p className="text-[11px] text-fw-error">
                   {provider.credKind === 'arn' ? 'Expected an IAM role ARN (arn:aws:iam::…:role/…).' : 'Enter a valid key or service principal.'}
                 </p>
               )}
@@ -202,7 +202,7 @@ export function DiscoveryWizard({ onClose, onDiscovered }: DiscoveryWizardProps)
                       key={s.regionId}
                       className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[11px] font-medium transition-all ${
                         complete ? 'border-fw-success/40 bg-fw-successLight text-fw-success'
-                        : active ? 'border-[#0057b8] bg-[#0057b8]/[0.04] text-fw-heading'
+                        : active ? 'border-fw-active bg-fw-ctaPrimary/[0.04] text-fw-heading'
                         : 'border-fw-secondary text-fw-bodyLight opacity-60'
                       }`}
                     >
@@ -242,7 +242,7 @@ export function DiscoveryWizard({ onClose, onDiscovered }: DiscoveryWizardProps)
             <button
               type="button" disabled={!providerId}
               onClick={() => setStep('credentials')}
-              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-figma-sm font-semibold bg-[#0057b8] text-white hover:bg-[#00478f] disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-figma-sm font-semibold bg-fw-ctaPrimary text-white hover:bg-fw-ctaPrimaryHover disabled:opacity-40"
             >
               Next <ArrowRight size={15} />
             </button>
@@ -251,7 +251,7 @@ export function DiscoveryWizard({ onClose, onDiscovered }: DiscoveryWizardProps)
             <button
               type="button" disabled={!credValid} data-testid="discover-run"
               onClick={() => setStep('scanning')}
-              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-figma-sm font-semibold bg-[#0057b8] text-white hover:bg-[#00478f] disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-figma-sm font-semibold bg-fw-ctaPrimary text-white hover:bg-fw-ctaPrimaryHover disabled:opacity-40"
             >
               <Search size={15} /> Discover
             </button>
@@ -263,7 +263,7 @@ export function DiscoveryWizard({ onClose, onDiscovered }: DiscoveryWizardProps)
             <button
               type="button" data-testid="discover-finish"
               onClick={finish}
-              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-figma-sm font-semibold bg-[#00a862] text-white hover:bg-[#00915a]"
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-figma-sm font-semibold bg-fw-success text-white hover:bg-fw-success"
             >
               <Check size={15} /> Browse the estate
             </button>

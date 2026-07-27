@@ -51,7 +51,7 @@ describe('ObservabilityShell', () => {
     render(<ObservabilityShell binding={toneBinding} />);
     const row = screen.getByTestId('record-row');
     // De-amber: attention tone now carries a slate left-border, never fw-warn.
-    expect(row.className).toContain('border-l-[#94a3b8]');
+    expect(row.className).toContain('border-l-fw-primary');
     expect(row.className).not.toContain('fw-warn');
   });
 

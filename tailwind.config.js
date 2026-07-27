@@ -158,8 +158,36 @@ export default {
         'fw-infoLight': 'rgb(0 132 255 / 0.3)',
         'fw-purpleLight': 'rgb(175 41 187 / 0.3)',
       },
+      /* Ring tokens.
+         `ringColor` does NOT inherit the fw names from textColor /
+         backgroundColor / borderColor — those are extended separately — so
+         until now `ring-fw-active` was the ONLY fw ring that existed.
+         Everything else (ring-fw-link in 124 places, ring-brand-blue,
+         ring-blue-500) compiled to nothing and silently fell back to
+         Tailwind's stock `rgb(59 130 246 / 0.5)`: verified in the browser,
+         where `ring-fw-link` and a bare `ring-2` returned the identical
+         value. The result was a generic blue focus ring, in a product whose
+         palette contains no such blue.
+
+         fw-active stays #0074b3, the functional blue, and stays the focus
+         ring: it is deliberately NOT the CTA cobalt, so a focus ring around a
+         cobalt button is still visible. The rest are declared at their true
+         palette values so a name never resolves to something it does not
+         say. */
       ringColor: {
-        'fw-active': '#0074b3',    // Functional Blue
+        'fw-active': '#0074b3',    // Functional Blue — the focus ring
+        'fw-link': '#0057b8',      // Cobalt 600
+        'fw-ctaPrimary': '#0057b8',
+        'fw-error': '#c70032',
+        'fw-success': '#2d7e24',
+        'fw-focus': '#1d2329',     // Gray 800
+      },
+      outlineColor: {
+        'fw-active': '#0074b3',
+        'fw-link': '#0057b8',
+      },
+      accentColor: {
+        'fw-link': '#0057b8',      // native control tint (checkbox, range)
       },
       fontSize: {
         // Figma typography scale (bumped +2px each step for demo legibility)

@@ -60,7 +60,7 @@ export function UserMenu({ name, onClick }: UserMenuProps) {
           </button>
           <button
             onClick={handleSignOut}
-            className="w-full flex items-center px-4 py-2 text-figma-sm text-[#c70032] hover:bg-fw-wash transition-colors"
+            className="w-full flex items-center px-4 py-2 text-figma-sm text-fw-error hover:bg-fw-wash transition-colors"
           >
             <LogOut className="h-4 w-4 mr-2" />
             Sign Out

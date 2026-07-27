@@ -37,7 +37,7 @@ function scoreColor(score: number): string {
 
 const FINDING_BADGE: Record<PostureFinding['level'], string> = {
   crit: 'bg-fw-errorLight text-fw-error',
-  warn: 'bg-[#f8fafc] text-[#475569] border border-[#cbd5e1]',
+  warn: 'bg-fw-wash text-fw-bodyLight border border-fw-secondary',
   ok: 'bg-fw-successLight text-fw-success',
 };
 

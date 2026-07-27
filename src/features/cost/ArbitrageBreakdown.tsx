@@ -53,7 +53,7 @@ export function ArbitrageBreakdown() {
       <div className="mb-3 flex items-baseline justify-between gap-3">
         <h2 className="text-sm font-semibold text-slate-900">Egress by source</h2>
         {captured > 0 && (
-          <span role="status" className="text-xs font-semibold tabular-nums text-[#007a45]">
+          <span role="status" className="text-xs font-semibold tabular-nums text-fw-success">
             {fmt(captured)}/mo captured this session
           </span>
         )}
@@ -70,13 +70,13 @@ export function ArbitrageBreakdown() {
             <li
               key={b.key}
               className={`rounded-lg border p-3 transition-colors ${
-                b.attached ? 'border-[#00a862]/30 bg-[#00a862]/[0.04]' : 'border-slate-200 bg-white'
+                b.attached ? 'border-fw-success/30 bg-fw-success/[0.04]' : 'border-slate-200 bg-white'
               }`}
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 min-w-0">
                   {b.attached ? (
-                    <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#00a862] text-white">
+                    <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-fw-success text-white">
                       <Check size={13} strokeWidth={3} aria-hidden="true" />
                     </span>
                   ) : (
@@ -89,11 +89,11 @@ export function ArbitrageBreakdown() {
                 </div>
 
                 {b.attached ? (
-                  <span className="shrink-0 text-xs font-semibold text-[#007a45]">on the fabric</span>
+                  <span className="shrink-0 text-xs font-semibold text-fw-success">on the fabric</span>
                 ) : actionable ? (
                   <button
                     onClick={() => attach(b)}
-                    className="shrink-0 rounded-md bg-[#0057b8] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#00478f] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0057b8]/40 focus-visible:ring-offset-2"
+                    className="shrink-0 rounded-md bg-fw-ctaPrimary px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-fw-ctaPrimaryHover focus:outline-none focus-visible:ring-2 focus-visible:ring-fw-link/40 focus-visible:ring-offset-2"
                     aria-label={`Attach ${b.label} to the fabric to save ${fmt(b.saving)} per month`}
                   >
                     Attach
@@ -107,8 +107,8 @@ export function ArbitrageBreakdown() {
               <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-slate-100"
                    role="img"
                    aria-label={`${b.label}: ${fmt(b.publicCost)} public, ${fmt(b.attCost)} on AT&T`}>
-                <div className="h-full rounded-l-full bg-[#00a862]" style={{ width: `${attWidth}%` }} />
-                <div className={`h-full ${b.attached ? 'bg-[#00a862]/25' : 'bg-slate-300'}`}
+                <div className="h-full rounded-l-full bg-fw-success" style={{ width: `${attWidth}%` }} />
+                <div className={`h-full ${b.attached ? 'bg-fw-success/25' : 'bg-slate-300'}`}
                      style={{ width: `${saveWidth}%` }} />
               </div>
 
@@ -117,7 +117,7 @@ export function ArbitrageBreakdown() {
                 {' → '}
                 <span className="font-medium text-slate-900">{fmt(b.attCost)}</span>
                 {' · '}
-                <span className="font-semibold text-[#007a45]">save {fmt(b.saving)} ({b.savingPct}%)</span>
+                <span className="font-semibold text-fw-success">save {fmt(b.saving)} ({b.savingPct}%)</span>
               </div>
             </li>
           );
