@@ -189,6 +189,12 @@ export default {
       accentColor: {
         'fw-link': '#0057b8',      // native control tint (checkbox, range)
       },
+      /* Same trap as ringColor: this scale is separate too, so a
+         `decoration-fw-*` would have silently compiled to nothing. */
+      textDecorationColor: {
+        'fw-secondary': '#dcdfe3',
+        'fw-bodyLight': '#5c6167',
+      },
       fontSize: {
         // Figma typography scale (bumped +2px each step for demo legibility)
         'figma-xs': ['0.75rem', { lineHeight: '1.125rem', letterSpacing: '-0.03em' }],      // 12px - bodyXS

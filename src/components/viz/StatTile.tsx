@@ -22,9 +22,9 @@ export function StatTile({ label, value, delta, meter }: {
   const pct = meter ? Math.min(100, Math.max(0, meter.pct)) : 0;
   const DeltaIcon = delta?.icon;
   return (
-    <div className="rounded-xl bg-white border border-slate-200 p-4 min-w-[180px]">
-      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="mt-1 text-2xl font-semibold text-slate-900 tabular-nums">{value}</div>
+    <div className="rounded-xl bg-white border border-fw-secondary p-4 min-w-[180px]">
+      <div className="text-xs font-medium uppercase tracking-wide text-fw-bodyLight">{label}</div>
+      <div className="mt-1 text-2xl font-semibold text-fw-heading tabular-nums">{value}</div>
       {delta && (
         <div className={`mt-0.5 flex items-center gap-1 text-xs font-medium ${DELTA_TONE[delta.tone]}`}>
           {DeltaIcon && <DeltaIcon size={13} className="shrink-0" aria-hidden="true" />}
@@ -34,11 +34,11 @@ export function StatTile({ label, value, delta, meter }: {
       {meter && (
         <div className="mt-2">
           <div role="meter" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}
-               aria-label={meter.label} className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+               aria-label={meter.label} className="h-1.5 rounded-full bg-fw-neutral overflow-hidden">
             <div className="h-full rounded-full bg-fw-ctaPrimary transition-[width] duration-200 ease-out"
                  style={{ width: `${pct}%` }} />
           </div>
-          <div className="mt-1 text-[11px] text-slate-500">{meter.label}</div>
+          <div className="mt-1 text-[11px] text-fw-bodyLight">{meter.label}</div>
         </div>
       )}
     </div>

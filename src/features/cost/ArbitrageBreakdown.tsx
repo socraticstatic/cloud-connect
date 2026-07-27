@@ -51,7 +51,7 @@ export function ArbitrageBreakdown() {
   return (
     <div>
       <div className="mb-3 flex items-baseline justify-between gap-3">
-        <h2 className="text-sm font-semibold text-slate-900">Egress by source</h2>
+        <h2 className="text-sm font-semibold text-fw-heading">Egress by source</h2>
         {captured > 0 && (
           <span role="status" className="text-xs font-semibold tabular-nums text-fw-success">
             {fmt(captured)}/mo captured this session
@@ -70,7 +70,7 @@ export function ArbitrageBreakdown() {
             <li
               key={b.key}
               className={`rounded-lg border p-3 transition-colors ${
-                b.attached ? 'border-fw-success/30 bg-fw-success/[0.04]' : 'border-slate-200 bg-white'
+                b.attached ? 'border-fw-success/30 bg-fw-success/[0.04]' : 'border-fw-secondary bg-white'
               }`}
             >
               <div className="flex items-center justify-between gap-3">
@@ -80,10 +80,10 @@ export function ArbitrageBreakdown() {
                       <Check size={13} strokeWidth={3} aria-hidden="true" />
                     </span>
                   ) : (
-                    <cat.Icon size={16} className="shrink-0 text-slate-400" aria-hidden="true" />
+                    <cat.Icon size={16} className="shrink-0 text-fw-disabled" aria-hidden="true" />
                   )}
-                  <span className="truncate text-sm font-medium text-slate-900">{b.label}</span>
-                  <span className="shrink-0 rounded-full border border-slate-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                  <span className="truncate text-sm font-medium text-fw-heading">{b.label}</span>
+                  <span className="shrink-0 rounded-full border border-fw-secondary px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-fw-bodyLight">
                     {cat.label}
                   </span>
                 </div>
@@ -99,23 +99,23 @@ export function ArbitrageBreakdown() {
                     Attach
                   </button>
                 ) : (
-                  <span className="shrink-0 text-xs text-slate-500">baseline</span>
+                  <span className="shrink-0 text-xs text-fw-bodyLight">baseline</span>
                 )}
               </div>
 
               {/* Public→AT&T cost bar: green = what you pay on the fabric, slate = the saving. */}
-              <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-slate-100"
+              <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-fw-neutral"
                    role="img"
                    aria-label={`${b.label}: ${fmt(b.publicCost)} public, ${fmt(b.attCost)} on AT&T`}>
                 <div className="h-full rounded-l-full bg-fw-success" style={{ width: `${attWidth}%` }} />
-                <div className={`h-full ${b.attached ? 'bg-fw-success/25' : 'bg-slate-300'}`}
+                <div className={`h-full ${b.attached ? 'bg-fw-success/25' : 'bg-fw-disabled'}`}
                      style={{ width: `${saveWidth}%` }} />
               </div>
 
-              <div className="mt-1.5 text-xs tabular-nums text-slate-600">
-                <span className="text-slate-500 line-through">{fmt(b.publicCost)}</span>
+              <div className="mt-1.5 text-xs tabular-nums text-fw-body">
+                <span className="text-fw-bodyLight line-through">{fmt(b.publicCost)}</span>
                 {' → '}
-                <span className="font-medium text-slate-900">{fmt(b.attCost)}</span>
+                <span className="font-medium text-fw-heading">{fmt(b.attCost)}</span>
                 {' · '}
                 <span className="font-semibold text-fw-success">save {fmt(b.saving)} ({b.savingPct}%)</span>
               </div>

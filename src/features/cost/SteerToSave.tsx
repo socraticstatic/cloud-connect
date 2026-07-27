@@ -26,7 +26,7 @@ export function SteerToSave() {
 
   return (
     <section aria-labelledby="sts-h">
-      <h2 id="sts-h" className="text-sm font-semibold text-slate-900">Steer to save</h2>
+      <h2 id="sts-h" className="text-sm font-semibold text-fw-heading">Steer to save</h2>
       {captured > 0 && (
         <p className="mt-1 text-xs font-medium text-fw-success" role="status">
           ${captured.toLocaleString()}/mo captured this session
@@ -40,12 +40,12 @@ export function SteerToSave() {
             hero is about ATTACHING paths that do not exist yet. One screen
             cannot use the same idiom for both and mean either. */}
         {steers.length === 0 && (
-          <li className="text-sm text-slate-500">Every flow is already on its optimal path — there is nothing left to steer.</li>
+          <li className="text-sm text-fw-bodyLight">Every flow is already on its optimal path — there is nothing left to steer.</li>
         )}
         {steers.map(r => (
-          <li key={r.id} className="rounded-lg border border-slate-200 bg-white p-3">
-            <div className="text-sm text-slate-900">{r.title}</div>
-            <div className="mt-0.5 text-xs text-slate-500">{r.detail}</div>
+          <li key={r.id} className="rounded-lg border border-fw-secondary bg-white p-3">
+            <div className="text-sm text-fw-heading">{r.title}</div>
+            <div className="mt-0.5 text-xs text-fw-bodyLight">{r.detail}</div>
             <button onClick={() => steer(r)}
               className="mt-2 rounded-md bg-fw-ctaPrimary px-3 py-1.5 text-xs font-medium text-white hover:bg-fw-ctaPrimaryHover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fw-link">
               Steer to save

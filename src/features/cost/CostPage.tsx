@@ -23,8 +23,8 @@ export function CostPage() {
   return (
     <main className="mx-auto max-w-6xl p-6">
       <header className="mb-4">
-        <h1 className="text-xl font-semibold text-slate-900">Cost</h1>
-        <p className="text-sm text-slate-600">
+        <h1 className="text-xl font-semibold text-fw-heading">Cost</h1>
+        <p className="text-sm text-fw-body">
           What the fabric costs, what it saves, and what is still on the table.
         </p>
       </header>
@@ -35,30 +35,30 @@ export function CostPage() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
-          <section aria-labelledby="breakdown-h" className="rounded-xl border border-slate-200 bg-white p-4">
+          <section aria-labelledby="breakdown-h" className="rounded-xl border border-fw-secondary bg-white p-4">
             <h2 id="breakdown-h" className="sr-only">Egress arbitrage breakdown</h2>
             <ArbitrageBreakdown />
           </section>
 
-          <section aria-labelledby="trend-h" className="rounded-xl border border-slate-200 bg-white p-4">
-            <h2 id="trend-h" className="mb-1 text-sm font-semibold text-slate-900">
+          <section aria-labelledby="trend-h" className="rounded-xl border border-fw-secondary bg-white p-4">
+            <h2 id="trend-h" className="mb-1 text-sm font-semibold text-fw-heading">
               The widening gap, trailing 60 days
             </h2>
-            <p className="mb-3 text-xs text-slate-500">
+            <p className="mb-3 text-xs text-fw-bodyLight">
               <span className="font-medium text-fw-link">At hyperscaler rates</span> vs{' '}
               <span className="font-medium text-fw-success">on the fabric</span> — the band between is your saving.
             </p>
             <EgressTrend actual={actual} hyper={hyper} />
           </section>
 
-          <section aria-labelledby="inv-h" className="rounded-xl border border-slate-200 bg-white p-4">
-            <h2 id="inv-h" className="mb-3 text-sm font-semibold text-slate-900">Consumption invoice</h2>
+          <section aria-labelledby="inv-h" className="rounded-xl border border-fw-secondary bg-white p-4">
+            <h2 id="inv-h" className="mb-3 text-sm font-semibold text-fw-heading">Consumption invoice</h2>
             <InvoiceTable lines={billing.lines} total={billing.total} />
           </section>
         </div>
 
         <aside className="space-y-6">
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="rounded-xl border border-fw-secondary bg-white p-4">
             <SteerToSave />
           </div>
           <StatTile
