@@ -1,4 +1,4 @@
-import { render, screen, within, act } from '@testing-library/react';
+import { render, screen, within, act, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, test, expect, afterEach } from 'vitest';
 import { ProposalBand } from './ProposalBand';
@@ -21,17 +21,35 @@ describe('ProposalBand', () => {
     expect(within(row).getByText(new RegExp(String(first.impact.gbps)))).toBeInTheDocument();
   });
 
-  test('the primary action stages rather than enforcing', () => {
+  /* This used to assert the opposite — "the primary action stages rather than
+     enforcing", with Enforce it as a <Link> to /discover?draft=. That made the
+     button a no-op on this surface: you pressed Enforce it and the advice you
+     had just acted on was still sitting there, unchanged, because the actual
+     enforcement happened only after a separate Commit on another page. The row
+     already prints its own dryRun price, so the detour added a step and no
+     information. Enforce it now enforces. */
+  test('the primary action enforces, and the row retires itself', () => {
     renderBand();
-    const first = ruleProposals(CC)[0];
-    const enforce = screen.getAllByTestId('proposal-enforce')[0];
-    expect(enforce.getAttribute('href')).toBe(`/discover?draft=${first.id}`);
+    const before = ruleProposals(CC);
+    const first = before[0];
+    expect(CC.ruleEnforced(CC.ruleList().find((r: { id: string }) => r.id === first.ruleId))).toBe(false);
+
+    fireEvent.click(screen.getAllByTestId('proposal-enforce')[0]);
+
+    // The engine actually moved...
+    expect(CC.ruleEnforced(CC.ruleList().find((r: { id: string }) => r.id === first.ruleId))).toBe(true);
+    // ...and the advice is gone from the band, in place, with no navigation.
+    const rows = screen.queryAllByTestId('proposal-row');
+    expect(rows).toHaveLength(before.length - 1);
+    expect(screen.queryByText(first.title)).not.toBeInTheDocument();
   });
 
-  test('each row link states which proposal it belongs to', () => {
+  /* Enforce it acts, so it is a button; Tighten it still navigates to the
+     pre-filled builder, so it stays a link. Both must name their proposal. */
+  test('each row action states which proposal it belongs to', () => {
     renderBand();
     const first = ruleProposals(CC)[0];
-    expect(screen.getByRole('link', { name: `Enforce it: ${first.title}` })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: `Enforce it: ${first.title}` })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: `Tighten it: ${first.title}` })).toBeInTheDocument();
   });
 

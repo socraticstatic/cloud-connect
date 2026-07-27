@@ -129,14 +129,26 @@ export function AndiPanel() {
                   data-testid={`andi-proposal-${cardItem.proposalId}`}
                   className="rounded-2xl border border-fw-secondary bg-fw-base p-3 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"
                 >
-                  <p className={`text-figma-xs font-semibold uppercase tracking-[0.08em] ${cardItem.severity === 'crit' ? 'text-fw-red-600' : 'text-fw-bodyLight'}`}>
+                  {/* text-fw-red-600 was not a token — it compiled to nothing,
+                      so "Critical finding" rendered in the inherited body
+                      colour and read no different from "High finding". */}
+                  <p className={`text-figma-xs font-semibold uppercase tracking-[0.08em] ${cardItem.severity === 'crit' ? 'text-fw-error' : 'text-fw-bodyLight'}`}>
                     {cardItem.severity === 'crit' ? 'Critical finding' : 'High finding'}
                   </p>
                   <p className="text-figma-sm text-fw-body">{cardItem.title}</p>
                   <p className="text-figma-sm text-fw-bodyLight">{cardItem.detail}</p>
+                  {/* "Enforce it" enforces. It used to navigate to /discover
+                      and stage a draft, which left this card sitting here
+                      un-actioned: you pressed the button and the advice did
+                      not move. The row already states its own price ("would
+                      match N flows carrying X Gbps"), so the trip to the twin
+                      bought a step and no information — and enforceRule pushes
+                      an undo entry, so this is reversible. The card retires on
+                      the next read, because ruleProposals drops any finding
+                      whose rule is enforced. */}
                   <button
                     type="button"
-                    onClick={() => navigate(`/discover?draft=${cardItem.proposalId}`)}
+                    onClick={() => cardItem.ruleId && cc.enforceAny(cardItem.ruleId)}
                     aria-label={`Enforce it: ${cardItem.title}`}
                     className="mt-3 h-8 rounded-lg bg-fw-ctaPrimary px-4 text-figma-sm font-medium text-white hover:bg-fw-ctaPrimaryHover"
                   >

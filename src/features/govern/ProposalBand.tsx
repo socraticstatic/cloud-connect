@@ -6,9 +6,18 @@ import { ruleProposals } from './ruleProposals';
 /**
  * What Andi spotted, above the rules it concerns. Every row restates the
  * engine's own finding sentence and the dryRun figures for the rule that
- * answers it; both actions navigate, neither mutates. A row disappears on its
- * own once its rule is enforced, because the finding's active predicate is
- * recomputed from the estate.
+ * answers it. A row disappears on its own once its rule is enforced, because
+ * the finding's active predicate is recomputed from the estate.
+ *
+ * "Enforce it" ENFORCES. It used to navigate to /discover and stage a draft,
+ * which meant pressing it left this row exactly where it was — the advice
+ * survived being acted on, and only cleared after a separate Commit on
+ * another page. The row already prints the price ("enforcing X would match N
+ * flows carrying Y Gbps"), so the detour bought a step and no information,
+ * and enforceRule pushes an undo entry, so it is reversible.
+ *
+ * "Tighten it" remains the review-first path: it opens the builder pre-filled
+ * so the rule can be narrowed before anything is enforced.
  */
 export function ProposalBand() {
   const cc = useCloudControl(c => c);
@@ -48,14 +57,15 @@ export function ProposalBand() {
               </span>
             </span>
             <span className="flex flex-shrink-0 items-center gap-2">
-              <Link
+              <button
+                type="button"
                 data-testid="proposal-enforce"
-                to={`/discover?draft=${p.id}`}
+                onClick={() => cc.enforceAny(p.ruleId)}
                 aria-label={`Enforce it: ${p.title}`}
-                className="rounded-full bg-fw-ctaPrimary px-3 py-1.5 text-figma-xs font-medium text-white hover:opacity-90 transition-opacity"
+                className="rounded-full bg-fw-ctaPrimary px-3 py-1.5 text-figma-xs font-medium text-white hover:bg-fw-ctaPrimaryHover transition-colors"
               >
                 Enforce it
-              </Link>
+              </button>
               <Link
                 data-testid="proposal-tighten"
                 to={`/naas/govern?rule=${p.ruleId}`}

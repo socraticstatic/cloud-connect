@@ -74,6 +74,9 @@ export interface ResolveCard {
   /** Proposal cards only. */
   proposalId?: string;
   ruleName?: string;
+  /** The rule "Enforce it" enforces. Without it the card could only navigate
+   *  somewhere and hope; with it the button does what it says. */
+  ruleId?: string;
   severity?: 'crit' | 'high';
 }
 
@@ -92,6 +95,7 @@ export function andiResolveCards(cc: CloudControl): ResolveCard[] {
     move: 'proposal',
     proposalId: p.id,
     ruleName: p.ruleName,
+    ruleId: p.ruleId,
     severity: p.severity,
   }));
   const intentCards: ResolveCard[] = queue
