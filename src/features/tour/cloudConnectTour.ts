@@ -405,8 +405,13 @@ export const cloudConnectTour: CloudConnectTourStep[] = [
   {
     id: 'layer-home',
     title: 'Pick a layer, land on its board',
+    /* Kept short on purpose. The board is the tallest spotlight in the tour,
+       so this beat lives in the overlap guard's oversized-target branch and
+       every line of tooltip eats into the 0.2 ceiling — widening
+       estate-figures to w:2 took it to 0.204 and failed the spec. Two
+       sentences were cut rather than raising the ceiling. */
     description:
-      'Two layers ride the bar — NaaS and the AI Fabric — and each carries the same four verbs down the rail: Connect, Govern, Observe, Cost. Layers across, lifecycle down, and a verb is never a destination you enter through. Picking a layer opens its Home, and this board is live: every widget reads the same getters its verb pages read. The layer’s actionable widget leads, standing intents sits under it. The AI Fabric’s Home is this board with the token layer’s figures.',
+      'Two layers ride the bar — NaaS and the AI Fabric — and each carries the same four verbs down the rail: Connect, Govern, Observe, Cost. Layers across, lifecycle down, and a verb is never a destination you enter through. Picking a layer opens its Home, and this board is live: every widget reads the same getters its verb pages read.',
     route: '/naas/home',
     targetSelector: '[data-tour="layer-board"]',
     placement: 'top',

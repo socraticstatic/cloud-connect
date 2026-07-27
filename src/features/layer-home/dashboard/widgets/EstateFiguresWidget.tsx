@@ -35,7 +35,9 @@ export function EstateFiguresWidget(_props: LayerWidgetProps) {
 
   return (
     <WidgetFrame title="Estate at a glance" icon={Gauge}>
-      <div className="flex flex-col gap-3">
+      {/* Two-up, not a single stacked column: the widget is w:2, and four
+          figures in one narrow column read as a ribbon rather than a glance. */}
+      <div className="grid grid-cols-2 gap-x-6 gap-y-3">
         {figures.map(f => (
           <div key={f.label} data-testid="estate-figure" className="min-w-0">
             <div className={`text-figma-xl font-bold tabular-nums tracking-[-0.02em] ${f.warn ? 'text-fw-warn' : 'text-fw-heading'}`}>

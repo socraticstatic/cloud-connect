@@ -34,7 +34,12 @@ export const WIDGET_REGISTRY: Record<string, WidgetDef> = {
   'estate-figures': {
     id: 'estate-figures', title: 'Estate at a glance',
     description: 'The four live figures for this layer.',
-    icon: Gauge, category: 'Overview', surface: 'both', defaultSize: { w: 1, h: 1 },
+    /* w:2, for two reasons that happen to be the same reason. Four figures
+       stacked in a one-column card made a tall, narrow ribbon of numbers; and
+       the board's widths summed to 5 across a 3-column grid, so the last row
+       always left a hole. At w:2 the figures sit two-up and the widths sum to
+       6, which tiles exactly. */
+    icon: Gauge, category: 'Overview', surface: 'both', defaultSize: { w: 2, h: 1 },
     component: EstateFiguresWidget,
   },
   'assessment-findings': {
