@@ -33,9 +33,11 @@ export function AssessmentBanner() {
   return (
     <div
       data-testid="assessment-banner"
-      className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-fw-secondary bg-fw-wash px-4 py-3"
+      className="flex flex-wrap items-center gap-3 rounded-2xl border border-fw-secondary bg-fw-wash px-4 py-3"
     >
-      <p className="min-w-0 flex-1 text-figma-sm text-fw-body">{copy.text}</p>
+      {/* min-w forces the CTA onto its own line in a narrow rail rather than
+          squeezing this sentence into a four-line column beside it. */}
+      <p className="min-w-[14rem] flex-1 text-figma-sm text-fw-body">{copy.text}</p>
       <Link
         to="/assessment"
         data-testid="assessment-banner-cta"

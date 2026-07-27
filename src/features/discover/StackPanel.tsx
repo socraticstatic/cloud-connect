@@ -43,13 +43,27 @@ function Fig({ label, value, tone = 'plain' }: { label: string; value: string; t
   );
 }
 
+/* The one layout switch this panel makes. Every row below splits left/right
+   at `sm:` — a VIEWPORT query — which is exactly wrong when the panel lives in
+   a 360px rail inside a 1440px window: the media query says "wide", the column
+   is not.
+   `lg` is where the rail is actually a rail. DiscoverPage puts this panel
+   beside the tree at lg and above, and stacks it full-width below that — so
+   rail mode splits like normal up to lg, then stacks from lg on. Reading the
+   two files together is the only way that reads; they share the breakpoint. */
+const SPLIT_ROW = 'sm:flex sm:items-center sm:justify-between sm:gap-4';
+const splitRow = (rail: boolean) => (rail ? `${SPLIT_ROW} lg:block` : SPLIT_ROW);
+const splitTail = (rail: boolean) => (rail ? 'mt-2 sm:mt-0 lg:mt-2' : 'mt-2 sm:mt-0');
+
 function LiveBand({
   layer,
   figures,
+  rail,
   children,
 }: {
   layer: NavLayer;
   figures: React.ReactNode;
+  rail: boolean;
   children?: React.ReactNode;
 }) {
   return (
@@ -57,17 +71,23 @@ function LiveBand({
       data-testid={`stack-band-${layer.key}`}
       className="rounded-xl border border-fw-secondary bg-fw-base px-4 py-3"
     >
-      <div className="sm:flex sm:items-center sm:justify-between sm:gap-4">
+      <div className={splitRow(rail)}>
         <div className="min-w-0">
           <p className="text-figma-base font-bold text-fw-heading tracking-[-0.02em]">{layer.label}</p>
           <p className="text-figma-sm text-fw-bodyLight">{layer.blurb}</p>
         </div>
-        <div className="mt-2 sm:mt-0 flex flex-wrap items-center gap-1.5 flex-shrink-0">
+        {/* Four verbs, and once the rail narrows they are a 2x2 pad rather
+            than a 3+1 wrap that leaves "Cost" orphaned on its own line. */}
+        <div
+          className={`${splitTail(rail)} flex flex-wrap items-center gap-1.5 flex-shrink-0 ${
+            rail ? 'lg:grid lg:grid-cols-2' : ''
+          }`}
+        >
           {layer.items.map(item => (
             <Link
               key={item.to}
               to={item.to}
-              className="inline-flex items-center gap-1.5 rounded-full border border-fw-secondary bg-fw-wash px-3 py-1.5 text-figma-sm font-medium text-fw-body hover:border-fw-active hover:text-fw-link transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-fw-secondary bg-fw-wash px-3 py-1.5 text-figma-sm font-medium text-fw-body hover:border-fw-active hover:text-fw-link transition-colors"
             >
               <AttIcon name={item.icon} className="h-3.5 w-3.5" />
               {item.label}
@@ -116,7 +136,7 @@ function MoveChip({
   );
 }
 
-export function StackPanel() {
+export function StackPanel({ rail = false }: { rail?: boolean } = {}) {
   // The AI band states live token money, so this panel opts into `hits`
   // ticks (see useCloudControlLive's header). The selector returns the
   // engine handle itself; every derivation below re-runs on each engine
@@ -328,7 +348,7 @@ export function StackPanel() {
       ref={panelRef}
       aria-label="The network stack"
       data-testid="stack-panel"
-      className="relative rounded-2xl border border-fw-secondary bg-fw-base p-4 sm:p-5"
+      className={`relative rounded-2xl border border-fw-secondary bg-fw-base p-4 sm:p-5 ${rail ? 'lg:p-4' : ''}`}
     >
       {/* The woven threads: each declared intent drawn into the strata it
           constrains. Renders above the padding gutter, under nothing. */}
@@ -340,7 +360,7 @@ export function StackPanel() {
             Pick the layer you work on. The four verbs are the same on every one.
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className={`flex items-center gap-4 ${rail ? 'lg:flex-wrap lg:gap-x-3 lg:gap-y-2' : ''}`}>
           {/* The advisor: a derivation with a chip. Its whole authority is a
               pre-filled tray — a human commits, or does not. */}
           {!designing && draft.moves.length > 0 && (
@@ -383,6 +403,7 @@ export function StackPanel() {
       <div className="space-y-1.5">
         <LiveBand
           layer={ai}
+          rail={rail}
           figures={
             <>
               <Fig value={`${aiFig.modelsReady}/${aiFig.modelsTotal}`} label="model endpoints ready" />
@@ -404,7 +425,7 @@ export function StackPanel() {
         {/* Cloud — a vision stratum; it states only what the estate contains. */}
         <div
           data-testid="stack-band-cloud"
-          className="rounded-xl border border-dashed border-fw-secondary bg-fw-wash/50 px-4 py-2.5 sm:flex sm:items-center sm:justify-between sm:gap-4"
+          className={`rounded-xl border border-dashed border-fw-secondary bg-fw-wash/50 px-4 py-2.5 ${splitRow(rail)}`}
         >
           <div className="min-w-0">
             <p className="text-figma-base font-bold text-fw-bodyLight tracking-[-0.02em]">
@@ -419,7 +440,7 @@ export function StackPanel() {
           </div>
           <Link
             to="/naas/connect"
-            className="mt-2 sm:mt-0 inline-flex items-center gap-1 text-figma-sm font-medium text-fw-link hover:underline whitespace-nowrap flex-shrink-0"
+            className={`${splitTail(rail)} inline-flex items-center gap-1 text-figma-sm font-medium text-fw-link hover:underline flex-shrink-0 whitespace-nowrap ${rail ? 'lg:whitespace-normal' : ''}`}
           >
             Cloud attach lives in NaaS · Connect today <ArrowRight className="h-3.5 w-3.5" />
           </Link>
@@ -427,6 +448,7 @@ export function StackPanel() {
 
         <LiveBand
           layer={naas}
+          rail={rail}
           figures={
             <>
               <Fig value={`${naasFig.regionsAttached}/${naasFig.regionsTotal}`} label="regions on the fabric" />
@@ -498,7 +520,7 @@ export function StackPanel() {
       {(designing && staged.length > 0) || commitNote ? (
         <div
           data-testid="design-tray"
-          className="mt-3 rounded-xl border border-fw-active bg-fw-accent/60 px-4 py-3 sm:flex sm:items-center sm:justify-between sm:gap-4"
+          className={`mt-3 rounded-xl border border-fw-active bg-fw-accent/60 px-4 py-3 ${splitRow(rail)}`}
         >
           <p aria-live="polite" className="text-figma-sm font-medium text-fw-heading">
             {commitNote ?? (
@@ -521,7 +543,7 @@ export function StackPanel() {
             )}
           </p>
           {!commitNote && (
-            <div className="mt-2 sm:mt-0 flex items-center gap-2 flex-shrink-0">
+            <div className={`${splitTail(rail)} flex items-center gap-2 flex-shrink-0 ${rail ? 'lg:flex-wrap' : ''}`}>
               <button
                 type="button"
                 data-testid="share-proposal"
