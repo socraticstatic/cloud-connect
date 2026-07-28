@@ -7,6 +7,7 @@ import { FlowBar } from '../../components/flow/FlowBar';
 import { AttentionTag } from '../../components/viz/AttentionTag';
 import { ProviderLogo } from '../../components/brand/ProviderLogo';
 import { VpcMap } from './VpcMap';
+import { AttachmentMap } from './AttachmentMap';
 import { DiscoveryWizard } from './DiscoveryWizard';
 import { cloudConnection, regionConnection, connMeta } from './connectionState';
 import {
@@ -377,6 +378,7 @@ export function UnifiedDiscovery() {
 
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set(['aws']));
   const toggle = (key: string) => setOpen(o => toggleKey(o, key));
+  const [view, setView] = useState<'tree' | 'map'>('tree');
 
   /* Selection is its own set. toggleKey is reused for the immutable flip —
      the same operation on a different set — but the two sets never merge:
@@ -522,26 +524,54 @@ export function UnifiedDiscovery() {
       <div className="space-y-3">
         {/* Tree controls */}
         <div className="flex items-center justify-between">
-          <span className="text-[11px] uppercase tracking-wide text-fw-bodyLight">{openSummary(open)}</span>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setOpen(new Set(allKeys(cc)))}
-              className="h-7 rounded-full border border-fw-secondary bg-fw-base px-3 text-figma-xs font-medium text-fw-body transition-colors hover:bg-fw-wash"
+          <div className="flex items-center gap-3">
+            <div
+              role="group"
+              aria-label="Estate view"
+              className="flex items-center gap-0.5 rounded-lg border border-fw-secondary bg-fw-wash p-0.5"
             >
-              Expand all
-            </button>
-            <button
-              type="button"
-              onClick={() => setOpen(new Set())}
-              className="h-7 rounded-full border border-fw-secondary bg-fw-base px-3 text-figma-xs font-medium text-fw-body transition-colors hover:bg-fw-wash"
-            >
-              Collapse all
-            </button>
+              {([['tree', 'Tree view', 'Tree'], ['map', 'Map view', 'Map']] as const).map(([v, name, label]) => (
+                <button
+                  key={v}
+                  type="button"
+                  aria-label={name}
+                  aria-pressed={view === v}
+                  onClick={() => setView(v)}
+                  className={`h-6 rounded-md px-2.5 text-figma-xs font-medium transition-colors ${
+                    view === v ? 'bg-fw-base text-fw-heading shadow-sm' : 'text-fw-bodyLight hover:text-fw-heading'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {view === 'tree' && (
+              <span className="text-[11px] uppercase tracking-wide text-fw-bodyLight">{openSummary(open)}</span>
+            )}
           </div>
+          {view === 'tree' && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setOpen(new Set(allKeys(cc)))}
+                className="h-7 rounded-full border border-fw-secondary bg-fw-base px-3 text-figma-xs font-medium text-fw-body transition-colors hover:bg-fw-wash"
+              >
+                Expand all
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpen(new Set())}
+                className="h-7 rounded-full border border-fw-secondary bg-fw-base px-3 text-figma-xs font-medium text-fw-body transition-colors hover:bg-fw-wash"
+              >
+                Collapse all
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Cloud tree */}
+        {view === 'map' && <AttachmentMap />}
+        {view === 'tree' && (
         <div className="space-y-2.5">
           {clouds.map((c, i) => {
             const ck = cloudKey(c.id);
@@ -716,6 +746,7 @@ export function UnifiedDiscovery() {
             );
           })}
         </div>
+        )}
 
         {publicWorkloads > 0 && (
           <div
