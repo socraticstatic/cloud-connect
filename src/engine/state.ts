@@ -33,7 +33,7 @@ const onramps=[
   {id:'er1',name:'ExpressRoute · Equinix CH1',type:'ExpressRoute',sub:'Equinix CH1 · 10Gbps · unused capacity',ic:'er',active:false,
     site:{name:'Equinix CH1 · Chicago',lat:41.88,lon:-87.63},
     targets:[['azure','wus2'],['azure','uks']]},
-  {id:'nb2',name:'NetBond Adv · PE-DAL-01',type:'NetBond Adv',sub:'Equinix DAL · 10Gbps',ic:'nb',active:true,
+  {id:'nb2',name:'NetBond Adv · PE-DAL-01',type:'NetBond Adv',sub:'not yet provisioned',ic:'nb',active:false,planned:true,
     site:{name:'PE-DAL-01 · Dallas',lat:32.78,lon:-96.8},
     targets:[['cw','cwe'],['neb','nbe'],['oci','iad']]},
 ];
@@ -60,8 +60,8 @@ const clouds=[
   {id:'azure',name:'Azure',color:'#3b8bd4',mk:'AZ',workloads:88,attached:false},
   {id:'gcp',name:'Google Cloud',color:'#ea4335',mk:'GCP',workloads:31,attached:false},
   {id:'oci',name:'Oracle Cloud',color:'#f6543e',mk:'OCI',workloads:9,attached:false},
-  {id:'cw',name:'CoreWeave',color:'#9a7cff',mk:'CW',workloads:6,attached:true,ai:true},
-  {id:'neb',name:'Nebius',color:'#42d6c8',mk:'NB',workloads:8,attached:true,ai:true},
+  {id:'cw',name:'CoreWeave',color:'#9a7cff',mk:'CW',workloads:6,attached:false,ai:true},
+  {id:'neb',name:'Nebius',color:'#42d6c8',mk:'NB',workloads:8,attached:false,ai:true},
 ];
 /* routes/gateways are fixed seeds per region — deterministic, roughly
    scaled with each region's subnets (route-table entries outnumber
@@ -76,8 +76,8 @@ const regions={
          {id:'uks',name:'UK South',sub:'London · single path',subnets:7,routes:15,gateways:4,lat:42,attached:false,spof:true,geo:[51.5,-0.1]}],
   gcp:[{id:'usc1',name:'us-central1',sub:'Iowa',subnets:6,routes:13,gateways:4,lat:34,attached:false,geo:[41.9,-93.6]}],
   oci:[{id:'iad',name:'us-ashburn-1',sub:'Ashburn',subnets:3,routes:7,gateways:2,lat:20,attached:false,geo:[39.0,-77.5]}],
-  cw:[{id:'cwe',name:'US-EAST-04A',sub:'GPU region',subnets:2,routes:5,gateways:2,lat:28,attached:true,ai:true,geo:[40.2,-74.7]}],
-  neb:[{id:'nbe',name:'eu-north1',sub:'Finland',subnets:2,routes:5,gateways:2,lat:44,attached:true,ai:true,geo:[60.6,24.8]}],
+  cw:[{id:'cwe',name:'US-EAST-04A',sub:'GPU region',subnets:2,routes:5,gateways:2,lat:28,attached:false,ai:true,geo:[40.2,-74.7]}],
+  neb:[{id:'nbe',name:'eu-north1',sub:'Finland',subnets:2,routes:5,gateways:2,lat:44,attached:false,ai:true,geo:[60.6,24.8]}],
 };
 /* Region cloudTags reuse the same west/central/east(+emea) vocabulary the
    branches carry above, so one predicate vocabulary groups premises and
@@ -88,7 +88,7 @@ const regions={
 const vpcs={
   use1:[{id:'vpcprod',name:'vpc-prod-01',cidr:'10.0.0.0/16',azs:3,subnets:6,attached:true,role:'Production · 3-tier',tags:['rd-helion','shared-services'],cloudTags:{Project:'xyz',Env:'prod',Owner:'platform',Region:'east'}},
         {id:'vpcdata',name:'vpc-data-02',cidr:'10.1.0.0/16',azs:2,subnets:4,attached:true,role:'Data lake',tags:['finance-invoices','pci','finance'],cloudTags:{Project:'abc',Env:'prod',Owner:'finance',Region:'east'}},
-        {id:'vpcdmz',name:'vpc-dmz-03',cidr:'10.2.0.0/16',azs:2,subnets:4,attached:true,role:'DMZ · public',tags:['classified-helion','internet-facing'],cloudTags:{Project:'xyz',Env:'prod',Owner:'security',Region:'east'}}],
+        {id:'vpcdmz',name:'vpc-dmz-03',cidr:'10.2.0.0/16',azs:2,subnets:4,attached:false,role:'DMZ · public',tags:['classified-helion','internet-facing'],cloudTags:{Project:'xyz',Env:'prod',Owner:'security',Region:'east'}}],
   usw2:[{id:'vpcwest',name:'vpc-west-01',cidr:'10.8.0.0/16',azs:2,subnets:4,attached:false,role:'Edge services',tags:['shared-services'],cloudTags:{Project:'xyz',Env:'prod',Owner:'platform',Region:'west'}},
         {id:'vpcbak',name:'vpc-backup-02',cidr:'10.9.0.0/16',azs:2,subnets:4,attached:false,role:'Backup',cloudTags:{Project:'ops',Env:'prod',Owner:'platform',Region:'west'}}],
   euw1:[{id:'vpceu',name:'vpc-eu-01',cidr:'10.12.0.0/16',azs:1,subnets:4,attached:false,role:'EMEA apps',tags:['shared-services'],cloudTags:{Project:'abc',Env:'prod',Owner:'emea',Region:'emea'}}],
@@ -99,8 +99,8 @@ const vpcs={
   usc1:[{id:'vpcgcp1',name:'vpc-gke-prod',cidr:'10.16.0.0/16',azs:2,subnets:4,attached:false,role:'GKE',cloudTags:{Project:'xyz',Env:'prod',Owner:'platform',Region:'west'}},
         {id:'vpcgcp2',name:'vpc-svc-02',cidr:'10.4.0.0/16',azs:1,subnets:2,attached:false,role:'Services',cloudTags:{Project:'ops',Env:'prod',Owner:'platform',Region:'west'}}],
   iad:[{id:'ocivcn',name:'vcn-prod-01',cidr:'10.20.0.0/16',azs:1,subnets:3,attached:false,role:'Production',vnet:true,cloudTags:{Project:'abc',Env:'prod',Owner:'platform',Region:'east'}}],
-  cwe:[{id:'cwgpu',name:'gpu-cluster-01',cidr:'10.30.0.0/16',azs:1,subnets:2,attached:true,role:'H100 inference',ai:true,vnet:true,tags:['rd-helion'],cloudTags:{Project:'xyz',Env:'prod',Owner:'ml',Region:'east'}}],
-  nbe:[{id:'nbgpu',name:'nb-gpu-net',cidr:'10.34.0.0/16',azs:1,subnets:2,attached:true,role:'L40S inference',ai:true,vnet:true,tags:['classified-helion'],cloudTags:{Project:'abc',Env:'prod',Owner:'ml',Region:'emea'}}],
+  cwe:[{id:'cwgpu',name:'gpu-cluster-01',cidr:'10.30.0.0/16',azs:1,subnets:2,attached:false,role:'H100 inference',ai:true,vnet:true,tags:['rd-helion'],cloudTags:{Project:'xyz',Env:'prod',Owner:'ml',Region:'east'}}],
+  nbe:[{id:'nbgpu',name:'nb-gpu-net',cidr:'10.34.0.0/16',azs:1,subnets:2,attached:false,role:'L40S inference',ai:true,vnet:true,tags:['classified-helion'],cloudTags:{Project:'abc',Env:'prod',Owner:'ml',Region:'emea'}}],
 };
 
 /* Remediation flags - policies and service insertions applied this session */
