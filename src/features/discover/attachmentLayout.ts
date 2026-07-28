@@ -46,14 +46,13 @@ export function computeAttachmentLayout(model: AttachmentMapModel): AttachmentLa
   const flat: { wl: MapWorkload; first: boolean; cloudName: string; regionName: string; short: string | null }[] = [];
   for (const g of model.groups) {
     for (const r of g.regions) {
-      // Region onrampIds may not exist on discovery Region objects.
-      // Fall back to null if not present; viaShort will be null for these edges.
-      const ramp = model.onramps.find(o => (r.region as unknown as { onrampIds?: string[] }).onrampIds?.includes(o.id))
-        ?? null;
+      // viaShort is resolved in buildAttachmentMapModel where cc is available.
+      // The layout stays pure: it only reads the model, ensuring consistency with
+      // attachmentChain's ramp selection.
       r.workloads.forEach((wl, i) => {
         flat.push({
           wl, first: i === 0, cloudName: g.cloudName, regionName: r.region.name,
-          short: ramp ? ramp.short : null,
+          short: r.viaShort,
         });
       });
     }

@@ -154,7 +154,7 @@ export interface AttachmentMapModel {
   onramps: { id: string; name: string; type: string; short: string; site: string; active: boolean }[];
   groups: {
     cloudId: string; cloudName: string; color: string;
-    regions: { region: Region; regionIndex: number; workloads: MapWorkload[] }[];
+    regions: { region: Region; regionIndex: number; workloads: MapWorkload[]; viaShort: string | null }[];
   }[];
 }
 
@@ -169,10 +169,17 @@ export function buildAttachmentMapModel(cc: CloudControl): AttachmentMapModel {
     })),
     groups: clouds.map(c => ({
       cloudId: c.id, cloudName: c.name, color: c.color,
-      regions: regionsOf(cc, c.id).map((region, regionIndex) => ({
-        region, regionIndex,
-        workloads: vpcsOf(cc, region.id).map(vpc => ({ cloudId: c.id, regionId: region.id, vpc })),
-      })),
+      regions: regionsOf(cc, c.id).map((region, regionIndex) => {
+        // Resolve the serving ramp for this region and compute its short label.
+        // This ensures edge labels match attachmentChain's ramp choice consistently.
+        const ramps = servingRamps(cc, c.id, region.id);
+        const ramp = ramps.find(r => r.active) ?? ramps[0] ?? null;
+        return {
+          region, regionIndex,
+          workloads: vpcsOf(cc, region.id).map(vpc => ({ cloudId: c.id, regionId: region.id, vpc })),
+          viaShort: ramp ? rampShort(ramp.type) : null,
+        };
+      }),
     })),
   };
 }

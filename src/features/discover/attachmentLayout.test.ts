@@ -38,4 +38,18 @@ describe('computeAttachmentLayout', () => {
     const regionCount = model.groups.flatMap(g => g.regions).filter(r => r.workloads.length > 0).length;
     expect(labeled.length).toBe(regionCount);
   });
+
+  it('attached workloads have non-null viaShort matching the model\'s servingRamps choice', () => {
+    const model = buildAttachmentMapModel(CC);
+    const l = computeAttachmentLayout(model);
+    for (const w of l.workloads) {
+      if (w.attached) {
+        expect(w.edge.viaShort).not.toBeNull();
+        // For aws/use1 specifically, the active on-ramp is 'NetBond' (nb1)
+        if (w.wl.cloudId === 'aws' && w.wl.regionId === 'use1') {
+          expect(w.edge.viaShort).toBe('NetBond');
+        }
+      }
+    }
+  });
 });
