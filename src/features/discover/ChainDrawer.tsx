@@ -60,8 +60,9 @@ export function ChainDrawer({ selection, onClose }: { selection: MapSelection; o
         const chain = attachmentChain(cc, selection.cloudId, selection.regionId, selection.vpcId);
         if (!chain) return <p className="text-figma-sm text-fw-bodyLight">Workload not found.</p>;
         const ramp = chain.candidateOnrampId
-          ? (cc as unknown as { onramps: { id: string; name: string }[] }).onramps.find(o => o.id === chain.candidateOnrampId)
+          ? (cc as unknown as { onramps: { id: string; name: string; active?: boolean }[] }).onramps.find(o => o.id === chain.candidateOnrampId)
           : undefined;
+        const canAttach = ramp && !ramp.active;
         return (
           <div>
             <Hop title={chain.workload.name} sub={`${chain.workload.cidr} · ${chain.workload.role}`}>
@@ -96,7 +97,7 @@ export function ChainDrawer({ selection, onClose }: { selection: MapSelection; o
                   <Globe size={12} aria-hidden="true" />
                   {`Public path · ${chain.path.latencyMs} ms`}
                 </div>
-                {ramp && (
+                {canAttach && (
                   <button
                     type="button"
                     onClick={() => actions.activateOnramp(ramp.id)}
