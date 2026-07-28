@@ -50,14 +50,25 @@ describe('attachmentChain', () => {
     }
   });
 
-  it('chain latency and path equal the ONE latency derivation', () => {
-    const lat = regionLatencyMap(CC);
+  it('chain latency and path are the honest per-workload figure — private only when this workload actually rides a private-path circuit', () => {
     const path = regionLatencyPathMap(CC);
     for (const w of eachMapVpc()) {
       const chain = attachmentChain(CC, w.cloudId, w.regionId, w.vpcId)!;
-      expect(chain.path.latencyMs).toBe(lat[w.regionId]);
-      expect(chain.path.kind).toBe(path[w.regionId]);
+      const regionPrivate = path[w.regionId] === 'private';
+      const pair = CC.regionLatency(w.regionId)!;
+      if (chain.circuit && regionPrivate) {
+        expect(chain.path.kind).toBe('private');
+        expect(chain.path.latencyMs).toBe(pair.privateMs);
+      } else {
+        expect(chain.path.kind).toBe('public');
+        expect(chain.path.latencyMs).toBe(pair.publicMs);
+      }
     }
+  });
+
+  it('an unattached VPC in an attached (private-path) region gets the honest public figure, not the region private figure', () => {
+    const chain = attachmentChain(CC, 'aws', 'use1', 'vpcdmz')!;
+    expect(chain.path).toEqual({ kind: 'public', latencyMs: CC.regionLatency('use1')!.publicMs });
   });
 
   it('is stable across calls (deterministic VLAN/ASN)', () => {

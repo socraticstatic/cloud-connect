@@ -85,10 +85,17 @@ export function ChainDrawer({ selection, onClose }: { selection: MapSelection; o
                     <div>{`BGP ${chain.circuit.bgp.customerAsn} ↔ ${chain.circuit.bgp.providerAsn}`}</div>
                   </div>
                 </Hop>
-                <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-fw-success bg-fw-successLight px-2 py-0.5 text-[11px] font-medium text-fw-success">
-                  <Link2 size={12} aria-hidden="true" />
-                  {`Private path · ${chain.path.latencyMs} ms`}
-                </div>
+                {chain.path.kind === 'private' ? (
+                  <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-fw-success bg-fw-successLight px-2 py-0.5 text-[11px] font-medium text-fw-success">
+                    <Link2 size={12} aria-hidden="true" />
+                    {`Private path · ${chain.path.latencyMs} ms`}
+                  </div>
+                ) : (
+                  <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-fw-secondary bg-fw-wash px-2 py-0.5 text-[11px] font-medium text-fw-bodyLight">
+                    <Globe size={12} aria-hidden="true" />
+                    {`Public path · ${chain.path.latencyMs} ms`}
+                  </div>
+                )}
               </>
             ) : (
               <>

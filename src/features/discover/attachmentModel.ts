@@ -9,8 +9,11 @@ import {
  * Pure derivations for the Attachment Map — the chain from a workload through
  * its cloud gateways and AT&T circuit to the fabric, and the map-wide model
  * the layout consumes. Deterministic: VLANs come from seeded array indices,
- * ASNs are constants, latency comes from the ONE derivation
- * (`regionLatencyMap`/`regionLatencyPathMap`) and nothing else.
+ * ASNs are constants, latency is per-workload: private only when this
+ * workload actually has a circuit onto a region whose path is private,
+ * otherwise the honest public figure — both drawn from the engine's
+ * `cc.regionLatency(regionId)` pair (`regionLatencyMap`/`regionLatencyPathMap`
+ * as a fallback only for a region the engine doesn't carry).
  */
 
 export const MAP_CLOUDS = ['aws', 'azure'] as const;
@@ -58,6 +61,14 @@ export function servingRamps(cc: CloudControl, cloudId: string, regionId: string
   return rampsOf(cc).filter(o => o.targets.some(([c, r]) => c === cloudId && r === regionId));
 }
 
+/** The ONE ramp that serves a region — active wins, else first on order. Every
+ *  surface (chain, edge label, drawer) must resolve through this so they can
+ *  never disagree. */
+export function servingRamp(cc: CloudControl, cloudId: string, regionId: string): RampLike | null {
+  const ramps = servingRamps(cc, cloudId, regionId);
+  return ramps.find(r => r.active) ?? ramps[0] ?? null;
+}
+
 /** Bandwidth as the on-ramp seed states it — '—' when the seed makes no claim. */
 export function bandwidthOf(sub: string): string {
   const m = sub.match(/(\d+\s*[GM]bps)/i);
@@ -99,8 +110,7 @@ export function attachmentChain(
     .filter(g => g.ic === 'dx' || g.ic === 'tgw')
     .map(g => ({ id: g.id, name: g.name, type: g.type }));
 
-  const ramps = servingRamps(cc, cloudId, regionId);
-  const ramp = ramps.find(r => r.active) ?? ramps[0] ?? null;
+  const ramp = servingRamp(cc, cloudId, regionId);
 
   const circuit: ChainCircuit | null = vpc.attached && ramp
     ? {
@@ -111,8 +121,11 @@ export function attachmentChain(
       }
     : null;
 
-  const kind = regionLatencyPathMap(cc)[regionId] ?? 'public';
-  const latencyMs = regionLatencyMap(cc)[regionId] ?? 0;
+  const regionKind = regionLatencyPathMap(cc)[regionId] ?? 'public';
+  const pair = cc.regionLatency(regionId);
+  const kind: 'private' | 'public' = circuit && regionKind === 'private' ? 'private' : 'public';
+  const latencyMs = pair ? (kind === 'private' ? pair.privateMs : pair.publicMs)
+                         : (regionLatencyMap(cc)[regionId] ?? 0);
 
   return {
     workload: {
@@ -137,8 +150,7 @@ export function workloadsOnRamp(
   const out: { cloudId: string; regionId: string; vpc: Vpc }[] = [];
   for (const cloudId of MAP_CLOUDS) {
     for (const r of regionsOf(cc, cloudId)) {
-      const ramps = servingRamps(cc, cloudId, r.id);
-      const serving = ramps.find(x => x.active) ?? ramps[0] ?? null;
+      const serving = servingRamp(cc, cloudId, r.id);
       if (serving?.id !== onrampId) continue;
       for (const v of vpcsOf(cc, r.id)) {
         if (v.attached) out.push({ cloudId, regionId: r.id, vpc: v });
@@ -172,8 +184,7 @@ export function buildAttachmentMapModel(cc: CloudControl): AttachmentMapModel {
       regions: regionsOf(cc, c.id).map((region, regionIndex) => {
         // Resolve the serving ramp for this region and compute its short label.
         // This ensures edge labels match attachmentChain's ramp choice consistently.
-        const ramps = servingRamps(cc, c.id, region.id);
-        const ramp = ramps.find(r => r.active) ?? ramps[0] ?? null;
+        const ramp = servingRamp(cc, c.id, region.id);
         return {
           region, regionIndex,
           workloads: vpcsOf(cc, region.id).map(vpc => ({ cloudId: c.id, regionId: region.id, vpc })),
