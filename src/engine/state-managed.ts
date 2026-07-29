@@ -100,7 +100,8 @@ CC.advanceManagedVpc=function(id){
     if(o&&!o.active)CC.activateOnramp(m.onrampId);
   }
   m.stage=next;
-  CC._.emit({type:'policy',label:(next==='live'?'Managed VPC live · ':'Managed VPC · '+next+' · ')+m.name});
+  const noun='Managed '+(m.cloudId==='azure'?'VNET':'VPC');
+  CC._.emit({type:'policy',label:(next==='live'?noun+' live · ':noun+' · '+next+' · ')+m.name});
   return m;
 };
 })();

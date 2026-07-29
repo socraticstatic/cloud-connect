@@ -1,6 +1,7 @@
 import { X, Link2, Globe, Network, ArrowDown } from 'lucide-react';
 import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
 import { attachmentChain, workloadsOnRamp, rampShort, bandwidthOf } from './attachmentModel';
+import { managedNoun } from '../connect/managedVpcWizardModel';
 import type { ManagedVpc } from '../../engine/types';
 
 /**
@@ -141,7 +142,7 @@ export function ChainDrawer({
                 onClick={() => onDeployManagedVpc(selection.cloudId, selection.regionId)}
                 className="mt-2 inline-flex h-8 w-full items-center justify-center rounded-lg border border-fw-secondary px-3 text-figma-xs font-semibold text-fw-body transition-colors hover:bg-fw-wash"
               >
-                {`Deploy managed VPC in ${regionName}`}
+                {`Deploy ${managedNoun(selection.cloudId).replace('Managed', 'managed')} in ${regionName}`}
               </button>
             )}
             <Down />

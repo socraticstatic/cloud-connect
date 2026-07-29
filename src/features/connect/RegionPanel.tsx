@@ -6,12 +6,9 @@ import { useCloudControl, useCloudControlActions } from '../../engine/react/useC
 import { ATTACH_TYPES } from './attachCatalog';
 import { PathChoice } from './PathChoice';
 import { DeployManagedVpcWizard } from './DeployManagedVpcWizard';
-import { TIERS } from './managedVpcWizardModel';
+import { TIERS, MANAGED_CLOUDS, managedNoun } from './managedVpcWizardModel';
 import type { FabricModel } from './FabricHero';
 import type { FabricRegion } from '../../engine/types';
-
-/** Managed VPC/VNET only deploys into AWS or Azure regions today. */
-const MANAGED_CLOUDS = ['aws', 'azure'];
 
 /* ------------------------------------------------------------------ *
  * Region panel — the selected region as a first-class object. Foregrounds
@@ -53,19 +50,21 @@ function ManagedVpcBlock({ region }: { region: FabricRegion }) {
 
   const currentStage = record?.stages.find(s => s.key === record.stage);
   const tierLabel = record ? TIERS.find(t => t.id === record.tier)?.label ?? record.tier : '';
+  const noun = managedNoun(region.cloudId);
+  const gatewayNoun = region.cloudId === 'azure' ? 'VNET' : 'VPC';
 
   return (
     <div className="rounded-xl border border-fw-secondary bg-fw-wash p-3 space-y-1.5">
-      <h3 className="text-figma-sm font-semibold text-fw-heading">Managed VPC</h3>
+      <h3 className="text-figma-sm font-semibold text-fw-heading">{noun}</h3>
 
       {!record && (
         <div className="space-y-2">
-          <p className="text-figma-xs text-fw-bodyLight">An AT&amp;T-managed gateway VPC with a vSRX HA pair, plumbed to your workloads and to AT&amp;T.</p>
+          <p className="text-figma-xs text-fw-bodyLight">An AT&amp;T-managed gateway {gatewayNoun} with a vSRX HA pair, plumbed to your workloads and to AT&amp;T.</p>
           <button
             type="button" onClick={() => setOpen(true)}
             className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-figma-xs font-semibold bg-fw-ctaPrimary text-white hover:bg-fw-ctaPrimaryHover transition-colors"
           >
-            Deploy managed VPC
+            Deploy {noun.replace('Managed', 'managed')}
           </button>
         </div>
       )}

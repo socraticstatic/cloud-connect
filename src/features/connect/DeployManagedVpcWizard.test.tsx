@@ -36,4 +36,12 @@ describe('DeployManagedVpcWizard', () => {
     fireEvent.change(screen.getByLabelText(/CIDR/i), { target: { value: '10.0.0.0/8' } });
     expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
   });
+
+  it('Azure surfaces say Managed VNET, not Managed VPC', () => {
+    // uks is still un-deployed in this file — the previous test never got
+    // past the invalid-CIDR step, so no engine record exists for it yet.
+    render(<DeployManagedVpcWizard lockedRegion={{ cloudId: 'azure', regionId: 'uks' }} onClose={() => {}} />);
+    expect(screen.getByRole('dialog', { name: 'Deploy Managed VNET' })).toBeInTheDocument();
+    expect(screen.getByText('Deploy Managed VNET')).toBeInTheDocument();
+  });
 });

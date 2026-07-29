@@ -9,6 +9,7 @@ import {
   TIERS,
   validCidr,
   confirmCopy,
+  managedNoun,
 } from './managedVpcWizardModel';
 import type { ManagedVpc } from '../../engine/types';
 
@@ -84,7 +85,7 @@ export function DeployManagedVpcWizard({ lockedRegion, onClose }: DeployManagedV
 
   return (
     <div
-      role="dialog" aria-modal="true" aria-label="Deploy managed VPC"
+      role="dialog" aria-modal="true" aria-label={`Deploy ${managedNoun(cloudId)}`}
       className="fixed inset-0 z-50 flex items-center justify-center bg-fw-heading/40 p-4"
       onClick={onClose}
     >
@@ -95,7 +96,7 @@ export function DeployManagedVpcWizard({ lockedRegion, onClose }: DeployManagedV
         <div className="flex items-center gap-3 px-5 py-4 border-b border-fw-secondary">
           {cloudId && <ProviderLogo id={cloudId} size={30} />}
           <div className="min-w-0 flex-1">
-            <div className="font-semibold text-fw-heading leading-tight">Deploy managed VPC</div>
+            <div className="font-semibold text-fw-heading leading-tight">Deploy {managedNoun(cloudId)}</div>
             {lockedRegion && (
               <div className="text-figma-xs text-fw-bodyLight leading-tight">{cloudName} · {regionName}</div>
             )}
@@ -121,7 +122,7 @@ export function DeployManagedVpcWizard({ lockedRegion, onClose }: DeployManagedV
         <div className="px-5 py-4 min-h-[172px]">
           {current === 'region' && (
             <div className="space-y-2">
-              <p className="text-figma-xs text-fw-bodyLight">Where the managed VPC deploys.</p>
+              <p className="text-figma-xs text-fw-bodyLight">Where the {managedNoun(cloudId).replace('Managed', 'managed')} deploys.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {regions.map(r => (
                   <button
@@ -206,7 +207,7 @@ export function DeployManagedVpcWizard({ lockedRegion, onClose }: DeployManagedV
               onClick={deploy}
               className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-figma-sm font-semibold bg-fw-success text-white hover:bg-fw-success"
             >
-              <Check size={15} /> Deploy managed VPC
+              <Check size={15} /> Deploy {managedNoun(cloudId).replace('Managed', 'managed')}
             </button>
           )}
         </div>
@@ -227,7 +228,7 @@ interface ManagedVpcTrackerProps {
 function ManagedVpcTracker({ record, cloudName, regionName, onClose }: ManagedVpcTrackerProps) {
   return (
     <div
-      role="dialog" aria-modal="true" aria-label="Deploy managed VPC"
+      role="dialog" aria-modal="true" aria-label={`Deploy ${managedNoun(record.cloudId)}`}
       className="fixed inset-0 z-50 flex items-center justify-center bg-fw-heading/40 p-4"
       onClick={onClose}
     >

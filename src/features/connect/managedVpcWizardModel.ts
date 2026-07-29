@@ -8,7 +8,12 @@ export type WizStep = (typeof WIZ_STEPS)[number];
 
 export interface EligibleRegion { cloudId: string; cloudName: string; regionId: string; regionName: string }
 
-const MANAGED_CLOUDS = ['aws', 'azure'];
+export const MANAGED_CLOUDS = ['aws', 'azure'];
+
+/** The binding vocabulary rule: Azure surfaces say VNET, everyone else VPC. */
+export function managedNoun(cloudId: string): 'Managed VNET' | 'Managed VPC' {
+  return cloudId === 'azure' ? 'Managed VNET' : 'Managed VPC';
+}
 
 export function eligibleRegions(cc: CloudControl): EligibleRegion[] {
   const out: EligibleRegion[] = [];
