@@ -30,7 +30,7 @@ interface Vpc {
 export interface FlowLogRecord {
   id: string;
   bucket: string;
-  src: { kind: 'workload'; label: string; cloudId: string; regionId: string; tag: string };
+  src: { kind: 'workload' | 'site'; label: string; cloudId: string; regionId: string; tag: string };
   dst: string;
   proto: 'TCP' | 'UDP';
   port: number;
@@ -96,11 +96,14 @@ export function flowLogs(cc: CloudControl): FlowLogRecord[] {
   const out: FlowLogRecord[] = [];
 
   rows.forEach((f, flowIndex) => {
-    // flows() has no site-sourced rows worth logging here: branch
-    // ("site")-originated rows carry srcBranch and no srcVpc (see flows()'s
-    // branch-append block in state-rules.ts). FlowLogRecord.src is typed
-    // 'workload' only — honest per the spec: flow logs are workload traffic,
-    // never invented site traffic the engine doesn't seed.
+    // flows() seeds branch rows, but every one is dst 'intra-tag'
+    // (state-rules.ts:275) and intra-tag is skipped below — so no site
+    // record exists TODAY. The kind union stays 'workload' | 'site' per
+    // spec §1: when the engine ever states a branch -> destination fact,
+    // site records join without a breaking type change. Until then this
+    // filter on !f.srcVpc excludes every branch ("site")-originated row
+    // (they carry srcBranch, no srcVpc — see flows()'s branch-append block
+    // in state-rules.ts), keeping output honestly workload-only.
     if (!f.srcVpc) return;
     if (f.dst === 'intra-tag') return; // skipped, same as routeFlows does
 
