@@ -8,6 +8,7 @@ import './state-telemetry';
 import './state-groups';
 import './state-rules';
 import './state-routing';
+import './state-managed';
 import './state-apps';
 import './state-billing';
 import './state-console';

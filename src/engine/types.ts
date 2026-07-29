@@ -115,6 +115,62 @@ export interface IntentCatalogEntry {
   scopes(): IntentScope[];
 }
 
+/** One watchable stage in a managed VPC/VNET's five-stage lifecycle. */
+export interface ManagedVpcStage {
+  key: 'create' | 'vsrx' | 'cloud-plumbing' | 'att-plumbing' | 'live';
+  label: string;
+  detail: string;
+  done: boolean;
+}
+
+/** A vSRX HA-pair node — active or backup — inside a managed VPC/VNET. */
+export interface ManagedVpcVsrxNode {
+  id: string;
+  role: 'active' | 'backup';
+  state: 'launching' | 'up';
+}
+
+/** One vSRX network interface and what it faces. */
+export interface ManagedVpcVsrxInterface {
+  name: string;
+  toward: string;
+  state: 'down' | 'up';
+}
+
+/** One BGP session the vSRX pair carries — toward the cloud or toward AT&T. */
+export interface ManagedVpcVsrxBgp {
+  peer: 'cloud' | 'att';
+  label: string;
+  state: 'idle' | 'established';
+}
+
+/** The vSRX HA pair a managed VPC/VNET provisions: nodes, interfaces, BGP
+ *  sessions and the tier's throughput label. */
+export interface ManagedVpcVsrx {
+  nodes: ManagedVpcVsrxNode[];
+  interfaces: ManagedVpcVsrxInterface[];
+  bgp: ManagedVpcVsrxBgp[];
+  throughput: string;
+}
+
+/** An AT&T-managed gateway VPC/VNET, deployed into one AWS/Azure region and
+ *  plumbed toward the cloud and toward AT&T across five watchable stages.
+ *  `onrampId` is the region's serving on-ramp (active-first, else first
+ *  target match) captured at deploy time — going live activates it if it
+ *  is not already active. */
+export interface ManagedVpc {
+  id: string;
+  cloudId: string;
+  regionId: string;
+  name: string;
+  cidr: string;
+  tier: '500M' | '1G' | '5G';
+  stage: ManagedVpcStage['key'];
+  stages: ManagedVpcStage[];
+  vsrx: ManagedVpcVsrx;
+  onrampId: string | null;
+}
+
 export interface CloudControl {
   // --- core state (state.js) ---
   counts(): CloudControlCounts;
@@ -281,6 +337,13 @@ export interface CloudControl {
   takeProposal(): ({ kind: 'attach'; regionId: string } | { kind: 'steer'; flowId: string; pathId: string })[] | null;
   /** Replays one decoded ?s= payload through the real mutations. */
   applyShareData(raw: string): boolean;
+
+  // --- managed VPC/VNET lifecycle (state-managed.ts) ---
+  managedVpcs: ManagedVpc[];
+  deployManagedVpc(opts: { cloudId: string; regionId: string; tier?: '500M' | '1G' | '5G'; cidr?: string }): ManagedVpc | null;
+  advanceManagedVpc(id: string): ManagedVpc | null;
+  managedVpcFor(cloudId: string, regionId: string): ManagedVpc | null;
+  suggestManagedCidr(): string;
 
   // catch-all for the rest of the ported surface not yet typed
   [key: string]: any;
