@@ -148,8 +148,7 @@ Common issues:
 .
 ├── .github/
 │   └── workflows/
-│       ├── gh-pages.yml      # Automated deployment workflow
-│       └── sync.yml           # Bolt.new sync workflow
+│       └── gh-pages.yml      # Automated deployment workflow
 ├── src/                       # Source code
 ├── dist/                      # Built files (auto-generated, ignored by git)
 ├── package.json               # Project configuration

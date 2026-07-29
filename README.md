@@ -238,7 +238,6 @@ See [PWA_INSTALLATION.md](./PWA_INSTALLATION.md) for detailed installation instr
 ### Workflows
 - **CI Pipeline** (`.github/workflows/ci.yml`): Runs tests, linting, and builds
 - **GitHub Pages Deploy** (`.github/workflows/gh-pages.yml`): Automated deployment on push to main
-- **Bolt.new Sync** (`.github/workflows/sync.yml`): Syncs changes from Bolt.new environment
 - **Code Quality** (`.github/workflows/code-quality.yml`): Advanced quality checks
 - **Lighthouse Audit** (`.github/workflows/lighthouse.yml`): Performance monitoring
 - **Sync** (`.github/workflows/sync.yml`): Syncs changes from external environments
