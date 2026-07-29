@@ -79,9 +79,13 @@ export function ObservabilityShell({ binding }: { binding: ObservabilityBinding 
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* Single column: the flow panel and records get the full page width —
+          the chart is the money screen's centerpiece, and a side rail was
+          squeezing it to two-thirds size. The briefing reads fine as a band
+          below the data it narrates. */}
+      <div className="space-y-4">
         {/* main column */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="space-y-4">
           {/* flow panel */}
           <div data-tour="observe-telemetry" className="rounded-2xl border border-fw-secondary bg-fw-base overflow-hidden">
             <div className="flex items-center gap-1 px-3 py-2 border-b border-fw-secondary bg-fw-wash">
@@ -194,21 +198,26 @@ export function ObservabilityShell({ binding }: { binding: ObservabilityBinding 
           </div>
         </div>
 
-        {/* briefing rail */}
+        {/* briefing band — was a right rail; now reads as three columns
+            under the data it narrates. */}
         <aside data-testid="briefing" className="rounded-2xl border border-fw-secondary bg-fw-wash p-4 space-y-3">
           <div className="text-figma-xs uppercase tracking-wide text-fw-bodyLight">{binding.layer === 'ai' ? 'Fabric briefing' : 'Network briefing'}</div>
-          <div className="space-y-2 text-figma-sm text-fw-body">
-            {brief.narrative.map((b, i) => (
-              <p key={i} className={b.emphasis === 'risk' ? 'text-fw-bodyLight font-medium' : b.emphasis === 'strong' ? 'text-fw-heading font-medium' : ''}>{b.text}</p>
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {brief.actions.map(a => (
-              <button key={a.id} type="button" className="h-8 px-3 rounded-full border border-fw-secondary bg-fw-base text-figma-xs text-fw-body hover:bg-fw-wash">{a.label}</button>
-            ))}
-          </div>
-          <div className="pt-2 border-t border-fw-secondary space-y-1">
-            {brief.followups.map((q, i) => <div key={i} className="text-figma-xs text-fw-bodyLight">{q}</div>)}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
+            <div className="space-y-2 text-figma-sm text-fw-body lg:col-span-2">
+              {brief.narrative.map((b, i) => (
+                <p key={i} className={b.emphasis === 'risk' ? 'text-fw-bodyLight font-medium' : b.emphasis === 'strong' ? 'text-fw-heading font-medium' : ''}>{b.text}</p>
+              ))}
+            </div>
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {brief.actions.map(a => (
+                  <button key={a.id} type="button" className="h-8 px-3 rounded-full border border-fw-secondary bg-fw-base text-figma-xs text-fw-body hover:bg-fw-wash">{a.label}</button>
+                ))}
+              </div>
+              <div className="pt-2 border-t border-fw-secondary space-y-1">
+                {brief.followups.map((q, i) => <div key={i} className="text-figma-xs text-fw-bodyLight">{q}</div>)}
+              </div>
+            </div>
           </div>
         </aside>
       </div>

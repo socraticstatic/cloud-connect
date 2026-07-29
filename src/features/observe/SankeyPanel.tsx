@@ -25,11 +25,11 @@ const HEX = {
 const VIEW_W = 1000;
 const SRC_BAR_X = 212;
 const MID_X = 494;
-const DEST_BAR_X = 782;
-const BAR_W = 7;
-const NODE_GAP = 14;
+const DEST_BAR_X = 748;
+const BAR_W = 8;
+const NODE_GAP = 16;
 const RIBBON_GAP = 2;
-const PLOT_INNER = 272;
+const PLOT_INNER = 368;
 const PAD_Y = 12;
 
 export interface GNode {
@@ -197,7 +197,7 @@ function NodeLabel({ n }: { n: GNode }) {
   const value = `${n.value} Gbps`;
   if (n.band === 'source') {
     return (
-      <text x={SRC_BAR_X - 8} y={mid} dy="0.35em" textAnchor="end" fontSize={11}>
+      <text x={SRC_BAR_X - 8} y={mid} dy="0.35em" textAnchor="end" fontSize={13}>
         <tspan fill={HEX.ink} fontWeight={600}>{n.name}</tspan>
         <tspan fill={HEX.inkSoft}>{` · ${value}`}</tspan>
       </text>
@@ -205,7 +205,7 @@ function NodeLabel({ n }: { n: GNode }) {
   }
   if (n.band === 'dest') {
     return (
-      <text x={DEST_BAR_X + BAR_W + 8} y={mid} dy="0.35em" fontSize={11}>
+      <text x={DEST_BAR_X + BAR_W + 8} y={mid} dy="0.35em" fontSize={13}>
         <tspan fill={HEX.ink} fontWeight={600}>{n.name}</tspan>
         <tspan fill={HEX.inkSoft}>{` · ${value}`}</tspan>
       </text>
@@ -218,11 +218,11 @@ function NodeLabel({ n }: { n: GNode }) {
       x={MID_X + BAR_W / 2}
       y={n.y - 7}
       textAnchor="middle"
-      fontSize={11.5}
+      fontSize={13.5}
       fontWeight={700}
       fill={n.pathKind === 'private' ? HEX.cobalt : HEX.inkSoft}
       stroke="#ffffff"
-      strokeWidth={3.5}
+      strokeWidth={4}
       paintOrder="stroke"
     >
       {`${n.name} · ${n.value} Gbps`}
@@ -237,7 +237,7 @@ export function SankeyPanel({ model }: { model: SankeyModel }) {
     <div data-testid="sankey-panel">
       {/* The takeaway, stated before it is drawn. */}
       <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">
-        <p className="text-figma-sm text-fw-heading">
+        <p className="text-figma-base text-fw-heading">
           <span className="font-semibold">{g.publicGbps} of {total} Gbps</span> still rides the public
           internet · <span className="font-semibold" style={{ color: HEX.cobalt }}>{g.privateGbps} Gbps</span> under
           AT&amp;T control
