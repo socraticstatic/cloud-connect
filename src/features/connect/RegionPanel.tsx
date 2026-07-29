@@ -1,11 +1,17 @@
+import { useState } from 'react';
 import { Gauge, ShieldCheck, Layers, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ProviderLogo } from '../../components/brand/ProviderLogo';
-import { useCloudControlActions } from '../../engine/react/useCloudControl';
+import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
 import { ATTACH_TYPES } from './attachCatalog';
 import { PathChoice } from './PathChoice';
+import { DeployManagedVpcWizard } from './DeployManagedVpcWizard';
+import { TIERS } from './managedVpcWizardModel';
 import type { FabricModel } from './FabricHero';
 import type { FabricRegion } from '../../engine/types';
+
+/** Managed VPC/VNET only deploys into AWS or Azure regions today. */
+const MANAGED_CLOUDS = ['aws', 'azure'];
 
 /* ------------------------------------------------------------------ *
  * Region panel — the selected region as a first-class object. Foregrounds
@@ -30,6 +36,62 @@ function activeAttachId(region: FabricRegion, model: FabricModel): string {
   if (/direct connect|expressroute|interconnect/i.test(type)) return 'dedicated';
   if (/netbond/i.test(type)) return 'ip';
   return '';
+}
+
+/** The "Managed VPC" block — an AT&T-managed gateway VPC/VNET door scoped to
+ *  this region, folded in after the existing attach content. AWS/Azure only;
+ *  other clouds render nothing. Deploying and live states read straight off
+ *  `useCloudControl` so the block advances live as the engine's own clock
+ *  ticks the record through its stages — no local "mode" state duplicated
+ *  here. The wizard itself mounts fresh per open (never a long-lived
+ *  instance) per the Task 3 review: it seeds its state from props at mount. */
+function ManagedVpcBlock({ region }: { region: FabricRegion }) {
+  const [open, setOpen] = useState(false);
+  const record = useCloudControl(cc => cc.managedVpcFor(region.cloudId, region.regionId));
+
+  if (!MANAGED_CLOUDS.includes(region.cloudId)) return null;
+
+  const currentStage = record?.stages.find(s => s.key === record.stage);
+  const tierLabel = record ? TIERS.find(t => t.id === record.tier)?.label ?? record.tier : '';
+
+  return (
+    <div className="rounded-xl border border-fw-secondary bg-fw-wash p-3 space-y-1.5">
+      <h3 className="text-figma-sm font-semibold text-fw-heading">Managed VPC</h3>
+
+      {!record && (
+        <div className="space-y-2">
+          <p className="text-figma-xs text-fw-bodyLight">An AT&amp;T-managed gateway VPC with a vSRX HA pair, plumbed to your workloads and to AT&amp;T.</p>
+          <button
+            type="button" onClick={() => setOpen(true)}
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-figma-xs font-semibold bg-fw-ctaPrimary text-white hover:bg-fw-ctaPrimaryHover transition-colors"
+          >
+            Deploy managed VPC
+          </button>
+        </div>
+      )}
+
+      {record && record.stage !== 'live' && currentStage && (
+        <div>
+          <div className="text-figma-sm font-medium text-fw-heading">{currentStage.label}</div>
+          <div className="text-figma-xs text-fw-bodyLight">{currentStage.detail}</div>
+        </div>
+      )}
+
+      {record && record.stage === 'live' && (
+        <div>
+          <div className="text-figma-sm font-semibold text-fw-heading">{record.name}</div>
+          <div className="text-figma-xs text-fw-bodyLight">{tierLabel} · vSRX HA pair · both BGP sessions established</div>
+        </div>
+      )}
+
+      {open && (
+        <DeployManagedVpcWizard
+          lockedRegion={{ cloudId: region.cloudId, regionId: region.regionId }}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </div>
+  );
 }
 
 interface RegionPanelProps {
@@ -131,6 +193,8 @@ export function RegionPanel({ region, model, onProvision, onProvisioned }: Regio
           })}
         </div>
       </div>
+
+      <ManagedVpcBlock region={region} />
 
       <button
         type="button" data-testid="open-provision-wizard" onClick={onProvision}
