@@ -35,4 +35,35 @@ describe('buildSankey', () => {
       expect((a === 'source' && b === 'path') || (a === 'path' && b === 'dest')).toBe(true);
     }
   });
+
+  it('no node name contains the bidirectional arrow (↔ indicates c2c source misparsing)', () => {
+    const s = buildSankey(CC);
+    for (const node of s.nodes) {
+      expect(node.name.includes('↔')).toBe(false);
+    }
+  });
+
+  it('dest band contains "SaaS / internet egress" and does NOT contain "public internet"', () => {
+    const s = buildSankey(CC);
+    const destNodes = s.nodes.filter(n => n.band === 'dest');
+    const destNames = destNodes.map(n => n.name);
+    expect(destNames).toContain('SaaS / internet egress');
+    expect(destNames).not.toContain('public internet');
+    // Confirm "Public internet" exists only in path band
+    const pathNodes = s.nodes.filter(n => n.band === 'path');
+    const pathNames = pathNodes.map(n => n.name);
+    expect(pathNames).toContain('Public internet');
+  });
+
+  it('c2c flows land on the "Inter-cloud" dest node with value > 0', () => {
+    const s = buildSankey(CC);
+    const intercloudDest = s.nodes.find(n => n.band === 'dest' && n.name === 'Inter-cloud');
+    expect(intercloudDest).toBeTruthy();
+    const intercloudIdx = s.nodes.indexOf(intercloudDest!);
+    const linksToIntercloud = s.links.filter(l => l.target === intercloudIdx);
+    expect(linksToIntercloud.length).toBeGreaterThan(0);
+    for (const link of linksToIntercloud) {
+      expect(link.value).toBeGreaterThan(0);
+    }
+  });
 });

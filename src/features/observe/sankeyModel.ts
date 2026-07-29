@@ -2,11 +2,15 @@ import type { CloudControl } from '../../engine/types';
 
 // Shape of a routeFlows() row (src/engine/state-routing.ts) — untyped at the
 // source (// @ts-nocheck), so we mirror the fields this binding consumes.
+// c2c rows use '↔' (state-routing.ts:120) — their label format is
+// "${A.cloud.name} ${A.r.name} ↔ ${B.cloud.name} ${B.r.name}" — the source
+// for Sankey is the left side (region name before ↔).
 interface RouteFlowRow {
   id: string;
   kind?: 'app' | 'c2c';
   label: string;
   gbps: number;
+  dst?: string; // present on app rows only (kind: 'app')
   current: { attControlled: boolean };
 }
 
@@ -40,21 +44,26 @@ export function buildSankey(cc: CloudControl): SankeyModel {
   const destsSet = new Set<string>();
 
   for (const row of rows) {
-    // Parse source from label (before the arrow)
-    const [source] = row.label.split('→').map(s => s.trim());
-    sourcesSet.add(source);
+    let source: string;
+    let dest: string;
 
-    // Parse destination from label (after the arrow)
-    const parts = row.label.split('→');
-    let dest = parts[1]?.trim() || '';
-
-    // Relabel destinations based on kind and value
-    if (row.kind === 'app' && dest === 'SaaS / internet egress') {
-      // app rows to 'internet' are already labeled as 'SaaS / internet egress'
-    } else if (row.kind === 'c2c') {
+    // c2c rows use '↔'; app rows use '→'
+    if (row.kind === 'c2c') {
+      // c2c source: left side of '↔' (e.g. "AWS us-east-1")
+      source = row.label.split('↔')[0].trim();
       dest = 'Inter-cloud';
+    } else {
+      // app rows: split on '→'
+      source = row.label.split('→')[0].trim();
+      // Relabel destination when `row.dst === 'internet'`
+      if (row.dst === 'internet') {
+        dest = 'SaaS / internet egress';
+      } else {
+        dest = row.label.split('→')[1]?.trim() || '';
+      }
     }
 
+    sourcesSet.add(source);
     destsSet.add(dest);
   }
 
@@ -87,23 +96,31 @@ export function buildSankey(cc: CloudControl): SankeyModel {
   const pathToDests = new Map<string, number>(); // key: "pathIdx:destIdx" -> value
 
   for (const row of rows) {
-    // Parse source
-    const [source] = row.label.split('→').map(s => s.trim());
+    let source: string;
+    let dest: string;
+
+    // c2c rows use '↔'; app rows use '→'
+    if (row.kind === 'c2c') {
+      // c2c source: left side of '↔'
+      source = row.label.split('↔')[0].trim();
+      dest = 'Inter-cloud';
+    } else {
+      // app rows: split on '→'
+      source = row.label.split('→')[0].trim();
+      // Relabel destination when `row.dst === 'internet'`
+      if (row.dst === 'internet') {
+        dest = 'SaaS / internet egress';
+      } else {
+        dest = row.label.split('→')[1]?.trim() || '';
+      }
+    }
+
     const sourceIdx = nodeIndex.get(`source:${source}`)!;
 
     // Determine path
     const pathKind = row.current.attControlled ? 'private' : 'public';
     const pathName = pathKind === 'private' ? PATH_NODES.private : PATH_NODES.public;
     const pathIdx = nodeIndex.get(`path:${pathName}`)!;
-
-    // Parse destination
-    const parts = row.label.split('→');
-    let dest = parts[1]?.trim() || '';
-
-    // Relabel destinations
-    if (row.kind === 'c2c') {
-      dest = 'Inter-cloud';
-    }
 
     const destIdx = nodeIndex.get(`dest:${dest}`)!;
 
