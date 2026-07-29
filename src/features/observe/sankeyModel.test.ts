@@ -55,6 +55,13 @@ describe('buildSankey', () => {
     expect(pathNames).toContain('Public internet');
   });
 
+  it('dest band names "Object storage" the same way Flow Logs does — not state-routing\'s lowercase "object storage"', () => {
+    const s = buildSankey(CC);
+    const destNames = s.nodes.filter(n => n.band === 'dest').map(n => n.name);
+    expect(destNames).toContain('Object storage');
+    expect(destNames).not.toContain('object storage');
+  });
+
   it('c2c flows land on the "Inter-cloud" dest node with value > 0', () => {
     const s = buildSankey(CC);
     const intercloudDest = s.nodes.find(n => n.band === 'dest' && n.name === 'Inter-cloud');

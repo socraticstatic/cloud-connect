@@ -1,4 +1,5 @@
 import type { CloudControl } from '../../engine/types';
+import { DST_LABELS } from './flowLogs';
 
 // Shape of a routeFlows() row (src/engine/state-routing.ts) — untyped at the
 // source (// @ts-nocheck), so we mirror the fields this binding consumes.
@@ -12,6 +13,31 @@ interface RouteFlowRow {
   gbps: number;
   dst?: string; // present on app rows only (kind: 'app')
   current: { attControlled: boolean };
+}
+
+/** Every row's source, dest, and path, derived once and shared by both the
+ *  node-collection pass and the link-building pass below — so the two
+ *  passes can never drift from each other on how a row is read.
+ *
+ *  Dest for app rows comes from `row.dst` via flowLogs' own DST_LABELS —
+ *  the SAME map flow-log records use for their `dst` field — not from
+ *  parsing `row.label` (state-routing.ts's own DST_LABEL is a *different*,
+ *  lowercase-cased map meant for its log line, e.g. 'object storage'; the
+ *  Sankey dest band needs to read the same node names Flow Logs does, e.g.
+ *  'Object storage', or the two surfaces disagree over the exact same
+ *  data). The label parse is kept only as a fallback for a `dst` this map
+ *  doesn't recognize. */
+function rowEndpoints(row: RouteFlowRow): { source: string; dest: string; pathKind: 'private' | 'public' } {
+  const pathKind: 'private' | 'public' = row.current.attControlled ? 'private' : 'public';
+
+  if (row.kind === 'c2c') {
+    // c2c source: left side of '↔' (e.g. "AWS us-east-1")
+    return { source: row.label.split('↔')[0].trim(), dest: 'Inter-cloud', pathKind };
+  }
+
+  const source = row.label.split('→')[0].trim();
+  const dest = (row.dst && DST_LABELS[row.dst]) || row.label.split('→')[1]?.trim() || '';
+  return { source, dest, pathKind };
 }
 
 export interface SankeyNode {
@@ -44,25 +70,7 @@ export function buildSankey(cc: CloudControl): SankeyModel {
   const destsSet = new Set<string>();
 
   for (const row of rows) {
-    let source: string;
-    let dest: string;
-
-    // c2c rows use '↔'; app rows use '→'
-    if (row.kind === 'c2c') {
-      // c2c source: left side of '↔' (e.g. "AWS us-east-1")
-      source = row.label.split('↔')[0].trim();
-      dest = 'Inter-cloud';
-    } else {
-      // app rows: split on '→'
-      source = row.label.split('→')[0].trim();
-      // Relabel destination when `row.dst === 'internet'`
-      if (row.dst === 'internet') {
-        dest = 'SaaS / internet egress';
-      } else {
-        dest = row.label.split('→')[1]?.trim() || '';
-      }
-    }
-
+    const { source, dest } = rowEndpoints(row);
     sourcesSet.add(source);
     destsSet.add(dest);
   }
@@ -96,29 +104,10 @@ export function buildSankey(cc: CloudControl): SankeyModel {
   const pathToDests = new Map<string, number>(); // key: "pathIdx:destIdx" -> value
 
   for (const row of rows) {
-    let source: string;
-    let dest: string;
-
-    // c2c rows use '↔'; app rows use '→'
-    if (row.kind === 'c2c') {
-      // c2c source: left side of '↔'
-      source = row.label.split('↔')[0].trim();
-      dest = 'Inter-cloud';
-    } else {
-      // app rows: split on '→'
-      source = row.label.split('→')[0].trim();
-      // Relabel destination when `row.dst === 'internet'`
-      if (row.dst === 'internet') {
-        dest = 'SaaS / internet egress';
-      } else {
-        dest = row.label.split('→')[1]?.trim() || '';
-      }
-    }
+    const { source, dest, pathKind } = rowEndpoints(row);
 
     const sourceIdx = nodeIndex.get(`source:${source}`)!;
 
-    // Determine path
-    const pathKind = row.current.attControlled ? 'private' : 'public';
     const pathName = pathKind === 'private' ? PATH_NODES.private : PATH_NODES.public;
     const pathIdx = nodeIndex.get(`path:${pathName}`)!;
 

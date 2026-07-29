@@ -14,11 +14,49 @@ describe('flowLogs', () => {
     expect(new Set(a.map(r => r.id)).size).toBe(a.length);
   });
 
-  it('path copies the engine attachment fact', () => {
-    for (const r of flowLogs(CC)) {
-      const region = (CC.regions[r.src.cloudId] || []).find((x: { id: string }) => x.id === r.src.regionId) as { attached?: boolean };
-      expect(r.path).toBe(region?.attached ? 'private' : 'public');
+  it('path copies the engine attachment fact — the SAME verdict routeFlows() states', () => {
+    // Mirror flowLogs.ts's own lookup: routeFlows() aggregates every flow
+    // sharing a (tag, dst) key onto one row and states a single
+    // attControlled verdict for it. A record's path must copy THAT verdict,
+    // not re-derive one from its own flow's region — those can disagree
+    // once a (tag, dst) pair spans regions with different attachment.
+    const routeRows = CC.routeFlows() as { id: string; dst?: string; current: { attControlled: boolean } }[];
+    const verdicts = new Map<string, boolean>();
+    for (const row of routeRows) {
+      if (!row.dst) continue; // c2c row — no (tag, dst) key
+      const suffix = '-' + row.dst;
+      if (!row.id.startsWith('r-') || !row.id.endsWith(suffix)) continue;
+      const tag = row.id.slice(2, row.id.length - suffix.length);
+      verdicts.set(`${tag}|${row.dst}`, row.current.attControlled);
     }
+    const dstToRaw: Record<string, string> = {
+      'AI endpoints': 'ai-endpoints',
+      'Object storage': 'storage',
+      'SaaS / internet egress': 'internet',
+    };
+
+    const records = flowLogs(CC);
+    let fellBackToRegion = 0;
+    for (const r of records) {
+      const rawDst = dstToRaw[r.dst];
+      const verdict = verdicts.get(`${r.src.tag}|${rawDst}`);
+      if (verdict !== undefined) {
+        expect(r.path).toBe(verdict ? 'private' : 'public');
+      } else {
+        // Fallback case: this (tag, dst) pair has no aggregate row in
+        // routeFlows() (below its 1.5 Gbps significance filter) — the
+        // record keeps the flow's own region.attached fact instead.
+        fellBackToRegion++;
+        const region = (CC.regions[r.src.cloudId] || []).find((x: { id: string }) => x.id === r.src.regionId) as {
+          attached?: boolean;
+        };
+        expect(r.path).toBe(region?.attached ? 'private' : 'public');
+      }
+    }
+    // The estate seeds at least one (tag, dst) pair below routeFlows()'s
+    // significance filter (finance-invoices → storage) — assert the
+    // fallback branch above is actually exercised, not vacuously true.
+    expect(fellBackToRegion).toBeGreaterThan(0);
   });
 
   it('pre-deploy: no record is inspected and none is denied', () => {

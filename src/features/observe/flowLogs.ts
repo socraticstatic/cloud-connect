@@ -62,6 +62,36 @@ export const DST_LABELS: Record<string, string> = {
    example the spec names. */
 const DENY_TAG = 'finance-invoices';
 
+// Shape of a routeFlows() row (src/engine/state-routing.ts) — untyped at the
+// source (// @ts-nocheck) but already mirrored on the CloudControl interface
+// (src/engine/types.ts). App rows carry `dst` and an id of the exact form
+// 'r-'+tag+'-'+dst (state-routing.ts:186) — tag isn't projected as its own
+// field, so it's recovered by stripping the known '-'+dst suffix (safe even
+// though tags like 'rd-helion' contain hyphens, since the suffix match is
+// anchored to the literal dst string). c2c rows have no `dst` and are
+// skipped — flowLogs never emits c2c records.
+interface RouteFlowRow {
+  id: string;
+  dst?: string;
+  current: { attControlled: boolean };
+}
+
+/** Builds the tag+dst -> attControlled lookup from routeFlows(), once per
+ *  flowLogs() call. Every record's path must copy the SAME verdict
+ *  routeFlows states for its (tag, dst) pair — this is that verdict. */
+function buildRouteVerdicts(cc: CloudControl): Map<string, boolean> {
+  const verdicts = new Map<string, boolean>();
+  const rows = cc.routeFlows() as RouteFlowRow[];
+  rows.forEach(row => {
+    if (!row.dst) return; // c2c row — no (tag, dst) key to join on
+    const suffix = '-' + row.dst;
+    if (!row.id.startsWith('r-') || !row.id.endsWith(suffix)) return;
+    const tag = row.id.slice(2, row.id.length - suffix.length);
+    verdicts.set(`${tag}|${row.dst}`, row.current.attControlled);
+  });
+  return verdicts;
+}
+
 /** Maps a workload id (srcVpc) to where it lives, built once per call by
  *  walking clouds -> regions[cloudId] -> vpcs[regionId] in the same order
  *  flows() itself walks — so this never has to guess a vpc's home. */
@@ -92,6 +122,7 @@ export function flowLogs(cc: CloudControl): FlowLogRecord[] {
   const rows = (cc as unknown as { flows(): FlowRow[] }).flows();
   const vpcIndex = buildVpcIndex(cc);
   const regionsByCloud = (cc as unknown as { regions: Record<string, Region[]> }).regions;
+  const routeVerdicts = buildRouteVerdicts(cc);
 
   const out: FlowLogRecord[] = [];
 
@@ -114,9 +145,21 @@ export function flowLogs(cc: CloudControl): FlowLogRecord[] {
     if (!loc) return;
 
     const region = (regionsByCloud[loc.cloudId] || []).find(r => r.id === loc.regionId);
-    const path: 'private' | 'public' = region?.attached ? 'private' : 'public';
-
     const tag = f.srcTag || 'untagged';
+
+    // path must copy the SAME verdict routeFlows() states for this (tag,
+    // dst) pair, not be re-derived per-flow — routeFlows aggregates every
+    // flow sharing a (tag, dst) key onto ONE representative region, so a
+    // flow's own region.attached can disagree with the verdict the rest of
+    // the app (Sankey, routing KPIs) actually shows for that pair.
+    // Fallback ONLY for raw flows with no aggregate row: routeFlows()
+    // drops (tag, dst) pairs whose combined gbps is below its 1.5 Gbps
+    // significance filter, so a handful of low-volume flows never get a
+    // verdict to copy — those keep the flow's own region.attached fact.
+    const verdict = routeVerdicts.get(`${tag}|${f.dst}`);
+    const path: 'private' | 'public' =
+      verdict !== undefined ? (verdict ? 'private' : 'public') : region?.attached ? 'private' : 'public';
+
     const managed = cc.managedVpcFor(loc.cloudId, loc.regionId);
     const inspected = !!managed && managed.stage === 'live';
 
