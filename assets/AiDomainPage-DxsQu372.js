@@ -1,1 +1,0 @@
-import{j as t}from"./react-C71sbGEs.js";import"./configure-BNWi5If_.js";import"./main-Br_Mgs5I.js";import{P as o}from"./PageSection-Dsia4guq.js";function e({verb:i,description:a,children:m}){return t.jsx("div",{className:"max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-8 space-y-6",children:t.jsx(o,{title:`AI Fabric · ${i}`,description:a,children:m})})}export{e as A};
