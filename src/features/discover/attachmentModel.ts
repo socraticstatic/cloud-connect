@@ -1,4 +1,4 @@
-import type { CloudControl } from '../../engine/types';
+import type { CloudControl, ManagedVpc } from '../../engine/types';
 import { buildMap } from './buildMap';
 import {
   regionsOf, vpcsOf, regionLatencyMap, regionLatencyPathMap,
@@ -46,6 +46,9 @@ export interface AttachmentChain {
   candidateOnrampId: string | null;
   path: { kind: 'private' | 'public'; latencyMs: number };
   internet: { egressNote: string } | null;
+  /** The region's AT&T-managed gateway VPC/VNET — only once it has gone
+   *  live; null while it doesn't exist or is still mid-deploy. */
+  managedVpc: ManagedVpc | null;
 }
 
 interface RampLike {
@@ -59,6 +62,14 @@ const rampsOf = (cc: CloudControl): RampLike[] =>
 /** On-ramps whose targets reach this cloud/region (the engine's rampsFor logic). */
 export function servingRamps(cc: CloudControl, cloudId: string, regionId: string): RampLike[] {
   return rampsOf(cc).filter(o => o.targets.some(([c, r]) => c === cloudId && r === regionId));
+}
+
+/** The region's managed VPC/VNET record, but only once it has earned live —
+ *  a chain or map cannot claim a hop that isn't actually up yet. */
+function liveManagedVpc(cc: CloudControl, cloudId: string, regionId: string): ManagedVpc | null {
+  const mv = (cc as unknown as { managedVpcFor?: (c: string, r: string) => ManagedVpc | null })
+    .managedVpcFor?.(cloudId, regionId) ?? null;
+  return mv && mv.stage === 'live' ? mv : null;
 }
 
 /** The ONE ramp that serves a region — active wins, else first on order. Every
@@ -110,6 +121,14 @@ export function attachmentChain(
     .filter(g => g.ic === 'dx' || g.ic === 'tgw')
     .map(g => ({ id: g.id, name: g.name, type: g.type }));
 
+  const live = liveManagedVpc(cc, cloudId, regionId);
+  if (live) {
+    gateways.push({
+      id: live.id, name: live.name,
+      type: (cloudId === 'azure' ? 'AT&T managed VNET' : 'AT&T managed VPC') + ' · vSRX HA pair',
+    });
+  }
+
   const ramp = servingRamp(cc, cloudId, regionId);
 
   const circuit: ChainCircuit | null = vpc.attached && ramp
@@ -140,6 +159,7 @@ export function attachmentChain(
     internet: vpc.attached
       ? null
       : { egressNote: 'Traffic leaves through the internet gateway — no AT&T-controlled path.' },
+    managedVpc: live,
   };
 }
 
@@ -166,7 +186,7 @@ export interface AttachmentMapModel {
   onramps: { id: string; name: string; type: string; short: string; site: string; active: boolean }[];
   groups: {
     cloudId: string; cloudName: string; color: string;
-    regions: { region: Region; regionIndex: number; workloads: MapWorkload[]; viaShort: string | null }[];
+    regions: { region: Region; regionIndex: number; workloads: MapWorkload[]; viaShort: string | null; managedVpc: boolean }[];
   }[];
 }
 
@@ -189,6 +209,7 @@ export function buildAttachmentMapModel(cc: CloudControl): AttachmentMapModel {
           region, regionIndex,
           workloads: vpcsOf(cc, region.id).map(vpc => ({ cloudId: c.id, regionId: region.id, vpc })),
           viaShort: ramp ? rampShort(ramp.type) : null,
+          managedVpc: !!liveManagedVpc(cc, c.id, region.id),
         };
       }),
     })),

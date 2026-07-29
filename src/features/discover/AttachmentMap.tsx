@@ -5,6 +5,7 @@ import { ProviderLogo } from '../../components/brand/ProviderLogo';
 import { buildAttachmentMapModel } from './attachmentModel';
 import { computeAttachmentLayout, NODE_H, SITE_W, WL_W } from './attachmentLayout';
 import { ChainDrawer, type MapSelection } from './ChainDrawer';
+import { DeployManagedVpcWizard } from '../connect/DeployManagedVpcWizard';
 
 /**
  * The Attachment Map — the second lens on Discover. Four bands: sites →
@@ -27,6 +28,7 @@ export function AttachmentMap() {
   const model = buildAttachmentMapModel(cc);
   const layout = computeAttachmentLayout(model);
   const [sel, setSel] = useState<MapSelection | null>(null);
+  const [deploy, setDeploy] = useState<{ cloudId: string; regionId: string } | null>(null);
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start" data-testid="attachment-map">
@@ -93,16 +95,25 @@ export function AttachmentMap() {
           ))}
 
           {/* region labels */}
-          {layout.workloads.filter(w => w.regionLabel).map(w => (
-            <text
-              key={`r-${w.wl.regionId}`}
-              x={w.regionLabel!.x} y={w.regionLabel!.y - NODE_H / 2 - 4}
-              fontSize={10} fontWeight={600} fill="#475569"
-              style={{ textTransform: 'uppercase' }}
-            >
-              {`${w.regionLabel!.cloudName} · ${w.regionLabel!.regionName}`}
-            </text>
-          ))}
+          {layout.workloads.filter(w => w.regionLabel).map(w => {
+            const hasManaged = !!model.groups
+              .find(g => g.cloudId === w.wl.cloudId)?.regions
+              .find(r => r.region.id === w.wl.regionId)?.managedVpc;
+            return (
+              <text
+                key={`r-${w.wl.regionId}`}
+                x={w.regionLabel!.x} y={w.regionLabel!.y - NODE_H / 2 - 4}
+                fontSize={10} fontWeight={600} fill="#475569"
+                style={{ textTransform: 'uppercase' }}
+              >
+                {hasManaged && <title>{'AT&T managed gateway · vSRX HA pair live'}</title>}
+                {`${w.regionLabel!.cloudName} · ${w.regionLabel!.regionName}`}
+                {hasManaged && (
+                  <tspan fill="#0057b8" fontWeight={700}> · vSRX</tspan>
+                )}
+              </text>
+            );
+          })}
 
           {/* workload nodes */}
           {layout.workloads.map(w => (
@@ -150,7 +161,15 @@ export function AttachmentMap() {
         </div>
       </div>
 
-      {sel && <ChainDrawer selection={sel} onClose={() => setSel(null)} />}
+      {sel && (
+        <ChainDrawer
+          selection={sel}
+          onClose={() => setSel(null)}
+          onDeployManagedVpc={(cloudId, regionId) => setDeploy({ cloudId, regionId })}
+        />
+      )}
+
+      {deploy && <DeployManagedVpcWizard lockedRegion={deploy} onClose={() => setDeploy(null)} />}
     </div>
   );
 }

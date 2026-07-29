@@ -1,6 +1,7 @@
 import { X, Link2, Globe, Network, ArrowDown } from 'lucide-react';
 import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
 import { attachmentChain, workloadsOnRamp, rampShort, bandwidthOf } from './attachmentModel';
+import type { ManagedVpc } from '../../engine/types';
 
 /**
  * The Attachment Map's detail drawer. A workload selection renders the chain
@@ -31,7 +32,59 @@ const Down = () => (
   </div>
 );
 
-export function ChainDrawer({ selection, onClose }: { selection: MapSelection; onClose: () => void }) {
+/** The vSRX HA pair's live detail, rendered under the managed-hop node once
+ *  the record has earned live: nodes with role + state, interfaces with
+ *  toward + state, BGP sessions as state chips, throughput. */
+function ManagedVpcDetail({ managedVpc }: { managedVpc: ManagedVpc }) {
+  return (
+    <div className="mt-1 space-y-1.5 rounded-lg border border-fw-secondary bg-fw-wash/60 px-2.5 py-2 text-[11px]">
+      <div className="space-y-0.5">
+        {managedVpc.vsrx.nodes.map(n => (
+          <div key={n.id} className="flex items-center justify-between text-fw-bodyLight">
+            <span>{`${n.id} · ${n.role}`}</span>
+            <span className="font-medium text-fw-heading">{n.state}</span>
+          </div>
+        ))}
+      </div>
+      <div className="space-y-0.5 border-t border-fw-secondary/60 pt-1">
+        {managedVpc.vsrx.interfaces.map(i => (
+          <div key={i.name} className="flex items-center justify-between text-fw-bodyLight">
+            <span>{`${i.name} → ${i.toward}`}</span>
+            <span className="font-medium text-fw-heading">{i.state}</span>
+          </div>
+        ))}
+      </div>
+      <div className="space-y-1 border-t border-fw-secondary/60 pt-1">
+        {managedVpc.vsrx.bgp.map(b => (
+          <div key={b.peer} className="flex items-center justify-between">
+            <span className="text-fw-bodyLight">{b.label}</span>
+            <span className={`inline-flex items-center rounded-full px-1.5 py-px font-medium ${
+              b.state === 'established'
+                ? 'border border-fw-success bg-fw-successLight text-fw-success'
+                : 'border border-fw-secondary bg-fw-wash text-fw-bodyLight'
+            }`}>
+              {b.state}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-fw-secondary/60 pt-1 text-fw-bodyLight">
+        {`Throughput ${managedVpc.vsrx.throughput}`}
+      </div>
+    </div>
+  );
+}
+
+export function ChainDrawer({
+  selection, onClose, onDeployManagedVpc,
+}: {
+  selection: MapSelection;
+  onClose: () => void;
+  /** Provided by the map when it hosts the wizard. The door itself only
+   *  renders once the region has no managed-VPC record at any stage — a
+   *  deploy in flight or already live owns the space instead. */
+  onDeployManagedVpc?: (cloudId: string, regionId: string) => void;
+}) {
   const cc = useCloudControl(c => c);
   const actions = useCloudControlActions();
 
@@ -63,6 +116,9 @@ export function ChainDrawer({ selection, onClose }: { selection: MapSelection; o
           ? (cc as unknown as { onramps: { id: string; name: string; active?: boolean }[] }).onramps.find(o => o.id === chain.candidateOnrampId)
           : undefined;
         const canAttach = ramp && !ramp.active;
+        const hasManagedRecord = !!cc.managedVpcFor?.(selection.cloudId, selection.regionId);
+        const regionName = ((cc.regions?.[selection.cloudId] ?? []) as { id: string; name: string }[])
+          .find(r => r.id === selection.regionId)?.name ?? selection.regionId;
         return (
           <div>
             <Hop title={chain.workload.name} sub={`${chain.workload.cidr} · ${chain.workload.role}`}>
@@ -74,8 +130,20 @@ export function ChainDrawer({ selection, onClose }: { selection: MapSelection; o
               <div key={g.id}>
                 <Down />
                 <Hop title={g.name} sub={g.type} />
+                {chain.managedVpc && g.id === chain.managedVpc.id && (
+                  <ManagedVpcDetail managedVpc={chain.managedVpc} />
+                )}
               </div>
             ))}
+            {!hasManagedRecord && onDeployManagedVpc && (
+              <button
+                type="button"
+                onClick={() => onDeployManagedVpc(selection.cloudId, selection.regionId)}
+                className="mt-2 inline-flex h-8 w-full items-center justify-center rounded-lg border border-fw-secondary px-3 text-figma-xs font-semibold text-fw-body transition-colors hover:bg-fw-wash"
+              >
+                {`Deploy managed VPC in ${regionName}`}
+              </button>
+            )}
             <Down />
             {chain.circuit ? (
               <>
