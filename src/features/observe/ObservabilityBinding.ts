@@ -1,5 +1,7 @@
+import type { SankeyModel } from './sankeyModel';
+
 export interface Kpi { key: string; label: string; value: string; unit?: string; sub?: string; }
-export interface FlowTab { id: string; label: string; }
+export interface FlowTab { id: string; label: string; view?: 'series' | 'sankey'; }
 export interface SeriesPoint { t: string; v: number; }
 export interface RecordRow { id: string; label: string; cells: string[]; tone?: 'ok' | 'warn' | 'bad' | 'muted'; }
 export interface BriefingBlock { text: string; emphasis?: 'strong' | 'risk'; }
@@ -21,4 +23,7 @@ export interface ObservabilityBinding {
    *  carries no engine-known moments simply omits it — the scrubber still
    *  works, markerless. */
   moments?(): TimelineMoment[];
+  /** Builds the Sankey model for a `view: 'sankey'` flow tab. Optional: a
+   *  binding with no sankey-view tabs simply omits it. */
+  sankey?(): SankeyModel;
 }

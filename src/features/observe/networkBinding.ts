@@ -8,6 +8,7 @@ import type {
   Briefing,
   BriefingBlock,
 } from './ObservabilityBinding';
+import { buildSankey } from './sankeyModel';
 
 // Shape of a routeFlows() row (src/engine/state-routing.ts) — untyped at the
 // source (// @ts-nocheck), so we mirror the fields this binding consumes.
@@ -46,7 +47,7 @@ interface Telemetry {
 const SERIES_POINTS = 24;
 
 const FLOW_TABS: FlowTab[] = [
-  { id: 'flow', label: 'Flow' },
+  { id: 'flow', label: 'Flow', view: 'sankey' },
   { id: 'trend', label: 'Trend' },
   { id: 'throughput', label: 'Throughput' },
   { id: 'latency', label: 'Latency' },
@@ -297,5 +298,6 @@ export function networkBinding(cc: CloudControl): ObservabilityBinding {
     records: (groupBy: string) => buildRecords(cc, groupBy),
     briefing: () => buildBriefing(cc),
     moments: () => cc.windowMoments(),
+    sankey: () => buildSankey(cc),
   };
 }

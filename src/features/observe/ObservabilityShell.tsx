@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ObservabilityBinding, RecordRow } from './ObservabilityBinding';
+import { SankeyPanel } from './SankeyPanel';
 
 // Left-border tone indicator per record row. `ok` resolves against
 // tailwind.config.js's `borderColor.fw-success`; the attention tone ("warn"/
@@ -34,7 +35,9 @@ export function ObservabilityShell({ binding }: { binding: ObservabilityBinding 
   const hasSeries = series.length > 0 && !series.every(p => p.v === 0);
   const reviewing = cursor !== null && hasSeries;
   const at = reviewing ? Math.min(cursor, series.length - 1) : null;
-  const tabLabel = tabs.find(t => t.id === tab)?.label ?? tab;
+  const activeTab = tabs.find(t => t.id === tab);
+  const tabLabel = activeTab?.label ?? tab;
+  const isSankey = activeTab?.view === 'sankey';
   // A moment "reaches" the cursor when it sits within 6% of the window.
   const nearMoment = at !== null && series.length > 1
     ? moments.find(m => Math.abs(m.at - at / (series.length - 1)) < 0.06) ?? null
@@ -90,7 +93,9 @@ export function ObservabilityShell({ binding }: { binding: ObservabilityBinding 
               ))}
             </div>
             <div data-testid="flow-panel" data-tab={tab} className="p-4">
-              {series.length === 0 || series.every(p => p.v === 0) ? (
+              {isSankey ? (
+                <SankeyPanel model={binding.sankey!()} />
+              ) : series.length === 0 || series.every(p => p.v === 0) ? (
                 <div data-testid="flow-empty" className="h-24 flex items-center justify-center text-figma-sm text-fw-bodyLight text-center px-4">
                   {binding.emptyHint ?? 'No flow in this window yet.'}
                 </div>
@@ -118,8 +123,9 @@ export function ObservabilityShell({ binding }: { binding: ObservabilityBinding 
               )}
 
               {/* The time machine: scrub the window the charts already draw.
-                  Markers sit only where the engine placed a moment. */}
-              {hasSeries && (
+                  Markers sit only where the engine placed a moment. Series
+                  tabs only — the sankey has no timeline to scrub. */}
+              {!isSankey && hasSeries && (
                 <div className="mt-3">
                   <div className="relative">
                     <input
