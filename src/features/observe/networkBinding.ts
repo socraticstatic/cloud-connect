@@ -9,6 +9,7 @@ import type {
   BriefingBlock,
 } from './ObservabilityBinding';
 import { buildSankey } from './sankeyModel';
+import { flowLogs, BUCKETS, type FlowLogRecord } from './flowLogs';
 
 // Shape of a routeFlows() row (src/engine/state-routing.ts) — untyped at the
 // source (// @ts-nocheck), so we mirror the fields this binding consumes.
@@ -58,10 +59,10 @@ const FLOW_TABS: FlowTab[] = [
 
 const GROUP_BY_OPTIONS: { id: string; label: string }[] = [
   { id: 'none', label: 'None' },
+  { id: 'source', label: 'Source' },
+  { id: 'destination', label: 'Destination' },
   { id: 'path', label: 'Path' },
-  { id: 'cloud', label: 'Cloud' },
-  { id: 'region', label: 'Region' },
-  { id: 'control', label: 'Control' },
+  { id: 'action', label: 'Action' },
 ];
 
 function fmtDollars(n: number): string {
@@ -120,7 +121,6 @@ function buildFlowSeries(cc: CloudControl, tab: string): SeriesPoint[] {
     case 'control': {
       return seriesFromNumbers(egress.map(e => (e.pub + e.priv ? (e.priv / (e.pub + e.priv)) * 100 : 0)));
     }
-    case 'flow':
     case 'trend':
     case 'throughput':
     default: {
@@ -132,77 +132,102 @@ function buildFlowSeries(cc: CloudControl, tab: string): SeriesPoint[] {
   }
 }
 
-function toneFor(row: RouteFlowRow): RecordRow['tone'] {
-  if (row.current.attControlled) return row.diverse ? 'ok' : 'warn';
-  return 'bad';
+/** ≥1e9 → GB, ≥1e6 → MB, else KB — one decimal place throughout. */
+function fmtBytes(bytes: number): string {
+  if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;
+  if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(1)} MB`;
+  return `${(bytes / 1e3).toFixed(1)} KB`;
 }
 
-function pathLabel(row: RouteFlowRow): string {
-  return row.current.attControlled ? row.current.sub ?? 'AT&T mid-mile' : 'Public internet';
+/** deny → bad; an allow that passed vSRX inspection → ok; an uninspected
+ *  flow riding the public path → muted (attention without alarm); anything
+ *  else (an uninspected private flow) carries no tone. */
+function toneForLog(r: FlowLogRecord): RecordRow['tone'] {
+  if (r.action === 'deny') return 'bad';
+  if (r.vsrx && r.action === 'allow') return 'ok';
+  if (!r.vsrx && r.path === 'public') return 'muted';
+  return undefined;
 }
 
-function controlLabel(row: RouteFlowRow): string {
-  return row.current.attControlled ? 'Controlled' : 'Uncontrolled';
+/** BUCKETS runs oldest ('T-04') → newest ('T-00'); "newest bucket first"
+ *  reverses that ordering. Array#sort is a stable sort, so ties (same
+ *  bucket, different flows) keep flowLogs()'s own relative order. */
+const BUCKET_ORDER = [...BUCKETS].slice().reverse();
+
+function buildLogRow(r: FlowLogRecord): RecordRow {
+  const action = r.action + (r.vsrx ? ` · ${r.vsrx.zoneFrom}→${r.vsrx.zoneTo}` : '');
+  return {
+    id: r.id,
+    label: r.src.label,
+    cells: [r.bucket, r.src.label, r.dst, `${r.proto}/${r.port}`, fmtBytes(r.bytes), r.path, action],
+    tone: toneForLog(r),
+  };
 }
 
-function cellsFor(row: RouteFlowRow): string[] {
-  return [row.label, row.gbps.toFixed(1), `${Math.round(row.current.latencyMs)}ms`, pathLabel(row), controlLabel(row)];
-}
-
-function groupKey(row: RouteFlowRow, groupBy: string): string {
+function groupKeyForLog(r: FlowLogRecord, groupBy: string): string {
   switch (groupBy) {
+    case 'source':
+      return r.src.label;
+    case 'destination':
+      return r.dst;
     case 'path':
-      return row.current.attControlled ? 'Private (AT&T)' : 'Public internet';
-    case 'cloud':
-      return row.srcCloud ?? (row.kind === 'c2c' ? 'Cloud-to-cloud' : 'Unknown cloud');
-    case 'region':
-      return row.srcRid ?? (row.kind === 'c2c' ? 'Backbone' : 'Unknown region');
-    case 'control':
-      return controlLabel(row);
+      return r.path;
+    case 'action':
+      return r.action;
     default:
       return 'All flows';
   }
 }
 
+/** The column this groupBy summarizes shows the group key itself; every
+ *  other column shows its single common value, or a "<n> distinct" count
+ *  when the group spans more than one. */
+function distinctOr(values: string[]): string {
+  const uniq = [...new Set(values)];
+  return uniq.length === 1 ? uniq[0] : `${uniq.length} distinct`;
+}
+
+function buildGroupRow(groupBy: string, key: string, list: FlowLogRecord[]): RecordRow {
+  const totalBytes = list.reduce((s, r) => s + r.bytes, 0);
+  const denyCount = list.filter(r => r.action === 'deny').length;
+  return {
+    id: 'grp-' + groupBy + '-' + key,
+    label: key,
+    cells: [
+      `${list.length} records`,
+      groupBy === 'source' ? key : distinctOr(list.map(r => r.src.label)),
+      groupBy === 'destination' ? key : distinctOr(list.map(r => r.dst)),
+      distinctOr(list.map(r => `${r.proto}/${r.port}`)),
+      fmtBytes(totalBytes),
+      groupBy === 'path' ? key : distinctOr(list.map(r => r.path)),
+      groupBy === 'action' ? key : distinctOr(list.map(r => r.action)),
+    ],
+    tone: denyCount > 0 ? 'bad' : undefined,
+  };
+}
+
 function buildRecords(cc: CloudControl, groupBy: string): RecordRow[] {
-  const rows = cc.routeFlows() as RouteFlowRow[];
+  const logs = flowLogs(cc);
 
   if (groupBy === 'none') {
-    return rows.map(r => ({ id: r.id, label: r.label, cells: cellsFor(r), tone: toneFor(r) }));
+    return logs
+      .slice()
+      .sort((a, b) => BUCKET_ORDER.indexOf(a.bucket) - BUCKET_ORDER.indexOf(b.bucket))
+      .map(buildLogRow);
   }
 
-  const groups = new Map<string, RouteFlowRow[]>();
-  rows.forEach(r => {
-    const key = groupKey(r, groupBy);
+  const groups = new Map<string, FlowLogRecord[]>();
+  logs.forEach(r => {
+    const key = groupKeyForLog(r, groupBy);
     const list = groups.get(key) ?? [];
     list.push(r);
     groups.set(key, list);
   });
 
   return Array.from(groups.entries())
-    .map(([key, list]) => {
-      const gbps = list.reduce((s, r) => s + r.gbps, 0);
-      const latSorted = list.map(r => r.current.latencyMs).sort((a, b) => a - b);
-      const latMed = latSorted[Math.floor(latSorted.length / 2)] ?? 0;
-      const allControlled = list.every(r => r.current.attControlled);
-      const anyControlled = list.some(r => r.current.attControlled);
-      const label = `${key} (${list.length})`;
-      return {
-        id: 'grp-' + key,
-        label,
-        cells: [
-          label,
-          gbps.toFixed(1),
-          `${Math.round(latMed)}ms`,
-          allControlled ? 'Private (AT&T)' : anyControlled ? 'Mixed' : 'Public internet',
-          allControlled ? 'Controlled' : anyControlled ? 'Mixed' : 'Uncontrolled',
-        ],
-        tone: (allControlled ? 'ok' : anyControlled ? 'warn' : 'bad') as RecordRow['tone'],
-        _gbps: gbps,
-      };
-    })
-    .sort((a, b) => b._gbps - a._gbps)
-    .map(({ _gbps, ...row }) => row);
+    .map(([key, list]) => ({ row: buildGroupRow(groupBy, key, list), bytes: list.reduce((s, r) => s + r.bytes, 0) }))
+    .sort((a, b) => b.bytes - a.bytes)
+    .map(({ row }) => row);
 }
 
 /** Throughput-weighted network-wide packet loss at the latest sample (%). */
@@ -271,6 +296,18 @@ function buildBriefing(cc: CloudControl): Briefing {
     { text: summary },
   ];
 
+  const denies = flowLogs(cc).filter(r => r.action === 'deny');
+  if (denies.length) {
+    const first = denies[0];
+    const regionsByCloud = (cc as unknown as { regions: Record<string, { id: string; name: string }[]> }).regions;
+    const regionName =
+      regionsByCloud[first.src.cloudId]?.find(r => r.id === first.src.regionId)?.name ?? first.src.regionId;
+    narrative.push({
+      text: `vSRX in ${regionName} blocked ${denies.length} flows from ${first.src.tag}-tagged workloads.`,
+      emphasis: 'risk',
+    });
+  }
+
   return {
     narrative,
     actions: [
@@ -290,7 +327,7 @@ export function networkBinding(cc: CloudControl): ObservabilityBinding {
   return {
     layer: 'network',
     title: 'Network Observability',
-    columns: ['Flow', 'Gbps', 'Latency', 'Path', 'Control'],
+    columns: ['Time', 'Source', 'Destination', 'Proto/Port', 'Bytes', 'Path', 'Action'],
     kpis: () => buildKpis(cc),
     flowTabs: () => FLOW_TABS,
     flowSeries: (tabId: string) => buildFlowSeries(cc, tabId),
