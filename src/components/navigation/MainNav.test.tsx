@@ -33,9 +33,9 @@ describe('MainNav', () => {
       </BrowserRouter>
     );
 
-    // Rebrand: default tenant branding is "Cloud Connect" (was "NetBond").
+    // Rebrand: default tenant branding is "AI-grade network" (previously the old portal brand, and "NetBond" before that).
     expect(screen.getByText('AT&T')).toBeInTheDocument();
-    expect(screen.getByText('Cloud Connect')).toBeInTheDocument();
+    expect(screen.getByText('AI-grade network')).toBeInTheDocument();
   });
 
   // "renders navigation items" (old Create/Manage/Monitor/Configure nav) was

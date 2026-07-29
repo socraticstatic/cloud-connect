@@ -650,7 +650,7 @@ export function StackDeckPage() {
         style={{ background: '#ffffff', borderBottom: '1px solid #dcdfe3' }}>
         <div className="flex items-center gap-3">
           <span style={{ color: '#009fdb' }}><AttIcon name="hub" className="w-5 h-5" /></span>
-          <span className="text-[13px] font-bold" style={{ color: '#1d2329' }}>AT&amp;T Cloud Connect</span>
+          <span className="text-[13px] font-bold" style={{ color: '#1d2329' }}>AT&amp;T AI-grade network</span>
           <span className="text-[12px] font-medium px-2 py-0.5 rounded" style={{ background: '#f0f4ff', color: '#0057b8' }}>
             The Stack · layer-first IA
           </span>
@@ -687,25 +687,25 @@ export function StackDeckPage() {
         <div className="flex-1 flex flex-col justify-between max-w-5xl mx-auto w-full px-16 py-20">
           <div className="flex items-center gap-2">
             <span style={{ color: '#009fdb' }}><AttIcon name="hub" className="w-6 h-6" /></span>
-            <span className="text-[13px] font-medium" style={{ color: 'rgba(255,255,255,0.4)' }}>AT&amp;T Cloud Connect</span>
+            <span className="text-[13px] font-medium" style={{ color: 'rgba(255,255,255,0.4)' }}>AT&amp;T AI-grade network</span>
           </div>
           <div>
             <p className="text-[13px] font-medium tracking-[0.12em] uppercase mb-6" style={{ color: '#009fdb' }}>
-              Information architecture · Cloud Connect
+              Information architecture · AI-grade network
             </p>
             <h1 className="text-[68px] font-bold leading-[1.02] tracking-[-0.04em] mb-8" style={{ color: '#ffffff' }}>
               Enter through the layer.<br />Act through the lifecycle.
             </h1>
             <div className="w-16 h-1 mb-8 rounded-full" style={{ background: '#009fdb' }} />
             <p className="text-[22px] font-medium leading-relaxed max-w-2xl" style={{ color: 'rgba(255,255,255,0.7)' }}>
-              Every screen in Cloud Connect is one cell of a table: the thing you work on,
+              Every screen in the AI-grade network is one cell of a table: the thing you work on,
               crossed with what you do to it. The nav should read that table the way users do.
             </p>
           </div>
           <div className="flex items-end justify-between">
             <div>
               <p className="text-[15px] font-bold" style={{ color: 'rgba(255,255,255,0.9)' }}>Micah Boswell</p>
-              <p className="text-[13px] font-medium" style={{ color: 'rgba(255,255,255,0.4)' }}>UX Strategy · AT&amp;T Cloud Connect</p>
+              <p className="text-[13px] font-medium" style={{ color: 'rgba(255,255,255,0.4)' }}>UX Strategy · AT&amp;T AI-grade network</p>
             </div>
             <p className="text-[12px] font-medium" style={{ color: 'rgba(255,255,255,0.3)' }}>July 2026</p>
           </div>

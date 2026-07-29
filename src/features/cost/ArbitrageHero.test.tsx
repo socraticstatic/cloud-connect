@@ -16,7 +16,7 @@ describe('ArbitrageHero', () => {
     const arb = CC.arbitrage();
     render(<ArbitrageHero />);
 
-    // Cloud Connect (current) bill, compact.
+    // AI-grade network (current) bill, compact.
     expect(screen.getByTestId('hero-cc-bill')).toHaveTextContent(k(arb.cloudConnectBill));
     // Realized saving + percent.
     const saveNode = screen.getByTestId('hero-savings');

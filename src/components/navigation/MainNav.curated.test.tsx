@@ -13,7 +13,7 @@ const renderNav = (path = '/discover') =>
     </MemoryRouter>,
   );
 
-describe('MainNav curated Cloud Connect nav — layers on top', () => {
+describe('MainNav curated AI-grade network nav — layers on top', () => {
   test('the top bar carries Discover plus one tab per layer; Tasks is utility state, not a place', () => {
     renderNav();
     const tabs = screen.getAllByRole('tab').map(t => t.textContent?.trim());

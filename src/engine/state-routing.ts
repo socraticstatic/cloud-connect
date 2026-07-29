@@ -15,7 +15,7 @@ const FAILOVER={attMs:1800, nativeMs:47000};   // representative; sub-2s vs tens
 
 /* ---- THE latency derivation (option 1: one surface, everything downstream) ----
 
-   Cloud Connect used to carry three latency vocabularies for one estate:
+   The AI-grade network used to carry three latency vocabularies for one estate:
    `fabricModel().latencyMs` on /discover, Connect's Performance tile and the
    PathChoice cards; the raw seed `r.lat` (and `r.lat*1.7`) on every
    /naas/observe flow row; and a bare `~12ms` literal in the network briefing.

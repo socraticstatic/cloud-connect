@@ -267,7 +267,7 @@ interface ProductTourProps {
   /** Restart at step 1 every time the tour opens. Off by default, which
    * preserves the long-standing contract of `mainAppTour` (App.tsx): a user
    * who closes it partway through and reopens it lands back where they
-   * left off. The Cloud Connect demo tour (TourLauncher.tsx) opts in
+   * left off. The AI-grade network demo tour (TourLauncher.tsx) opts in
    * explicitly — rehearsing a demo means opening it again and again, and
    * every launch has to begin at the beginning. This is a shared component;
    * the reset behaviour must stay scoped to the caller that asked for it. */
@@ -296,7 +296,7 @@ export function ProductTour({ steps, isOpen, onClose, onComplete, storageKey = '
   /* Closing the tour does not unmount this component — `isOpen` only gates
      the render — so `currentStep` survives a close by default and the next
      launch resumes where the last one left off. `resetOnOpen` callers (the
-     Cloud Connect demo tour) want the opposite: every launch begins at the
+     AI-grade network demo tour) want the opposite: every launch begins at the
      beginning, because rehearsing a demo means opening the tour again and
      again. Gating on the prop keeps that behaviour from leaking into the
      main-app onboarding tour, which never asked for it. */

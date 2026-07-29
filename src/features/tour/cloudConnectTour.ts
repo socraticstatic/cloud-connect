@@ -161,7 +161,7 @@ function ensurePayoffRule(): void {
 }
 
 /**
- * Guided tour of Cloud Connect. The six-beat MVP demo arc — Discover, then
+ * Guided tour of the AI-grade network. The six-beat MVP demo arc — Discover, then
  * NaaS's Connect → Govern → Observe → Cost, closing on the AI Fabric's own
  * Govern — is the spine, and step
  * order is still bound to `DEMO_BEATS` (demoScript.ts): the tour visits those

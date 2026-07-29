@@ -128,7 +128,7 @@ export const NAV_LAYERS: NavLayer[] = [
 
 /**
  * Flat list, in render order. Discover first, then every verb of every layer.
- * Single source of truth for the curated Cloud Connect nav — consumed by
+ * Single source of truth for the curated AI-grade network nav — consumed by
  * MainNav.tsx, NavigationContext.tsx and MobileMenu.tsx. Do not duplicate it,
  * import it. Consumers that need the grouping read NAV_LAYERS instead.
  */

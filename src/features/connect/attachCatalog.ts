@@ -1,5 +1,5 @@
 /**
- * The five Phase-1 attach mechanisms Cloud Connect can bring a cloud onto the
+ * The five Phase-1 attach mechanisms the AI-grade network can bring a cloud onto the
  * AT&T fabric with. The routing engine already carries a per-path `mechanism`
  * (public / native-route / overlay) describing HOW a live flow rides the
  * fabric; this catalog is the complementary Connect-side view — the menu of

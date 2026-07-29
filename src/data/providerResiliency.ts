@@ -1,5 +1,5 @@
 /**
- * Cloud Connect Resiliency Tiers
+ * AI-grade network Resiliency Tiers
  *
  * Three tiers (High removed per product requirements):
  *

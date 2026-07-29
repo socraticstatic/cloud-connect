@@ -342,7 +342,7 @@ export function PersonasView() {
       <section className="sd-section" style={{ background: '#001a3d', minHeight: '60vh', display: 'flex', flexDirection: 'column' }}>
         <div className="flex-1 flex flex-col justify-center max-w-5xl mx-auto w-full px-16 py-20">
           <p className="text-[13px] font-medium tracking-[0.12em] uppercase mb-6" style={{ color: '#009fdb' }}>
-            Who uses it · Cloud Connect
+            Who uses it · AI-grade network
           </p>
           <h1 className="text-[56px] font-bold leading-[1.05] tracking-[-0.04em] mb-8" style={{ color: '#ffffff' }}>
             Nine roles.<br />One table, nine shapes.

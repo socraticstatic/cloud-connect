@@ -190,7 +190,7 @@ export function LMCCRequirementsOnly({ isOpen, onClose, onStartSetup, onBuildFor
                   {stage === 'confirm' && 'Confirm Connection Details'}
                   {stage === 'error' && 'Cannot Activate Connection'}
                 </h2>
-                <p className="text-figma-xs text-fw-bodyLight">AT&T Cloud Connect — Maximum Resiliency</p>
+                <p className="text-figma-xs text-fw-bodyLight">AT&T AI-grade network — Maximum Resiliency</p>
               </div>
             </div>
           </div>
@@ -206,7 +206,7 @@ export function LMCCRequirementsOnly({ isOpen, onClose, onStartSetup, onBuildFor
                 Introducing
               </p>
               <h2 className="text-figma-2xl font-bold text-fw-heading tracking-[-0.04em] leading-tight">
-                AT&T Cloud Connect
+                AT&T AI-grade network
               </h2>
               <p className="text-figma-sm text-fw-bodyLight mt-2 max-w-md leading-relaxed">
                 A dedicated, private connection between your network and AWS — provisioned automatically across 4 independent paths. One input. No configuration required.

@@ -678,7 +678,7 @@ export function CreateTicket() {
               <div className="border-t border-fw-secondary pt-3 space-y-3">
                 <div className="flex justify-between">
                   <span className="text-fw-bodyLight">Reported Product</span>
-                  <span className="text-fw-heading font-medium">Cloud Connect</span>
+                  <span className="text-fw-heading font-medium">AI-grade network</span>
                 </div>
                 {bcOrgId && (
                   <div className="flex justify-between">

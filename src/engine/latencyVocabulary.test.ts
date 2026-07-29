@@ -3,7 +3,7 @@ import { CC } from './index';
 
 /* ONE latency vocabulary.
  *
- * Cloud Connect used to state three different latencies for the same estate:
+ * The AI-grade network used to state three different latencies for the same estate:
  *   - `fabricModel().latencyMs` on /discover, Connect's Performance tile and
  *     both PathChoice cards (geometry: on-ramp site -> region geo),
  *   - the raw seed `r.lat` (and `r.lat * 1.7`) on every /naas/observe flow row,

@@ -10,7 +10,7 @@ import {
   overlapPxFor,
 } from './ProductTour';
 
-/* ProductTour is a SHARED component: the Cloud Connect demo tour
+/* ProductTour is a SHARED component: the AI-grade network demo tour
    (TourLauncher.tsx) and the main-app onboarding tour (App.tsx, mainAppTour)
    both render it. `resetOnOpen` has to stay scoped to whichever caller asks
    for it — the demo tour wants every launch to start at beat one, the
@@ -57,7 +57,7 @@ describe('ProductTour — resetOnOpen scoping', () => {
     expect(screen.getByTestId('tour-title')).toHaveTextContent('Step B');
   });
 
-  it('resetOnOpen restarts at step 1 every time the tour opens (Cloud Connect demo-tour contract)', async () => {
+  it('resetOnOpen restarts at step 1 every time the tour opens (AI-grade network demo-tour contract)', async () => {
     render(<Harness resetOnOpen />);
     await advanceThenReopen();
     expect(screen.getByTestId('tour-title')).toHaveTextContent('Step A');

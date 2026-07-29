@@ -6,7 +6,7 @@ import { ProductTour, TourStep } from '../../components/tour/ProductTour';
 import { activeCloudConnectTour } from './cloudConnectTour';
 
 /**
- * Launches the guided Cloud Connect tour — Discover -> Connect -> Govern ->
+ * Launches the guided AI-grade network tour — Discover -> Connect -> Govern ->
  * Observe -> Cost -> AI Fabric — reusing NetBond's `useTour`/`ProductTour`
  * infra. Each step in `cloudConnectTour` carries a `route`; `onStepChange`
  * navigates there before ProductTour's spotlight looks for the step's

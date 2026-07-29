@@ -224,7 +224,7 @@ export function AssessmentPage() {
           <span className="text-fw-info">
             <AttIcon name="hub" className="w-5 h-5" />
           </span>
-          <span className="text-[13px] font-bold text-fw-heading">AT&amp;T Cloud Connect</span>
+          <span className="text-[13px] font-bold text-fw-heading">AT&amp;T AI-grade network</span>
           <span className="text-[12px] font-medium px-2 py-0.5 rounded bg-fw-accent text-fw-link">
             14-day AI visibility assessment
           </span>

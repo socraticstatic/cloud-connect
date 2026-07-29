@@ -1,5 +1,5 @@
 /**
- * Shared visual language for the Cloud Connect feature views.
+ * Shared visual language for the AI-grade network feature views.
  *
  * WHY THIS EXISTS: the six sections were built independently and drifted into
  * ad-hoc color use (loud greens/ambers, a rainbow latency chart with duplicate

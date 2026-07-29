@@ -52,7 +52,7 @@ CC.postureCatalog=[
     findings:[
       {level:'crit',title:'Ungoverned AI traffic on public internet',tags:['rd-helion','classified-helion'],resolved:()=>on('nb2').active,
         desc:'OpenAI API, CoreWeave gpu-cluster-01, and Nebius nb-gpu-net all serve inference traffic over public internet with no SLA and variable latency (28–44ms).',
-        done:'AI inference rides Cloud Connect — SLA-backed, inspected, private.'},
+        done:'AI inference rides the AI-grade network — SLA-backed, inspected, private.'},
       {level:'crit',title:'vpc-dmz-03 has no inline inspection',tags:['classified-helion'],resolved:()=>CC.fixes.fwInspection,
         desc:'Both AZ route tables egress directly via NAT/IGW — classified-helion traffic bypasses security inspection entirely.',
         done:'fw-inspect-01 sits inline on every classified-helion egress path.'},
@@ -61,7 +61,7 @@ CC.postureCatalog=[
         done:'vnet-app-02 peers privately over ExpressRoute · CH1.'},
     ],
     actions:[
-      {label:'Route AI traffic over Cloud Connect',sub:'OpenAI, CoreWeave, Nebius → private path with inspection',
+      {label:'Route AI traffic over the AI-grade network',sub:'OpenAI, CoreWeave, Nebius → private path with inspection',
         apply:()=>CC.activateOnramp('nb2'),applied:()=>on('nb2').active,previewKey:{kind:'onramp',id:'nb2'}},
       {label:'Insert firewall on classified-helion egress',sub:'Creates fw-inspect-01 inline on vpc-dmz-03 and nb-gpu-net',
         apply:()=>CC.applyFix('fwInspection'),applied:()=>CC.fixes.fwInspection,previewKey:{kind:'fix',id:'fwInspection'}},
@@ -105,7 +105,7 @@ CC.postureCatalog=[
     metrics:()=>{const e=CC.egress();return [
       ['Total egress (mo)',fmtK(e.total),e.pub>20000?'r':'a'],
       ['Over public internet',fmtK(e.pub),e.pub?'r':'g'],
-      ['Over Cloud Connect',fmtK(e.priv),'g'],
+      ['Over AI-grade network',fmtK(e.priv),'g'],
       ['Private-path savings',fmtK(e.savings)+'/mo',e.savings?'g':''],
       ['NetBond utilization',CC.utilization()+'%',CC.utilization()>80?'g':'a'],
       ['Forecast next mo',e.forecast,e.forecast.startsWith('+')?'r':'g'],

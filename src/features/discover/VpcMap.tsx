@@ -167,7 +167,7 @@ export function VpcMap({
         </span>
         {vpc.attached ? (
           <span className="inline-flex items-center gap-1 text-fw-success">
-            <Lock size={12} aria-hidden="true" /> attached via Cloud Connect
+            <Lock size={12} aria-hidden="true" /> attached via the AI-grade network
           </span>
         ) : (
           <span className="inline-flex items-center gap-1">

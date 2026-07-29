@@ -16,7 +16,7 @@ export const DEMO_BEATS: DemoBeat[] = [
     route: '/discover',
     title: 'See everything you have',
     narration:
-      'Cloud Connect discovers your estate across AWS, Azure, and GCP — regions, VPCs, workloads, dependencies. And it finds the problem: workloads reachable over the public internet.',
+      'The AI-grade network discovers your estate across AWS, Azure, and GCP — regions, VPCs, workloads, dependencies. And it finds the problem: workloads reachable over the public internet.',
     hero: 'The amber finding strip',
   },
   {

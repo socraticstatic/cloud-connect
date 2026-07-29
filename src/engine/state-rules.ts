@@ -31,7 +31,7 @@ const REQUIREMENTS={
       const cloudSet=new Set(matched.map(m=>m.cloud.id));
       return cloudSet.size>1?[{vpc:null,name:null,msg:`spread across ${cloudSet.size} clouds unsegmented`}]:[];
     }},
-  'require-private-path':{label:'Private path required',chain:'Cloud Connect attach',
+  'require-private-path':{label:'Private path required',chain:'AI-grade network attach',
     action:'every matched workload must ride an AT&T private circuit - violations clear as circuits attach',
     evaluate:(matched)=>matched.filter(m=>!m.v.attached).map(m=>({vpc:m.v.id,name:m.v.name,msg:'riding public internet'}))},
   'latency-slo':{label:'Latency SLO',chain:'path selection',param:{key:'ms',label:'P95 under (ms)',def:30},

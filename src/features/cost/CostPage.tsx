@@ -14,7 +14,7 @@ export function CostPage() {
   // egressSeries); sum the two into a single $/day actual-spend line.
   const actual = useCloudControl(cc => cc.telemetry(60).egress.map(e => e.pub + e.priv));
   // The hyperscaler-rate line prices the same daily volume up by the current
-  // arbitrage ratio (hyperscaler ÷ Cloud Connect). As paths attach, the ratio
+  // arbitrage ratio (hyperscaler ÷ AI-grade network). As paths attach, the ratio
   // grows and the actual spend drops, so the band between the two lines widens —
   // exactly the accumulating saving. Both endpoints are CC derivations.
   const ratio = arb.cloudConnectBill > 0 ? arb.hyperscalerBill / arb.cloudConnectBill : 1;

@@ -286,7 +286,7 @@ function FlowBWizard({
                   </span>
                 </span>
               </div>
-              <p className="text-figma-xs text-fw-bodyLight">AT&T Cloud Connect · 4-path resiliency</p>
+              <p className="text-figma-xs text-fw-bodyLight">AT&T AI-grade network · 4-path resiliency</p>
             </div>
           </div>
           <div className="flex gap-1">
@@ -1277,7 +1277,7 @@ export default function LMCCRequirementsPage() {
           <div className="md:col-span-2 p-3 rounded-xl border border-fw-secondary bg-fw-wash flex items-start gap-2">
             <Zap className="h-3.5 w-3.5 text-fw-bodyLight shrink-0 mt-0.5" />
             <p className="text-figma-xs text-fw-bodyLight">
-              <strong className="text-fw-body">Post-GA (EPIC 08):</strong> Automated ActivationKey handoff eliminates the manual portal-to-portal key transfer entirely. Customers will no longer copy-paste keys between AWS Console and Cloud Connect.
+              <strong className="text-fw-body">Post-GA (EPIC 08):</strong> Automated ActivationKey handoff eliminates the manual portal-to-portal key transfer entirely. Customers will no longer copy-paste keys between AWS Console and the AI-grade network.
             </p>
           </div>
         </div>

@@ -367,7 +367,7 @@ export function MobileMenu({ isOpen, onClose, userInfo, notifications }: MobileM
                 feature that no longer exists. */}
             <div className="px-4 py-3 border-t border-fw-secondary">
               <div className="text-center text-figma-xs text-fw-bodyLight">
-                <p className="font-semibold text-fw-heading">AT&T Cloud Connect • v2.0.1</p>
+                <p className="font-semibold text-fw-heading">AT&T AI-grade network • v2.0.1</p>
                 <p>© 2025 AT&T Intellectual Property. All rights reserved.</p>
               </div>
             </div>

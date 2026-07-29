@@ -40,7 +40,7 @@ import { ImpersonationBanner } from './components/common/ImpersonationBanner';
 import { PWAUpdatePrompt, usePWAUpdate } from './components/common/PWAUpdatePrompt';
 import { MaintenanceModal } from './components/common/MaintenanceModal';
 
-// Curated Cloud Connect flow pages (the six live screens + /netops).
+// Curated AI-grade network flow pages (the six live screens + /netops).
 const LazyDiscoverPage = lazy(() =>
   import('./features/discover/DiscoverPage').then(module => ({
     default: module.DiscoverPage

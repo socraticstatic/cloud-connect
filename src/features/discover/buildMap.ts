@@ -1,7 +1,7 @@
 import { CC } from '../../engine';
 
 /**
- * Pure port of the original Cloud Connect `buildMap(vpc, cloud, region)`
+ * Pure port of the original AI-grade network `buildMap(vpc, cloud, region)`
  * (js/discovery.js:18-81). Given one VPC/VNet plus its cloud and region, it
  * synthesizes an AWS-style resource map — subnets grouped by availability
  * zone, route tables with their routes, gateways/connections, and the policy
@@ -61,7 +61,7 @@ export interface MapGateway {
   name: string;
   type: string;
   ic: GatewayKind;
-  /** Attached via Cloud Connect (Direct Connect / ExpressRoute). */
+  /** Attached via the AI-grade network (Direct Connect / ExpressRoute). */
   att?: boolean;
 }
 export interface MapViolation {

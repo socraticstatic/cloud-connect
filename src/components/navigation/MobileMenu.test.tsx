@@ -83,7 +83,7 @@ describe('MobileMenu', () => {
     try {
       renderMobileMenu();
 
-      // Curated Cloud Connect nav (NAV_ITEMS) — 'Discover' replaces the old 'Create'.
+      // Curated AI-grade network nav (NAV_ITEMS) — 'Discover' replaces the old 'Create'.
       const discoverButton = screen.getByText('Discover');
       fireEvent.click(discoverButton);
 

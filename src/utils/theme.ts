@@ -93,7 +93,7 @@ export interface BrandingConfig {
 }
 
 export const DEFAULT_BRANDING: BrandingConfig = {
-  productName: 'Cloud Connect',
+  productName: 'AI-grade network',
   primaryColor: '#0057B8',
   accentColor: '#009FDB',
   fontFamily: 'Inter',
