@@ -112,7 +112,7 @@ export const mainAppTour: TourStep[] = [
     placement: 'center',
     scrollIntoView: false,
     action: {
-      label: 'Listen to AI-grade network Podcast',
+      label: 'Listen to the AI-grade network Podcast',
       onClick: () => window.open('https://notebooklm.google.com/notebook/cce60bb8-f532-4daf-a2d8-1fc2e4b3cf42?artifactId=65664b81-a3e4-491d-8a01-1e1f41dbff16', '_blank')
     }
   }

@@ -105,7 +105,7 @@ CC.postureCatalog=[
     metrics:()=>{const e=CC.egress();return [
       ['Total egress (mo)',fmtK(e.total),e.pub>20000?'r':'a'],
       ['Over public internet',fmtK(e.pub),e.pub?'r':'g'],
-      ['Over AI-grade network',fmtK(e.priv),'g'],
+      ['Over the AI-grade network',fmtK(e.priv),'g'],
       ['Private-path savings',fmtK(e.savings)+'/mo',e.savings?'g':''],
       ['NetBond utilization',CC.utilization()+'%',CC.utilization()>80?'g':'a'],
       ['Forecast next mo',e.forecast,e.forecast.startsWith('+')?'r':'g'],

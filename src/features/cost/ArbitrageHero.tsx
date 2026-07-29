@@ -44,7 +44,7 @@ const k = (n: number) => (n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${Math.ro
 
 /**
  * The money band. Two bills side by side — all-hyperscaler egress (neutral) vs
- * AI-grade network (cobalt) — with the realized savings called out in green, the
+ * the AI-grade network (cobalt) — with the realized savings called out in green, the
  * still-available savings as a forward call-to-action, and an honest, muted
  * disclosure of the AT&T fabric port fees. Every figure is a `arbitrage()`
  * derivation; the numbers animate when a path is attached and the gap widens.

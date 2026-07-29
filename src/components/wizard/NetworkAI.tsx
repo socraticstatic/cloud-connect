@@ -87,7 +87,7 @@ export function NetworkAI({
       
       switch(step) {
         case 0: // Initial question about network purpose
-          newMessage = `👋 Hello! I'm Niva, your AI-grade network AI Assistant. I'll help you create the optimal cloud connection. Based on your organization profile, I recommend considering **AWS** or **Azure** as they match your business needs. What type of workloads will you be running?`;
+          newMessage = `👋 Hello! I'm Niva, your AI-grade network Assistant. I'll help you create the optimal cloud connection. Based on your organization profile, I recommend considering **AWS** or **Azure** as they match your business needs. What type of workloads will you be running?`;
           break;
           
         case 1: // Connection type
@@ -335,7 +335,7 @@ export function NetworkAI({
             </div>
             <div>
               <h3 className="text-figma-base font-medium">Niva</h3>
-              <p className="text-figma-sm text-white/70">AI-grade network AI Assistant</p>
+              <p className="text-figma-sm text-white/70">AI-grade network Assistant</p>
             </div>
           </div>
           <button
