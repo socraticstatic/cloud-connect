@@ -212,7 +212,11 @@ CC.scopeDenies=function(scope,modelId){
 CC.promptTrace=function(tag,modelId,prompt){
   const pol=tokenPolicies[tag];
   const model=CC.modelCatalog().find(m=>m.id===modelId);
-  const tokens=Math.max(40,Math.round((prompt||'').length*1.4))+120;
+  /* A logged request is an agent RUN, not one completion: the prompt fans
+     into tool loops, retrieval passes and retries. The fan-out factor is what
+     puts a run's cost in real money ($1-$10 at catalog prices) instead of the
+     sub-cent single-completion arithmetic the requests table used to print. */
+  const tokens=(Math.max(40,Math.round((prompt||'').length*1.4))+120)*10000;
   /* The ONE path derivation this estate has - the same modelRoutes() the
      meter reads. Recorded on every decision so the requests table and the
      Route column of /ai/observe can never disagree about a request. */
