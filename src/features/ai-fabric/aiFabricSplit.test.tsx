@@ -295,7 +295,7 @@ describe('AI Fabric · Teams & limits — metering (the Connect beat)', () => {
     // Exactly what a tick does: mutate the meters, then emit `hits`.
     const attached = (CC.tokenMeterList() as { tag: string; ready: boolean }[]).find(m => m.ready)!;
     await act(async () => {
-      CC.meterTokens(attached.tag, 200_000);
+      CC.meterTokens(attached.tag, 200_000_000);
       emitHits();
     });
 

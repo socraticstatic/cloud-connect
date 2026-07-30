@@ -59,7 +59,7 @@ const SCOPES: { value: string; label: string }[] = [
 const INITIAL_FORM = {
   identity: Object.keys(CC.TAGS)[0],
   scope: 'external-allowed',
-  budget: 1_000_000,
+  budget: 1_000_000_000,
   softPct: 80,
   guardrail: false,
 };

@@ -85,19 +85,19 @@ CC.subscribe((ev)=>{if(ev&&ev.type==='hits')return;checkAlerts();});
    The scope string is descriptive, like the tag-scoped seeds — no new
    enforcement semantics ride on `group`. */
 const tokenPolicies=_.tokenPolicies={
-  'rd-helion':{scope:'self-hosted',budget:2400000,guardrail:false,enforced:false},
-  'classified-helion':{scope:'no-external',budget:900000,guardrail:true,enforced:false},
-  'shared-services':{scope:'external-allowed',budget:1600000,guardrail:false,enforced:false},
-  'west-workloads':{group:'west-workloads',scope:'private-only',budget:1200000,guardrail:true,enforced:false},
+  'rd-helion':{scope:'self-hosted',budget:2400000000,guardrail:false,enforced:false},
+  'classified-helion':{scope:'no-external',budget:900000000,guardrail:true,enforced:false},
+  'shared-services':{scope:'external-allowed',budget:1600000000,guardrail:false,enforced:false},
+  'west-workloads':{group:'west-workloads',scope:'private-only',budget:1200000000,guardrail:true,enforced:false},
 };
 CC.tokenPolicy=function(tag){return tokenPolicies[tag]||null;};
 CC.tokenPolicyList=function(){return Object.entries(tokenPolicies).map(([tag,p])=>({tag,...p}));};
 CC.setTokenPolicy=function(tag,patch){
-  const p=tokenPolicies[tag]||(tokenPolicies[tag]={scope:'external-allowed',budget:1000000,guardrail:false,enforced:false});
+  const p=tokenPolicies[tag]||(tokenPolicies[tag]={scope:'external-allowed',budget:1000000000,guardrail:false,enforced:false});
   Object.assign(p,patch);
   CC._.emit({type:'policy',label:`Token policy ${patch.enforced?'enforced':'updated'} · ${tag}`});
 };
-CC.tokenBudgetOf=function(tag){return tokenPolicies[tag]?tokenPolicies[tag].budget:1000000;};
+CC.tokenBudgetOf=function(tag){return tokenPolicies[tag]?tokenPolicies[tag].budget:1000000000;};
 
 /* ---------- gateway optimization flags ----------
    Two levers the Insights Cost tab reads: cost-aware routing and response

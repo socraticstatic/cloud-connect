@@ -300,6 +300,7 @@ export function aiSpendTotals(cc: CloudControl): AiSpendTotals {
  * arithmetic closes. `M` already carried two decimals for the same reason.
  */
 export function fmtTokens(n: number): string {
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(2)}B`;
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
   return String(Math.round(n));
@@ -315,6 +316,7 @@ export function fmtTokens(n: number): string {
  * is still `$0.00`, because zero is zero.
  */
 export function fmtUsd(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`;
   if (n > 0 && n < 0.005) return '<$0.01';
   return `$${n.toFixed(2)}`;

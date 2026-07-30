@@ -262,7 +262,7 @@ Object.assign(CC,{telemetry,obsSummary,latencySeries,lossSeries,percentiles,topT
 CC.tokenSeries=function(tag,N){
   const rng=_.mulberry32(_.hashStr('tok:'+tag));
   const m=CC.tokenMeterList().find(x=>x.tag===tag);
-  const budget=CC.tokenBudgetOf?CC.tokenBudgetOf(tag):1000000;
+  const budget=CC.tokenBudgetOf?CC.tokenBudgetOf(tag):1000000000;
   const pts=[];
   for(let i=0;i<N;i++){
     if(!m||!m.ready){pts.push(0);continue;}

@@ -34,7 +34,7 @@ const {onramps,regions,fixes}=CC;
    inference is what printed "none of that spend leaves over the
    public internet" on /ai/cost over a total accrued entirely public. */
 const tokenMeters={}; // appTag -> {governed,ungoverned,budget}
-const TOKEN_BUDGETS={'rd-helion':2400000,'classified-helion':900000,'shared-services':1600000};
+const TOKEN_BUDGETS={'rd-helion':2400000000,'classified-helion':900000000,'shared-services':1600000000};
 // budgets become editable once the console module loads - read lazily
 const budgetOf=tag=>CC.tokenBudgetOf?CC.tokenBudgetOf(tag):TOKEN_BUDGETS[tag];
 function meterFor(tag,seedGoverned){
@@ -70,9 +70,15 @@ function tickTokens(rng){
        identity's governance fix), so anything this gate lets through is on
        an AT&T path by construction - every token it adds is governed. */
     if(!endpointReadyFor(tag))return;
-    const m=meterFor(tag,Math.round(budgetOf(tag)*0.22));
+    const seed=Math.round(budgetOf(tag)*0.22);
+    const m=meterFor(tag,seed);
+    /* An agent trace can create the meter (at a few hundred tokens) before
+       the endpoint attaches, which silently discarded the adoption seed and
+       left a just-attached estate accruing from zero. The seed is the floor:
+       apply it on the first governed tick, whoever created the meter. */
+    if(m.governed+m.ungoverned<seed)m.governed=seed;
     const gbps=CC.flows().filter(f=>f.srcTag===tag&&f.dst==='ai-endpoints').reduce((s,f)=>s+f.gbps,0);
-    m.governed+=Math.round(gbps*(900+rng()*700));
+    m.governed+=Math.round(gbps*(900000+rng()*700000));
     any=true;
   });
   return any;
