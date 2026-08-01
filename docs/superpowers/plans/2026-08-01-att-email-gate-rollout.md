@@ -535,8 +535,13 @@ if (session) { unlock(); } else {
 | Email in spam | "Check your junk folder" copy on every code screen; deliverability proven in Task 1 |
 | Other three apps regress the demo | They deploy only after cloud-connect verifies; separate repos and deploys |
 
-## Task 1 outputs (fill in when created)
+## Task 1 outputs (created 2026-08-01, via Supabase CLI token + Management API)
 
-- `ATT_GATE_URL`: _pending_
-- `ATT_GATE_PUBLISHABLE_KEY`: _pending_
-- (Reference only - PVE project, the reuse fallback: `https://yttpppvuzurerzhsrzmi.supabase.co`)
+- `ATT_GATE_URL`: `https://vuocjybbrgocmceqctna.supabase.co` (project `att-gate`, org socraticstatic, us-east-1)
+- `ATT_GATE_PUBLISHABLE_KEY`: `sb_publishable_UdSGMRqzyLQgJ4RTEHpwGg_pprEGmLT`
+- DB password: Keychain `helen-kestra` / `ATT_GATE_DB_PASSWORD`
+- SMTP: iCloud relay (smtp.mail.me.com:587, login smackintosh@me.com from Himalaya config), sender `AT&T Prototype Access <micah@conscious-shell.com>` - standalone send verified delivered
+- Templates: BOTH magic-link AND confirmation set code-only. Live finding: first-time users get the **confirmation** template, which by default carries a clickable one-time link (the exact Proofpoint hazard). `mailer_autoconfirm=true` so all OTP sends use one path. OTP length set to 6 to match the UI's maxLength.
+- Hook `hook_restrict_signup_domain` enabled (before-user-created). Verified live: gmail.com and me.com → HTTP 403, no user created, no email sent.
+- Rate limit: 100 emails/hr; 60s per-address resend cooldown.
+- (Reference only - PVE project fallback never used: `https://yttpppvuzurerzhsrzmi.supabase.co` - it has NO custom SMTP and rate_limit_email_sent=2/hr, confirming it was never demo-viable.)
