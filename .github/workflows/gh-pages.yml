@@ -55,8 +55,8 @@ jobs:
           CI: false
           # DEMO EMERGENCY ROLLBACK: change to "gate" and push to main.
           # "gate" = visual-only localStorage gate, no Supabase dependency.
-          # Drill-timed 2026-08-01: push-to-live ≈ 5 minutes.
-          VITE_AUTH_MODE: gate
+          # Drill-timed 2026-08-01: push-to-live ≈ 3 minutes.
+          VITE_AUTH_MODE: supabase
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
