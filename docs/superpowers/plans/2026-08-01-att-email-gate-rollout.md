@@ -189,12 +189,11 @@ const SUPABASE_PUBLISHABLE_KEY = '<ATT_GATE_PUBLISHABLE_KEY from Task 1>';
 export const AUTH_MODE: 'supabase' | 'gate' =
   (import.meta.env.VITE_AUTH_MODE as 'supabase' | 'gate') ?? 'supabase';
 
-// Desktop/offline builds (flash drive, Electron) cannot do email OTP and
-// never ran gated. file: is unspoofable from a browser; the UA check is
-// spoofable and accepted under the prototype threat model.
-export const IS_OFFLINE_CAPABLE =
-  window.location.protocol === 'file:' ||
-  navigator.userAgent.includes('Electron');
+// Flash-drive/offline builds load over file: and cannot do email OTP.
+// file: only — NEVER a userAgent check. Found live 2026-08-01: ordinary
+// Electron-shell browsers (Slack/Discord webviews, the Claude browser pane)
+// carry "Electron" in their UA and sailed straight past a UA-based bypass.
+export const IS_OFFLINE_CAPABLE = window.location.protocol === 'file:';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: { storage: localStorage, persistSession: true, autoRefreshToken: true },
@@ -531,7 +530,7 @@ if (session) { unlock(); } else {
 | Ramesh can't log in at the venue | Pre-persisted session from Sunday dry run on the presenting machine; worst case = one code from his phone; Monday 07:00 smoke test |
 | Supabase 429 during live login | 60s resend cooldown with countdown in the UI; 429s surfaced with a human message |
 | Legacy e2e suites break (helpers use `att_nb_user`) | CI runs them against a gate-mode build; auth spec runs separately against supabase mode (Task 3 Step 6) |
-| Desktop/Electron builds hit an impossible email gate | `IS_OFFLINE_CAPABLE` bypass preserved (spoofable UA accepted; `file:` is not spoofable) |
+| Desktop/Electron builds hit an impossible email gate | `IS_OFFLINE_CAPABLE` bypass on `file:` protocol ONLY. A UA-based bypass was tried and failed live: every Electron-shell browser (Slack/Discord webviews, Claude pane) bypassed the gate. Regression-tested in e2e-auth. Netbond's Electron build must load via file:// - verify at Task 5 |
 | esm.sh outage blanks cloud-control | supabase-js vendored locally; body locked from first paint with a local-only script path |
 | Email in spam | "Check your junk folder" copy on every code screen; deliverability proven in Task 1 |
 | Other three apps regress the demo | They deploy only after cloud-connect verifies; separate repos and deploys |
