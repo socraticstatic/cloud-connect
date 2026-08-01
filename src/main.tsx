@@ -1,7 +1,33 @@
+import { lazy, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import App from './App';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+
+const MagicLinkLogin = lazy(() => import('./components/pages/MagicLinkLogin'));
+
+// Root gate: the whole app renders only for a signed-in user. Gating here
+// instead of per-route keeps one uniform wrapper across all four AT&T
+// prototypes and avoids route-tree surgery (see docs/superpowers/plans/
+// 2026-08-01-att-email-gate-rollout.md).
+function Gate() {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="h-8 w-8 border-2 border-[#0057b8] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+  if (!user) {
+    return (
+      <Suspense fallback={null}>
+        <MagicLinkLogin />
+      </Suspense>
+    );
+  }
+  return <App />;
+}
 import './index.css';
 import './styles/fonts.css';
 import { initializePerformanceOptimizations } from './utils/performanceOptimizations';
@@ -63,7 +89,7 @@ if (!rootElement) {
     root.render(
       <HashRouter>
         <AuthProvider>
-          <App />
+          <Gate />
         </AuthProvider>
       </HashRouter>
     );

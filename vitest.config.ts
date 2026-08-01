@@ -18,6 +18,7 @@ export default defineConfig({
       '**/src_old/**',
       '.claude/**',
       'e2e/**',
+      'e2e-auth/**',
       'tests/e2e/**'
     ],
     coverage: {
