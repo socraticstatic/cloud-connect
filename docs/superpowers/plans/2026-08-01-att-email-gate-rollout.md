@@ -541,6 +541,7 @@ if (session) { unlock(); } else {
 - `ATT_GATE_PUBLISHABLE_KEY`: `sb_publishable_UdSGMRqzyLQgJ4RTEHpwGg_pprEGmLT`
 - DB password: Keychain `helen-kestra` / `ATT_GATE_DB_PASSWORD`
 - SMTP: iCloud relay (smtp.mail.me.com:587, login smackintosh@me.com from Himalaya config), sender `AT&T Prototype Access <micah@conscious-shell.com>` - standalone send verified delivered
+- OTP expiry raised to 24h (86400s, Supabase's maximum - expiry cannot be disabled) on 2026-08-03: AT&T inbound mail is slow enough that 1h codes were expiring. Email copy says "valid for 24 hours". NOTE: a Resend click still invalidates the earlier code - if two emails arrive, only the NEWEST code works.
 - Templates: BOTH magic-link AND confirmation set code-only. Live finding: first-time users get the **confirmation** template, which by default carries a clickable one-time link (the exact Proofpoint hazard). `mailer_autoconfirm=true` so all OTP sends use one path. OTP length set to 6 to match the UI's maxLength.
 - Hook `hook_restrict_signup_domain` enabled (before-user-created). Verified live: gmail.com and me.com → HTTP 403, no user created, no email sent.
 - Rate limit: 100 emails/hr; 60s per-address resend cooldown.
