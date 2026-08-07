@@ -242,3 +242,25 @@ describe('regionMatches', () => {
 - [ ] **Step 1:** `npx vitest run` - PASS. `npx playwright test` - PASS (tour + discover + andi + wizard specs all still green).
 - [ ] **Step 2:** Browser walkthrough (gate mode): /ai/observe opens with the deep dive (verdict, four facets, outliers); click a model facet → open the raw log → the table is filtered; click an outlier → drawer. /discover: rollups + chips; Public internet chip narrows tree and dims map; summary band + breakdown disclosure. Screenshots of both.
 - [ ] **Step 3:** Straggler fixes commit (skip if clean).
+
+---
+
+### Task 6 (addendum, owner-directed 2026-08-07): At-a-glance landing pages - the metric diet
+
+Direct requirement from Micah mid-execution: "There's a lot of low impact metrics on the key pages - too much! All landing pages should be at-a-glance! The Sankey and the AT&T fabric are good - cards with high impact."
+
+Principle: a landing page is verdict → hero visual → at most three high-impact cards. Everything else folds behind a quiet disclosure. The heroes (SankeyPanel, FabricHero) stay exactly as they are.
+
+**Files:**
+- Modify: `src/features/observe/ObservabilityShell.tsx` (the 6-tile KPI row)
+- Modify: `src/features/ai-fabric/insights/InsightsPage.tsx` + `KpiStrip.tsx` (the 5-tile strip)
+- Modify: `src/features/layer-home/dashboard/widgets/EstateFiguresWidget.tsx` (compress to headline row)
+- Tests: the corresponding existing test files, adjusted only where the fold breaks an assertion (each adjustment named in the report)
+
+**Interfaces:** no new modules; presentational splits only. Bindings/figures functions stay untouched - `networkBinding.kpis()` still returns 6, `insightKpis` still returns 5; the PAGES choose what leads.
+
+- [ ] **Step 1: Observe KPI diet.** In ObservabilityShell, the KPI row renders only the high-impact three, savings-first order: Savings, Under Control, Throughput (`kpis().filter` by key: `savings`, `under-control`, `throughput`). The remaining tiles (P95 Latency, Packet Loss, Egress) render inside `<details data-testid="all-metrics"><summary>All metrics</summary>...</details>` directly under the row, same tile markup. Failing test first (in the shell's existing test file): exactly 3 tiles visible by default, `all-metrics` present, opening it reveals the other three labels.
+- [ ] **Step 2: AI Insights KPI diet.** In InsightsPage, split `view.kpis` into primary (the token, cost/spend, and blocked-requests entries - verify the real `key` values in `insightKpis` and name them in the report) and rest (TTFT, requests). `<KpiStrip kpis={primary} .../>` leads; rest render in the same `all-metrics` details pattern (reuse KpiStrip inside it: `<KpiStrip kpis={rest} />`). The `unit-*` emphasis toggle and `data-tour="insights-kpis"` stay on the primary strip. Failing test first: 3 primary tiles, disclosure holds the other two.
+- [ ] **Step 3: Home estate figures diet.** EstateFiguresWidget compresses to its single headline row of figures (the widget's existing top-line numbers); any secondary rows/grids inside it move behind the same details pattern (`data-testid="estate-figures-more"`). If the widget is already a single row, report that and skip the change. Failing test first if changed.
+- [ ] **Step 4:** `npx vitest run src/features/observe src/features/ai-fabric src/features/layer-home src/features/tour` - PASS (tour anchors must still resolve; if the insights tour beat targets the strip, the primary strip carries the anchor).
+- [ ] **Step 5: Commit** - `feat(spine): at-a-glance landing pages - three high-impact cards, the rest on demand`
