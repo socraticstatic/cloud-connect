@@ -6,6 +6,7 @@ import { buildAttachmentMapModel } from './attachmentModel';
 import { computeAttachmentLayout, NODE_H, SITE_W, WL_W } from './attachmentLayout';
 import { ChainDrawer, type MapSelection } from './ChainDrawer';
 import { DeployManagedVpcWizard } from '../connect/DeployManagedVpcWizard';
+import { EMPTY_ESTATE_FILTERS, regionMatches, type EstateFilters } from './estateFilters';
 
 /**
  * The Attachment Map — the second lens on Discover. Four bands: sites →
@@ -23,12 +24,23 @@ const HEX = {
   line: '#dcdfe3',
 } as const;
 
-export function AttachmentMap() {
+export function AttachmentMap({ filters = EMPTY_ESTATE_FILTERS }: { filters?: EstateFilters } = {}) {
   const cc = useCloudControl(c => c);
   const model = buildAttachmentMapModel(cc);
   const layout = computeAttachmentLayout(model);
   const [sel, setSel] = useState<MapSelection | null>(null);
   const [deploy, setDeploy] = useState<{ cloudId: string; regionId: string } | null>(null);
+
+  /* Region rows dim rather than vanish — the map keeps its geometry so a
+     filter reads as focus, not a reflow. Keyed off the fabric-shaped
+     regions (the one region-latency/path derivation this estate has) so a
+     workload's dim state agrees with the tree's. */
+  const fabricRegions = cc.fabricModel().regions;
+  const regionDims = new Map<string, boolean>();
+  for (const r of fabricRegions) {
+    regionDims.set(`${r.cloudId}/${r.regionId}`, !regionMatches(r, filters));
+  }
+  const isDimmed = (cloudId: string, regionId: string) => regionDims.get(`${cloudId}/${regionId}`) ?? false;
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start" data-testid="attachment-map">
@@ -71,39 +83,45 @@ export function AttachmentMap() {
             </g>
           ))}
 
-          {/* workload edges (under nodes) */}
-          {layout.workloads.map(w => (
-            <g key={`e-${w.wl.vpc.id}`}>
-              <path
-                data-edge={w.attached ? 'private' : 'public'}
-                d={`M ${w.edge.from.x} ${w.edge.from.y} L ${w.edge.to.x} ${w.edge.to.y}`}
-                fill="none"
-                stroke={w.attached ? HEX.cobalt : HEX.slate}
-                strokeWidth={w.attached ? 2 : 1.5}
-                strokeDasharray={w.edge.dashed ? '5 4' : undefined}
-              />
-              {w.edge.viaShort && (
-                <text
-                  x={(w.edge.from.x + w.edge.to.x) / 2}
-                  y={(w.edge.from.y + w.edge.to.y) / 2 - 5}
-                  textAnchor="middle" fontSize={10} fill={HEX.cobalt} fontWeight={600}
-                >
-                  {w.edge.viaShort}
-                </text>
-              )}
-            </g>
-          ))}
+          {/* workload edges (under nodes) — dimmed + dashed-over when the
+              region a filter is scoped away from, geometry untouched. */}
+          {layout.workloads.map(w => {
+            const dimmed = isDimmed(w.wl.cloudId, w.wl.regionId);
+            return (
+              <g key={`e-${w.wl.vpc.id}`} opacity={dimmed ? 0.25 : 1}>
+                <path
+                  data-edge={w.attached ? 'private' : 'public'}
+                  d={`M ${w.edge.from.x} ${w.edge.from.y} L ${w.edge.to.x} ${w.edge.to.y}`}
+                  fill="none"
+                  stroke={w.attached ? HEX.cobalt : HEX.slate}
+                  strokeWidth={w.attached ? 2 : 1.5}
+                  strokeDasharray={w.edge.dashed || dimmed ? '5 4' : undefined}
+                />
+                {w.edge.viaShort && (
+                  <text
+                    x={(w.edge.from.x + w.edge.to.x) / 2}
+                    y={(w.edge.from.y + w.edge.to.y) / 2 - 5}
+                    textAnchor="middle" fontSize={10} fill={HEX.cobalt} fontWeight={600}
+                  >
+                    {w.edge.viaShort}
+                  </text>
+                )}
+              </g>
+            );
+          })}
 
           {/* region labels */}
           {layout.workloads.filter(w => w.regionLabel).map(w => {
             const hasManaged = !!model.groups
               .find(g => g.cloudId === w.wl.cloudId)?.regions
               .find(r => r.region.id === w.wl.regionId)?.managedVpc;
+            const dimmed = isDimmed(w.wl.cloudId, w.wl.regionId);
             return (
               <text
                 key={`r-${w.wl.regionId}`}
                 x={w.regionLabel!.x} y={w.regionLabel!.y - NODE_H / 2 - 4}
                 fontSize={10} fontWeight={600} fill="#475569"
+                opacity={dimmed ? 0.25 : 1}
                 style={{ textTransform: 'uppercase' }}
               >
                 {hasManaged && <title>{'AT&T managed gateway · vSRX HA pair live'}</title>}
@@ -117,7 +135,11 @@ export function AttachmentMap() {
 
           {/* workload nodes */}
           {layout.workloads.map(w => (
-            <foreignObject key={w.wl.vpc.id} x={w.x} y={w.y - NODE_H / 2} width={WL_W} height={NODE_H}>
+            <foreignObject
+              key={w.wl.vpc.id}
+              x={w.x} y={w.y - NODE_H / 2} width={WL_W} height={NODE_H}
+              opacity={isDimmed(w.wl.cloudId, w.wl.regionId) ? 0.25 : 1}
+            >
               <button
                 type="button"
                 aria-pressed={sel?.kind === 'workload' && sel.vpcId === w.wl.vpc.id}

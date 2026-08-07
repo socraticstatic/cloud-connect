@@ -8,6 +8,10 @@ import { seedAuth } from '../tests/e2e/helpers';
 test('Discover shows a Routes estate tile derived from counts()', async ({ page }) => {
   await seedAuth(page);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
+  // Routes and Gateways live in the full breakdown now — the summary band
+  // above it only carries the six headline figures. Open the disclosure
+  // once so the section is actually visible, not just present in the DOM.
+  await page.getByTestId('estate-breakdown').locator('summary').click();
 
   const counts = await page.evaluate(
     () =>
@@ -37,6 +41,9 @@ test('Discover shows a Routes estate tile derived from counts()', async ({ page 
 test('Discover reads in three domains', async ({ page }) => {
   await seedAuth(page);
   await page.goto('/#/discover', { waitUntil: 'domcontentloaded' });
+  // The three sections fold behind a disclosure now — open it once so
+  // each section is actually on screen, not merely present in the DOM.
+  await page.getByTestId('estate-breakdown').locator('summary').click();
 
   /* The heading and the blurb ARE the deliverable — the section wrappers on
      their own satisfy the testids while saying nothing at all. Assert both

@@ -352,6 +352,9 @@ test('Discover does not call the AI security gap closed while NaaS Observe still
   expect(flows.labels.length, 'public AI flows must remain, or this proves nothing').toBeGreaterThan(0);
 
   await page.goto('/#/discover', { waitUntil: 'domcontentloaded' });
+  // The AI section folds behind a disclosure now — open it once so it's
+  // actually on screen, not merely present in the DOM.
+  await page.getByTestId('estate-breakdown').locator('summary').click();
   const ai = page.getByTestId('estate-ai');
   await expect(ai).toBeVisible();
   await expect(ai).not.toContainText('closed');

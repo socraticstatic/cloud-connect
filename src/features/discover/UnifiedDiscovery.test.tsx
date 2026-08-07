@@ -51,23 +51,32 @@ describe('UnifiedDiscovery drill-down tree', () => {
 
   /* The tour's Discover beat speaks about clouds, regions and VPCs. Anchoring
      it to the wrapper around all three sections made the spotlight 87% of a
-     mobile viewport. */
-  it('the guided-tour estate anchor is the Cloud section alone, not all three', () => {
+     mobile viewport; anchoring it to the Cloud section worked until Task 4
+     folded that section behind `estate-breakdown`'s closed <details> — a
+     spotlight on hidden content highlights nothing, so the anchor now lives
+     on the always-visible summary band above the fold. */
+  it('the guided-tour estate anchor is the summary band, not any section behind the fold', () => {
     const { container } = renderUD();
     const anchor = container.querySelector('[data-tour="discover-estate"]');
     expect(anchor).not.toBeNull();
-    expect(anchor).toHaveAttribute('data-testid', 'estate-cloud');
+    expect(anchor).toHaveAttribute('data-testid', 'estate-summary-band');
     expect(anchor!.querySelector('[data-testid="estate-network"]')).toBeNull();
+    expect(anchor!.querySelector('[data-testid="estate-cloud"]')).toBeNull();
     expect(anchor!.querySelector('[data-testid="estate-ai"]')).toBeNull();
+    // the anchor itself must not be inside the closed <details>
+    expect(anchor!.closest('details')).toBeNull();
   });
 
-  it('AWS starts expanded and reveals its regions', () => {
+  it('rollups start collapsed — clouds close by default, opened on click', () => {
     renderUD();
+    expect(screen.queryByRole('button', { name: 'us-east-1' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'AWS' }));
     expect(screen.getByRole('button', { name: 'us-east-1' })).toBeInTheDocument();
   });
 
   it('drills cloud → region → VPC → resource map', () => {
     renderUD();
+    fireEvent.click(screen.getByRole('button', { name: 'AWS' }));
     fireEvent.click(screen.getByRole('button', { name: 'us-east-1' }));
     const vpcBtn = screen.getByRole('button', { name: 'vpc-prod-01' });
     expect(vpcBtn).toBeInTheDocument();
@@ -201,6 +210,7 @@ describe('Discover selection → group', () => {
   it('a mixed selection of a site and a VPC says it will cover both estates', () => {
     renderUD();
     selectBranch('San Jose campus');
+    fireEvent.click(screen.getByRole('button', { name: 'AWS' }));
     fireEvent.click(screen.getByRole('button', { name: 'us-east-1' })); // drill to a VPC
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select vpc-prod-01' }));
     const bar = screen.getByTestId('discover-selection');

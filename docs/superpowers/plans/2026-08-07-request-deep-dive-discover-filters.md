@@ -242,3 +242,84 @@ describe('regionMatches', () => {
 - [ ] **Step 1:** `npx vitest run` - PASS. `npx playwright test` - PASS (tour + discover + andi + wizard specs all still green).
 - [ ] **Step 2:** Browser walkthrough (gate mode): /ai/observe opens with the deep dive (verdict, four facets, outliers); click a model facet → open the raw log → the table is filtered; click an outlier → drawer. /discover: rollups + chips; Public internet chip narrows tree and dims map; summary band + breakdown disclosure. Screenshots of both.
 - [ ] **Step 3:** Straggler fixes commit (skip if clean).
+
+---
+
+### Task 6 (addendum, owner-directed 2026-08-07): At-a-glance landing pages - the metric diet
+
+Direct requirement from Micah mid-execution: "There's a lot of low impact metrics on the key pages - too much! All landing pages should be at-a-glance! The Sankey and the AT&T fabric are good - cards with high impact."
+
+Principle: a landing page is verdict → hero visual → at most three high-impact cards. Everything else folds behind a quiet disclosure. The heroes (SankeyPanel, FabricHero) stay exactly as they are.
+
+**Files:**
+- Modify: `src/features/observe/ObservabilityShell.tsx` (the 6-tile KPI row)
+- Modify: `src/features/ai-fabric/insights/InsightsPage.tsx` + `KpiStrip.tsx` (the 5-tile strip)
+- Modify: `src/features/layer-home/dashboard/widgets/EstateFiguresWidget.tsx` (compress to headline row)
+- Tests: the corresponding existing test files, adjusted only where the fold breaks an assertion (each adjustment named in the report)
+
+**Interfaces:** no new modules; presentational splits only. Bindings/figures functions stay untouched - `networkBinding.kpis()` still returns 6, `insightKpis` still returns 5; the PAGES choose what leads.
+
+- [ ] **Step 1: Observe KPI diet.** In ObservabilityShell, the KPI row renders only the high-impact three, savings-first order: Savings, Under Control, Throughput (`kpis().filter` by key: `savings`, `under-control`, `throughput`). The remaining tiles (P95 Latency, Packet Loss, Egress) render inside `<details data-testid="all-metrics"><summary>All metrics</summary>...</details>` directly under the row, same tile markup. Failing test first (in the shell's existing test file): exactly 3 tiles visible by default, `all-metrics` present, opening it reveals the other three labels.
+- [ ] **Step 1b: The Sankey page stays light, actionable elements only** (owner-directed follow-up: "Keep the sankey page as light as possible but with actionable elements"). On /naas/observe:
+  - KEEP visible: the verdict, the FlowBar CTA, the 3-tile KPI row (Step 1), the flow tabs + Sankey/TrendBand hero + scrubber, and the Paths table (`PathTable` - it carries the steer/failover ACTIONS; it is the actionable element and stays).
+  - FOLD: the records table + group-by select (ObservabilityShell:156-182) behind `<details data-testid="records-fold"><summary>Flow records</summary>` and the briefing band (ObservabilityShell:183+) behind `<details data-testid="briefing-fold"><summary>Briefing</summary>` - keep all testids (`groupby-select`, `briefing`) inside; the briefing's action buttons stay functional within the fold.
+  - In ObservePage, `EventStream` folds behind `<details data-testid="events-fold"><summary>Live events</summary>`.
+  - Failing tests first in the shell/page test files: default view shows no records table and no briefing content; the three folds open to reveal them; PathTable still renders by default. If AI observe (`AiObservePage`) shares ObservabilityShell, the folds apply there identically - verify and note it.
+
+- [ ] **Step 2: AI Insights KPI diet.** In InsightsPage, split `view.kpis` into primary (the token, cost/spend, and blocked-requests entries - verify the real `key` values in `insightKpis` and name them in the report) and rest (TTFT, requests). `<KpiStrip kpis={primary} .../>` leads; rest render in the same `all-metrics` details pattern (reuse KpiStrip inside it: `<KpiStrip kpis={rest} />`). The `unit-*` emphasis toggle and `data-tour="insights-kpis"` stay on the primary strip. Failing test first: 3 primary tiles, disclosure holds the other two.
+- [ ] **Step 3: Home estate figures diet.** EstateFiguresWidget compresses to its single headline row of figures (the widget's existing top-line numbers); any secondary rows/grids inside it move behind the same details pattern (`data-testid="estate-figures-more"`). If the widget is already a single row, report that and skip the change. Failing test first if changed.
+- [ ] **Step 4:** `npx vitest run src/features/observe src/features/ai-fabric src/features/layer-home src/features/tour` - PASS (tour anchors must still resolve; if the insights tour beat targets the strip, the primary strip carries the anchor).
+- [ ] **Step 5: Commit** - `feat(spine): at-a-glance landing pages - three high-impact cards, the rest on demand`
+
+---
+
+### Task 7 (addendum, owner-directed 2026-08-07): The with/without-AT&T lens on all key pages
+
+Owner directive: "on all pages, with AT&T, and without AT&T." Interpretation (stated to owner): a counterfactual toggle - every key landing page can flip between today's estate (with AT&T) and the same estate without AT&T (every region public, latency at publicMs, egress at hyperscaler rates, savings zero). The engine already carries both sides of every figure.
+
+**Files:**
+- Create: `src/features/_shared/CounterfactualToggle.tsx` (segmented control: `With AT&T` / `Without AT&T`; controlled props `{ value: 'with' | 'without'; onChange }`; `data-testid="counterfactual-toggle"`, options `data-testid="lens-with"` / `data-testid="lens-without"`, `aria-pressed` semantics)
+- Create: `src/features/_shared/counterfactual.ts` (pure lenses)
+- Test: `src/features/_shared/counterfactual.test.ts`, `CounterfactualToggle.test.tsx`
+- Modify: `src/features/connect/ConnectPage.tsx` (toggle above FabricHero; hero + verdict consume the lensed model)
+- Modify: `src/features/observe/ObservePage.tsx` + `ObservabilityShell.tsx` (toggle in the shell header; verdict, KPI trio and sankey consume lensed inputs)
+- Modify: `src/features/discover/UnifiedDiscovery.tsx` (toggle beside the estate filter chips; verdict + tree path badges consume the lensed model)
+- Tests: corresponding page/shell test files (append lens cases)
+
+**Interfaces:**
+- `export type Lens = 'with' | 'without';`
+- `export function withoutAttModel(model: FabricModel): FabricModel` - every region `{ path: 'public', attached: false, reliability: 'none', currentMs: publicMs }`; every c2c `{ controlled: false, viaPublic: true }`; onramps `{ active: false }`. Pure, deterministic; `'with'` lens is the identity.
+- `export function withoutAttSankey(model: SankeyModel): SankeyModel` - every link `pathKind: 'public'`, all mid-band flow through the public-path node (merge the AT&T-fabric node's links into the public node; drop the fabric node when its value reaches zero).
+- Verdicts need no new selectors: the pages pass the LENSED model into the existing `discoverVerdict`/`connectVerdict`; Observe's without-lens verdict comes from a new pure `withoutAttObserveVerdict(cc)` in `networkBinding.ts` stating the counterfactual with the existing raw figures: total Gbps all public, egress total at hyperscaler rates (`eg.total + eg.savings` - what you would pay without the fabric discount), savings zero. Copy pattern: `'Without AT&T: all of your N Gbps rides the public internet. $X/mo egress at hyperscaler rates. Nothing saved.'` (verify eg field semantics against `CloudControlEgress` - `total`/`pub`/`priv`/`savings` - and derive honestly; state the mapping in the report).
+
+- [ ] **Step 1: Failing lens tests** - `withoutAttModel`: every region public/none/`currentMs === publicMs`, identity for 'with'; deterministic. `withoutAttSankey`: no link keeps `pathKind: 'private'`, total link value conserved. Toggle component: two options, aria-pressed flips, onChange fires.
+- [ ] **Step 2: Implement the module + toggle.**
+- [ ] **Step 3: Wire Connect** - `const [lens, setLens] = useState<Lens>('with');` toggle renders above FabricHero (inside the PageSection, after the VerdictLine); `const lensed = lens === 'without' ? withoutAttModel(model) : model;` FabricHero + connectVerdict + FabricPanel consume `lensed`. Failing test: flipping the toggle turns every fabric edge `data-path="public"` and the verdict says none are on the fabric.
+- [ ] **Step 4: Wire Observe** - toggle beside the KPI row; in 'without', the verdict line renders `withoutAttObserveVerdict(cc)`, the KPI trio shows Savings $0.0k/mo + Under Control 0% + Throughput unchanged (derive by mapping the existing kpis - do not touch the binding), and the sankey gets `withoutAttSankey(binding.sankey!())`. Failing test: flip → verdict contains 'Without AT&T', savings tile reads $0.
+- [ ] **Step 5: Wire Discover** - toggle next to the filter chips; verdict + tree consume the lensed model (tree rows' via-the-AT&T-fabric badges disappear under 'without'). Failing test: flip → verdict states 0 on the fabric.
+- [ ] **Step 6:** `npx vitest run src/features/_shared src/features/connect src/features/observe src/features/discover src/features/tour src/__tests__/vocabulary.test.ts` - PASS.
+- [ ] **Step 7: Commit** - `feat(spine): the with/without lens - every page can show the world without the fabric`
+
+---
+
+### Task 8 (addendum, owner-directed 2026-08-07): Site fleets - the fabric graphic scales to enterprise estates
+
+Owner directive: "With the graphic with att fabric, the left might be 5000 sites, like for wells fargo." The left column of FabricHero must read at enterprise scale: each left node is a site CLASS carrying its fleet count, not a single building. A Wells-Fargo-scale estate is the story: thousands of branches ride one first-mile class onto the fabric.
+
+**Files:**
+- Modify: `src/engine/state-routing.ts:257-263` (EDGE_NODES gain `fleet`)  and `:466` (sites map carries it through `fabricModel()`)
+- Modify: `src/engine/types.ts` (the FabricModel site shape gains `fleet: number` - find the site entry type; FabricHero's local `FabricModel.sites` typing follows)
+- Modify: `src/features/connect/FabricHero.tsx` (site node sub-label shows the fleet; site→fabric edge stroke scales with fleet)
+- Modify: `src/features/connect/SitePanel.tsx` (fleet figure in the panel)
+- Tests: `src/features/connect/FabricHero.layout.test.ts` or FabricHero.test.tsx (append), engine test file for fabricModel if one asserts site shape
+
+**Interfaces:**
+- EDGE_NODES seed gains demo-real fleets (Wells-Fargo scale): `e-hq` fleet 1, `e-dc` fleet 2, `e-branch` fleet 4981, `e-mob` fleet 12400, `e-net` no fleet (internet is not a site class - keep it fleetless/undefined and render unchanged).
+- `fabricModel()` sites: `{ id, label, firstMile, fleet }`.
+- FabricHero: site node sub-label becomes `${fmt(fleet)} sites · first-mile · ${firstMile}` when `fleet > 1` (comma-formatted via `toLocaleString('en-US')`), unchanged single-site copy when fleet is 1 or undefined. Site→fabric edge strokeWidth scales `1.5 + Math.log10(fleet) * 0.9` clamped to [1.5, 5] (pure helper `fleetStroke(fleet?: number): number` exported from FabricHero for the layout test; fleet undefined → 1.5).
+- Labels stay the class names (HQ, DC, Branch, Mobility) - the CLASS is the node, the fleet is the count.
+
+- [ ] **Step 1: Failing tests** - engine: `fabricModel().sites` carries the seeded fleets (branch 4981). FabricHero: `fleetStroke(4981)` ≈ 4.8 (assert `toBeCloseTo(1.5 + Math.log10(4981) * 0.9, 1)` and clamping at 1 → 1.5, at 10**9 → 5); render test: the Branch site node shows '4,981 sites'.
+- [ ] **Step 2: Implement** engine seed + pass-through, FabricHero sub-label + edge stroke (both collapsed and expanded modes use the same site edges - verify the expanded-mode site edges pick up the stroke too), SitePanel fleet line ('4,981 sites on this first-mile' pattern).
+- [ ] **Step 3:** `npx vitest run src/features/connect src/engine src/features/discover src/features/tour` - PASS (discover included: AttachmentMap/tree may render site labels; update only assertions the sub-label change breaks, named in the report).
+- [ ] **Step 4: Commit** - `feat(connect): site fleets - the left column reads at Wells Fargo scale`
