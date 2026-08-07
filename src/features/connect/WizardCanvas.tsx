@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { VIZ_HEX } from '../../components/viz/kit';
-import { computeWizardCanvas, type WizardCanvasSpec } from './wizardCanvas';
+import { computeWizardCanvas, type WizardCanvasSpec } from './wizardCanvasModel';
 
 /** The wizard's live picture: every answer places or thickens an element.
  *  Answered = solid cobalt; pending = dashed slate ghost; dual = double

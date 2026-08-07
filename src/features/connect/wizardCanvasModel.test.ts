@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeWizardCanvas, type WizardCanvasSpec } from './wizardCanvas';
+import { computeWizardCanvas, type WizardCanvasSpec } from './wizardCanvasModel';
 
 const spec = (over: Partial<WizardCanvasSpec> = {}): WizardCanvasSpec => ({
   left: { label: 'Equinix DC2', sub: 'Direct Connect' },

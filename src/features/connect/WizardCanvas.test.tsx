@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { WizardCanvas } from './WizardCanvas.tsx';
-import type { WizardCanvasSpec } from './wizardCanvas.ts';
+import { WizardCanvas } from './WizardCanvas';
+import type { WizardCanvasSpec } from './wizardCanvasModel';
 
 const base: WizardCanvasSpec = {
   left: { label: 'Equinix DC2', sub: 'Direct Connect' },
