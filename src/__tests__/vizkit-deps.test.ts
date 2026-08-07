@@ -10,7 +10,7 @@ describe('vizkit dependency guard', () => {
     const files = execSync('git ls-files', { encoding: 'utf8' })
       .split('\n')
       .filter(f => f.startsWith('src/features/') && /\.(ts|tsx)$/.test(f) && !/\.test\.tsx?$/.test(f));
-    const banned = /from\s+['"](recharts|chart\.js|react-chartjs-2)['"]|import\(['"](chart\.js|react-chartjs-2)/;
+    const banned = /from\s+['"](recharts|chart\.js|react-chartjs-2)['"]|import\(['"](recharts|chart\.js|react-chartjs-2)/;
     const hits = files.filter(f => banned.test(readFileSync(f, 'utf8')));
     expect(hits).toEqual([]);
   });

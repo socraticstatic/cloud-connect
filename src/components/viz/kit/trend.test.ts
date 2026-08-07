@@ -18,4 +18,8 @@ describe('computeTrendGeometry', () => {
     const g = computeTrendGeometry([0, 0, 0], 90, 40);
     expect(g.line).toBe('M 0 38 L 45 38 L 90 38');
   });
+  it('opts.max scales against a shared ceiling instead of the series own max', () => {
+    const g = computeTrendGeometry([0, 50], 100, 40, { max: 100 });
+    expect(g.line).toBe('M 0 38 L 100 20');
+  });
 });

@@ -10,10 +10,9 @@ const VIEW_H = 176;
  * saving. One axis, three recessive gridlines, no animation.
  */
 export function EgressTrend({ actual, hyper }: { actual: number[]; hyper: number[] }) {
-  const both = [...actual, ...hyper];
-  const max = Math.max(...both, 1);
-  const gHyper = computeTrendGeometry(hyper.map(v => (v / max) * 100), VIEW_W, VIEW_H);
-  const gActual = computeTrendGeometry(actual.map(v => (v / max) * 100), VIEW_W, VIEW_H);
+  const max = Math.max(...actual, ...hyper, 1);
+  const gHyper = computeTrendGeometry(hyper, VIEW_W, VIEW_H, { max });
+  const gActual = computeTrendGeometry(actual, VIEW_W, VIEW_H, { max });
   const gridYs = [0.25, 0.5, 0.75].map(f => VIEW_H * f);
   const kPerDay = (f: number) => `$${Math.round((max * (1 - f)) / 1000)}k/d`;
   return (
