@@ -151,7 +151,7 @@ export function ChainDrawer({
                 <Hop title={chain.circuit.name} sub={`${chain.circuit.type} · ${chain.circuit.site} · ${chain.circuit.bandwidth}`}>
                   <div className="mt-1 space-y-0.5 text-[11px] text-fw-bodyLight">
                     <div>{`VLAN ${chain.circuit.vlan}`}</div>
-                    <div>{`BGP ${chain.circuit.bgp.customerAsn} ↔ ${chain.circuit.bgp.providerAsn}`}</div>
+                    <div>{`Routes exchanged (BGP) ${chain.circuit.bgp.customerAsn} ↔ ${chain.circuit.bgp.providerAsn}`}</div>
                   </div>
                 </Hop>
                 {chain.path.kind === 'private' ? (
