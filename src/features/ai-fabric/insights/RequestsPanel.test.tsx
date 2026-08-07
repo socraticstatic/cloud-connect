@@ -96,6 +96,7 @@ const mkRow = (
   time: '00:00:00',
   status: 200,
   ok: true,
+  guarded: false,
   identity: 'agent',
   model: 'model',
   provider: 'provider',
