@@ -366,6 +366,28 @@ export function UnifiedDiscovery() {
   const clouds = cc.clouds as Cloud[];
   const tags = cc.TAGS as Record<string, Tag>;
   const domains = estateDomains(cc);
+  /* The summary band's six headline figures — read off the same `domains`
+     stats the full sections render, by (domain key, stat key). No second
+     derivation: a figure that drifted between the two would be exactly the
+     bug this reuse rules out. `clouds · regions` is the one composite —
+     two of the Cloud section's own numbers on one tile, not a new count. */
+  const stat = (domainKey: (typeof domains)[number]['key'], statKey: string) =>
+    domains.find(d => d.key === domainKey)!.stats.find(s => s.key === statKey)!;
+  const sitesStat = stat('network', 'sites');
+  const onrampsStat = stat('network', 'onramps');
+  const cloudsStat = stat('cloud', 'clouds');
+  const regionsStat = stat('cloud', 'regions');
+  const workloadsStat = stat('cloud', 'workloads');
+  const attachedStat = stat('cloud', 'attached');
+  const aiExposedStat = stat('ai', 'aiExposed');
+  const summaryTiles: { key: string; value: React.ReactNode; of?: number; label: string }[] = [
+    { key: 'sites', value: sitesStat.value, label: sitesStat.label },
+    { key: 'onramps', value: onrampsStat.value, of: onrampsStat.of, label: onrampsStat.label },
+    { key: 'cloudsRegions', value: `${cloudsStat.value} · ${regionsStat.value}`, label: 'Clouds · Regions' },
+    { key: 'workloads', value: workloadsStat.value, label: workloadsStat.label },
+    { key: 'attached', value: attachedStat.value, label: attachedStat.label },
+    { key: 'aiExposed', value: aiExposedStat.value, label: aiExposedStat.label },
+  ];
   /* Latency comes from `fabricModel()`, the one region-latency derivation this
      estate has. Rendering the raw seed `r.lat` here is what put Nebius at 44ms
      on this screen and 120ms on the next.
@@ -693,24 +715,58 @@ export function UnifiedDiscovery() {
         )}
       </div>
 
-      {/* Estate header, in three parts: the network already in place, the
-          cloud estate on the other side of it, and the AI workloads riding
-          both. Each section is its own row of tiles rather than one flat
-          row of eight, so a viewer reads what domain a figure belongs to
-          without being told. */}
-      <div className="space-y-4">
+      {/* At-a-glance summary band: the six headline figures a viewer reaches
+          for first, read off the same three domain derivations the full
+          sections below compute (no new data paths). Landing pages are
+          at-a-glance; the full Network / Cloud / AI workflows breakdown
+          folds behind the <details> beneath it — Task 6's low-impact-metrics
+          principle applied to this screen.
+
+          This band, not any one domain section, carries the tour's
+          `discover-estate` anchor now. The tour's Discover beat speaks about
+          "clouds, regions, and VPCs" and "most of it reaches the world over
+          public internet" (cloudConnectTour.ts:126) — previously anchored to
+          the Cloud section alone (708px tall in an 812px viewport was the
+          three-section wrapper's problem, not this one's). The section it
+          used to point at now lives inside a closed <details>, and a
+          collapsed disclosure is not a spotlight target a viewer can see —
+          so the anchor moved up to this always-visible row. */}
+      <div
+        data-testid="estate-summary-band"
+        data-tour="discover-estate"
+        className="rounded-2xl border border-fw-secondary bg-fw-base p-3"
+      >
+        <div className="flex flex-wrap items-stretch gap-2">
+          {summaryTiles.map(t => (
+            <div
+              key={t.key}
+              className="min-w-[92px] flex-1 rounded-xl border border-fw-secondary bg-fw-wash px-3 py-2.5 text-center sm:min-w-[104px] sm:flex-none"
+            >
+              <div className="text-figma-lg font-semibold text-fw-heading tabular-nums">
+                {t.value}
+                {t.of !== undefined && <span className="text-fw-bodyLight"> / {t.of}</span>}
+              </div>
+              <div className="whitespace-nowrap text-[11px] uppercase tracking-wide text-fw-bodyLight">
+                {t.label}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* The full breakdown, on demand. Every existing `estate-*` testid, the
+          per-domain heading/blurb/CTA, and every stat the three sections
+          rendered survive unchanged inside the fold — only the anchor and
+          the at-a-glance entry point moved. */}
+      <details data-testid="estate-breakdown" className="group">
+        <summary className="cursor-pointer text-figma-xs font-medium text-fw-link hover:underline">
+          Show the breakdown
+        </summary>
+        <div className="mt-4 space-y-4">
         {domains.map(d => (
           <section
             key={d.key}
             data-testid={`estate-${d.key}`}
-            /* The tour's Discover beat speaks about "clouds, regions, and
-               VPCs" and "most of it reaches the world over public internet"
-               (cloudConnectTour.ts:126) — that is this one section, not all
-               three. Anchoring the spotlight on the outer wrapper made it
-               708px tall in an 812px viewport, 87% of the screen, which
-               highlights nothing and pushed the 'top'-placed tooltip onto
-               the spotlight via ProductTour's on-screen clamp. */
-            data-tour={d.key === 'cloud' ? 'discover-estate' : undefined}
             className="space-y-2"
           >
             <div>
@@ -745,7 +801,8 @@ export function UnifiedDiscovery() {
             </div>
           </section>
         ))}
-      </div>
+        </div>
+      </details>
 
       <SitesPanel branches={branches} selected={selected} onToggle={toggleSelect} />
 

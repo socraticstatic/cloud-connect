@@ -81,3 +81,51 @@ describe('UnifiedDiscovery estate filter chips', () => {
     }
   });
 });
+
+/* Task 4 — the three stat sections (Network / Cloud / AI workflows) compress
+   into one at-a-glance summary band; the full sections fold behind a
+   disclosure. The band re-uses the same domain derivations the sections
+   already compute — no new data paths. */
+describe('UnifiedDiscovery estate summary band', () => {
+  it('estate-summary-band renders one row with the six headline figures', () => {
+    renderUD();
+    const band = screen.getByTestId('estate-summary-band');
+    for (const label of ['Sites', 'Active on-ramps', 'Clouds · Regions', 'Workloads', 'Attached', 'Exposed endpoints']) {
+      expect(within(band).getByText(label), `${label} missing from the summary band`).toBeInTheDocument();
+    }
+    // one row — not the three per-domain sections it replaces
+    expect(within(band).queryByRole('heading', { level: 2 })).not.toBeInTheDocument();
+    expect(within(band).queryByTestId('estate-network')).not.toBeInTheDocument();
+    expect(within(band).queryByTestId('estate-cloud')).not.toBeInTheDocument();
+    expect(within(band).queryByTestId('estate-ai')).not.toBeInTheDocument();
+  });
+
+  it('estate-breakdown holds the full sections behind a disclosure, closed by default', () => {
+    renderUD();
+    const breakdown = screen.getByTestId('estate-breakdown');
+    expect(breakdown.tagName).toBe('DETAILS');
+    expect(breakdown).not.toHaveAttribute('open');
+    expect(within(breakdown).getByText('Show the breakdown')).toBeInTheDocument();
+
+    // A per-section-only label — never one of the band's six headline
+    // figures — lives inside the breakdown and nowhere else.
+    expect(within(breakdown).getByText('Routes')).toBeInTheDocument();
+    const band = screen.getByTestId('estate-summary-band');
+    expect(within(band).queryByText('Routes')).not.toBeInTheDocument();
+
+    // the previous three sections are all still there, inside the fold
+    expect(within(breakdown).getByTestId('estate-network')).toBeInTheDocument();
+    expect(within(breakdown).getByTestId('estate-cloud')).toBeInTheDocument();
+    expect(within(breakdown).getByTestId('estate-ai')).toBeInTheDocument();
+  });
+
+  it('the guided-tour anchor sits on the visible summary band, not inside the fold', () => {
+    const { container } = renderUD();
+    const anchor = container.querySelector('[data-tour="discover-estate"]');
+    expect(anchor).not.toBeNull();
+    expect(anchor).toHaveAttribute('data-testid', 'estate-summary-band');
+    // the anchor must not be nested inside the closed <details> — a tour
+    // spotlight on hidden content highlights nothing.
+    expect(anchor!.closest('details')).toBeNull();
+  });
+});
