@@ -25,11 +25,8 @@ The site reads as four separate products (Manage, Monitor, Configure, Create) pl
 
 ## Phase 2 - One visual grammar (VizKit)
 
-- **Primitives**, extracted from FabricHero and SankeyPanel into `src/components/viz/kit/`:
-  - `FlowAxis` - the ingress-to-egress stage that hosts everything.
-  - `FabricNode` - a node on the axis; supports expand-in-place.
-  - `Ribbon` - a flow between nodes; width encodes volume.
-  - `StationTrack` - ordered status stations rendered along the axis.
+- **Primitives**, extracted from FabricHero and SankeyPanel into `src/components/viz/kit/`: the shared palette and ribbon math, `StationTrack`, `TrendBand`, `CategoryBars`. `FlowAxis`/`FabricNode` extraction is dropped (YAGNI) - the drill-down builds inside FabricHero, which already owns the axis.
+- **Ground truth, verified this session:** the NaaS spine (`/discover`, `/naas/connect`, `/naas/observe`) already uses zero chart libraries. The only demo-reachable library charts are `src/features/ai-fabric/GovernanceDecisions.tsx` (recharts BarChart, via /ai/observe -> Security tab) and `src/features/cost/EgressTrend.tsx` (recharts, via the Observe CTA -> /naas/cost) - those two are the whole "chart migration." `BgpStatusTimeline.tsx` is dead code (zero importers) and is deleted, not replaced; the reachable "horrid timeline" is the 60-rect bar series + scrubber in `ObservabilityShell.tsx:108-126`, which TrendBand replaces. The live home for StationTrack is the managed-VPC bring-up (`DeployManagedVpcWizard.tsx:251-275`), which renders engine-driven `ManagedVpcStage[]` as a vertical dot list today; the LMCC-progression components in `src/components/connection/` are all orphaned (unreachable) and are left alone.
 - **Fabric drill-down.** Clicking the AT&T Fabric node expands it in place into its internals (sites, IPEs, the four LMCC paths) on the same axis, with a chip to collapse. One level deep. Multi-level semantic zoom is out of scope.
 - **Timeline replacement.** BgpStatusTimeline is deleted. Connection status renders as a StationTrack on the connection's own wire: Key Accepted -> Negotiating -> BGP Forming -> Live. (Flow 03 adds Key Generated at the head.)
 - **Chart migration.** Remaining spine charts (Observe KPIs, AI Fabric cost) re-render in VizKit primitives. chart.js and recharts imports removed from spine bundles; off-spine screens keep them until touched.

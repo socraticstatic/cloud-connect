@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ProviderLogo } from '../../components/brand/ProviderLogo';
 import type { FabricRegion } from '../../engine/types';
+import { VIZ_HEX } from '../../components/viz/kit';
 
 /* ------------------------------------------------------------------ *
  * Cloud Fabric hero — the manipulable centerpiece of Connect.
@@ -41,25 +42,9 @@ export interface FabricModel {
 /* Flywheel hex applied as literal SVG attributes (the tailwind config only
  * extends text/bg/border with fw-*, so fill/stroke fw- classes compile to
  * nothing). Cobalt = private/on-fabric, green = dual/resilient, slate =
- * public. No amber anywhere. */
-/* These feed SVG stroke/fill attributes, where a Tailwind class cannot reach,
-   so raw values are correct here — but they must be the PALETTE's values.
-   `green` was #00a862, a second green that existed nowhere in the tokens and
-   competed with fw-success for the same meaning; the fabric lines the tour
-   tells you to "watch turn green" were a different green from every other
-   success signal on the screen. */
-const HEX = {
-  cobalt: '#0057b8',      // fw-ctaPrimary
-  cobaltSoft: '#7aa6d6',
-  green: '#2d7e24',       // fw-success
-  slate: '#94a3b8',
-  slateInk: '#475569',
-  ink: '#1d2329',
-  wash: '#f8fafb',
-  line: '#dcdfe3',
-  band: '#eef4fb',
-  bandStroke: '#c7ddf5',
-} as const;
+ * public. No amber anywhere. Values come from the shared VIZ_HEX kit palette
+ * — `green` is #2d7e24 (fw-success); the #00a862 duplicate that used to live
+ * here, competing with fw-success for the same meaning, is gone. */
 
 const VIEW_W = 1000;
 const ROW_H = 52;
@@ -189,15 +174,15 @@ export function computeFabricLayout(model: FabricModel): FabricLayout {
 /* ----- edge stroke encoding: private vs public, single vs double ----- */
 function edgeStroke(path: 'private' | 'public'): { color: string; dash?: string } {
   return path === 'private'
-    ? { color: HEX.cobalt }
-    : { color: HEX.slate, dash: '5 5' };
+    ? { color: VIZ_HEX.cobalt }
+    : { color: VIZ_HEX.slate, dash: '5 5' };
 }
 
 function ReliabilityDot({ reliability }: { reliability: FabricRegion['reliability'] }) {
   const map = {
-    dual: { c: HEX.green, t: 'Dual · resilient' },
-    single: { c: HEX.cobalt, t: 'Single path' },
-    none: { c: HEX.slate, t: 'Not attached' },
+    dual: { c: VIZ_HEX.green, t: 'Dual · resilient' },
+    single: { c: VIZ_HEX.cobalt, t: 'Single path' },
+    none: { c: VIZ_HEX.slate, t: 'Not attached' },
   } as const;
   const m = map[reliability];
   return (
@@ -254,7 +239,7 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
         <g>
           <rect
             x={layout.fabric.x} y={layout.fabric.y} width={layout.fabric.w} height={layout.fabric.h}
-            rx={18} fill={HEX.band} stroke={fabricFocus ? HEX.cobalt : HEX.bandStroke}
+            rx={18} fill={VIZ_HEX.band} stroke={fabricFocus ? VIZ_HEX.cobalt : VIZ_HEX.bandStroke}
             strokeWidth={fabricFocus ? 2.5 : 1.5}
           />
         </g>
@@ -269,7 +254,7 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
               <path
                 key={`se-${s.id}`} data-fabric-edge data-kind="site"
                 d={`M ${from.x} ${from.y} C ${from.x + 60} ${from.y}, ${to.x - 60} ${to.y}, ${to.x} ${to.y}`}
-                fill="none" stroke={HEX.cobaltSoft} strokeWidth={lit ? 2.5 : 1.5}
+                fill="none" stroke={VIZ_HEX.cobaltSoft} strokeWidth={lit ? 2.5 : 1.5}
                 strokeOpacity={focusId && !lit ? 0.35 : 0.9} strokeLinecap="round"
               />
             );
@@ -303,7 +288,7 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
                 {/* on-ramp product label — the edge detail-on-demand */}
                 {region.onrampIds.length > 0 && (
                   <text x={edge.mid.x} y={edge.mid.y} textAnchor="middle"
-                    fill={HEX.slateInk} stroke={HEX.wash} strokeWidth={3} paintOrder="stroke"
+                    fill={VIZ_HEX.slateInk} stroke={VIZ_HEX.wash} strokeWidth={3} paintOrder="stroke"
                     className="text-[10px] font-medium" style={{ opacity: focusId && !lit ? 0.4 : 1 }}>
                     {edge.onrampLabel}
                   </text>
@@ -317,7 +302,7 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
             const lit = fabricFocus || focusId === 'e-net';
             const d = `M ${e.from.x} ${e.from.y} C ${e.from.x + 60} ${e.from.y}, ${e.to.x - 60} ${e.to.y}, ${e.to.x} ${e.to.y}`;
             return (
-              <path data-fabric-edge data-kind="internet" d={d} fill="none" stroke={HEX.slate}
+              <path data-fabric-edge data-kind="internet" d={d} fill="none" stroke={VIZ_HEX.slate}
                 strokeWidth={lit ? 2.4 : 1.5} strokeOpacity={focusId && !lit ? 0.3 : 0.85}
                 strokeDasharray="5 5" strokeLinecap="round" />
             );
@@ -332,7 +317,7 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
               <path
                 key={`arc-${a.id}`} data-fabric-arc data-controlled={a.controlled}
                 d={`M ${a.a.x} ${a.a.y} Q ${a.ctrl.x} ${a.ctrl.y} ${a.b.x} ${a.b.y}`}
-                fill="none" stroke={a.controlled ? HEX.cobalt : HEX.slate}
+                fill="none" stroke={a.controlled ? VIZ_HEX.cobalt : VIZ_HEX.slate}
                 strokeWidth={lit ? 2.2 : 1.4} strokeOpacity={focusId && !lit ? 0.28 : 0.75}
                 strokeDasharray={a.controlled ? undefined : '4 5'} strokeLinecap="round"
               >
