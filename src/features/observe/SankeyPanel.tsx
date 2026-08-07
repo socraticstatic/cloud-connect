@@ -108,8 +108,8 @@ export function computeSankeyGeometry(model: SankeyModel): SankeyGeometry {
           x.n.band === 'path'
             ? x.n.name === 'AT&T fabric'
               ? VIZ_HEX.cobalt
-              : VIZ_HEX.slateInk
-            : VIZ_HEX.slateInk,
+              : VIZ_HEX.slateMuted
+            : VIZ_HEX.slateMuted,
         pathKind: x.n.band === 'path' ? (x.n.name === 'AT&T fabric' ? 'private' : 'public') : undefined,
       });
       y += heights.get(x.i)! + NODE_GAP;

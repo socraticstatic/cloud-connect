@@ -8,6 +8,7 @@ export const VIZ_HEX = {
   green: '#2d7e24',
   slate: '#94a3b8',
   slateInk: '#475569',
+  slateMuted: '#64748b', // SankeyPanel's node-bar gray - lighter than slateInk, kept distinct so extraction changes zero pixels
   ink: '#1d2329',
   inkSoft: '#475569',
   wash: '#f8fafb',
