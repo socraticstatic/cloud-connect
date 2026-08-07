@@ -1,38 +1,36 @@
-import {
-  ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from 'recharts';
+import { VIZ_HEX, computeTrendGeometry } from '../../components/viz/kit';
+
+const VIEW_W = 600;
+const VIEW_H = 176;
 
 /**
- * The widening gap. Two deterministic series over the trailing window: what the
- * same egress would cost at hyperscaler public rates (`hyper`, cobalt, filled)
- * vs what it actually costs on the AT&T fabric (`actual`, green). The band
- * between the two lines IS the accumulating saving — and it widens as more paths
- * are captured (each attach lowers `actual` and lifts the hyper-rate ratio).
- * One axis, recessive grid, no animation.
+ * The widening gap, hand-rolled: what the same egress would cost at
+ * hyperscaler public rates (cobalt band) vs what it actually costs on the
+ * AT&T fabric (green line). The gap between them IS the accumulating
+ * saving. One axis, three recessive gridlines, no animation.
  */
 export function EgressTrend({ actual, hyper }: { actual: number[]; hyper: number[] }) {
-  const data = actual.map((v, i) => ({ i, actual: v, hyper: hyper[i] ?? v }));
+  const both = [...actual, ...hyper];
+  const max = Math.max(...both, 1);
+  const gHyper = computeTrendGeometry(hyper.map(v => (v / max) * 100), VIEW_W, VIEW_H);
+  const gActual = computeTrendGeometry(actual.map(v => (v / max) * 100), VIEW_W, VIEW_H);
+  const gridYs = [0.25, 0.5, 0.75].map(f => VIEW_H * f);
+  const kPerDay = (f: number) => `$${Math.round((max * (1 - f)) / 1000)}k/d`;
   return (
     <div className="h-44" role="img" aria-label="Egress spend on the fabric vs at hyperscaler rates, trailing 60 days">
-      <ResponsiveContainer>
-        <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-          <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
-          <XAxis dataKey="i" hide />
-          {/* Series is per-DAY, so the axis is $k/day — not the monthly invoice total. */}
-          <YAxis width={52} tick={{ fontSize: 11, fill: '#64748b' }}
-                 tickFormatter={(v: number) => `$${Math.round(v / 1000)}k/d`} />
-          <Tooltip
-            formatter={(v: number, name: string) => [
-              `$${Math.round(v).toLocaleString()}/day`,
-              name === 'hyper' ? 'At hyperscaler rates' : 'On the fabric',
-            ]}
-            labelFormatter={() => ''} />
-          <Area dataKey="hyper" stroke="#0057b8" strokeWidth={1.5} fill="#0057b8" fillOpacity={0.06}
-                dot={false} isAnimationActive={false} name="hyper" />
-          <Line dataKey="actual" stroke="#00a862" strokeWidth={2} dot={false}
-                activeDot={{ r: 4 }} isAnimationActive={false} name="actual" />
-        </ComposedChart>
-      </ResponsiveContainer>
+      <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} className="h-full w-full">
+        {gridYs.map((y, i) => (
+          <g key={y}>
+            <line x1={0} y1={y} x2={VIEW_W} y2={y} stroke={VIZ_HEX.line} strokeDasharray="3 3" />
+            <text x={4} y={y - 3} fill={VIZ_HEX.slateInk} className="text-[10px] tabular-nums">
+              {kPerDay([0.25, 0.5, 0.75][i])}
+            </text>
+          </g>
+        ))}
+        <path d={gHyper.area} fill={VIZ_HEX.cobalt} fillOpacity={0.06} />
+        <path d={gHyper.line} fill="none" stroke={VIZ_HEX.cobalt} strokeWidth={1.5} />
+        <path d={gActual.line} fill="none" stroke="#00a862" strokeWidth={2} />
+      </svg>
     </div>
   );
 }
