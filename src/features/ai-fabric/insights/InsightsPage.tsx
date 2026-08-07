@@ -9,6 +9,7 @@ import { KpiStrip } from './KpiStrip';
 import { TrafficSankey } from './TrafficSankey';
 import { RequestsFilterBar } from './RequestsFilterBar';
 import { RequestsTable } from './RequestsTable';
+import { RequestDeepDive } from './RequestDeepDive';
 import { PerformanceTab } from './PerformanceTab';
 import { SavingsTab } from './SavingsTab';
 import { SecurityTab } from './SecurityTab';
@@ -148,8 +149,14 @@ export function InsightsPage() {
       {tab === 'savings' && <SavingsTab />}
       {tab === 'security' && <SecurityTab />}
 
-      <RequestsFilterBar rows={view.rows} filters={filters} onChange={setFilters} />
-      <RequestsTable rows={visibleRows} />
+      <RequestDeepDive rows={view.rows} filters={filters} onFiltersChange={setFilters} />
+      <details data-testid="raw-log">
+        <summary className="cursor-pointer text-figma-sm font-medium text-fw-link">Show the raw log</summary>
+        <div className="mt-3 space-y-3">
+          <RequestsFilterBar rows={view.rows} filters={filters} onChange={setFilters} />
+          <RequestsTable rows={visibleRows} />
+        </div>
+      </details>
     </div>
   );
 }
