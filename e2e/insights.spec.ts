@@ -23,12 +23,20 @@ test('boots to the anatomy: five KPI cards, the sankey, the request log', async 
   await seedAuth(page);
   await page.goto('/#/ai/observe', { waitUntil: 'domcontentloaded' });
 
+  // The deep dive leads the page: the verdict sentence is up before the raw
+  // log disclosure is ever opened.
+  await expect(page.getByTestId('requests-verdict')).toBeVisible();
+
   for (const key of ['tokens', 'cost', 'ttft', 'requests', 'blocked']) {
     await expect(page.getByTestId(`kpi-${key}`)).toBeVisible();
   }
   await expect(page.getByTestId('sankey')).toBeVisible();
   // One ribbon per metered identity - the seeded estate has three.
   expect(await page.locator('[data-testid^="sankey-ribbon-"]').count()).toBeGreaterThanOrEqual(3);
+
+  // The raw log is a disclosure now, not the page default - open it once
+  // to reach the table.
+  await page.getByTestId('raw-log').locator('summary').click();
   await expect(page.getByTestId('requests-table')).toBeVisible();
 });
 
@@ -39,6 +47,10 @@ test('a driven request rows in and moves the Requests KPI', async ({ page }) => 
   const kpi = page.getByTestId('kpi-requests');
   await expect(kpi).toBeVisible();
   const before = Number((await kpi.innerText()).match(/\d+/)?.[0] ?? '0');
+
+  // The row this test reads back lives in the raw log disclosure - open it
+  // once, up front, so the row is actually reachable after the trace.
+  await page.getByTestId('raw-log').locator('summary').click();
 
   await trace(page);
   await page.evaluate(() =>
@@ -76,10 +88,11 @@ test('filters narrow the log, chips appear, Clear all restores', async ({ page }
   await seedAuth(page);
   await page.goto('/#/ai/observe', { waitUntil: 'domcontentloaded' });
 
-  // Two identities in the log so the filter has something to exclude. Wait
-  // for the screen to be up before driving the engine, and assert through
-  // the auto-retrying matcher rather than a raw count - the render lands on
-  // the emit, not synchronously with it.
+  // Two identities in the log so the filter has something to exclude. Open
+  // the raw log disclosure, then wait for the screen to be up before driving
+  // the engine, and assert through the auto-retrying matcher rather than a
+  // raw count - the render lands on the emit, not synchronously with it.
+  await page.getByTestId('raw-log').locator('summary').click();
   await expect(page.getByTestId('requests-table')).toBeVisible();
   await trace(page);
   await page.evaluate(() => {
