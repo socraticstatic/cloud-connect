@@ -11,7 +11,13 @@ import { requestVerdict, requestFacets, requestOutliers } from './requestAnalysi
 CC.promptTrace!('rd-helion', 'helion-70b', 'request analysis test · rd-helion 1');
 CC.promptTrace!('rd-helion', 'helion-70b', 'request analysis test · rd-helion 2');
 CC.promptTrace!('shared-services', 'gpt-class', 'request analysis test · shared-services');
-CC.promptTrace!('classified-helion', 'gpt-class', 'request analysis test · classified-helion');
+/* classified-helion's token policy carries guardrail:true and scope
+   'no-external'. scopeDenies only ever denies modelId 'gpt-class', so
+   routing it to helion-70b instead clears the gate and lands on
+   recordDecision(true, true, ...) - a genuine ok:true, guarded:true row,
+   the same shape GovernanceDecisions.tsx counts as its Guardrail bar. */
+CC.promptTrace!('classified-helion', 'helion-70b', 'request analysis test · classified-helion guarded');
+CC.promptTrace!('classified-helion', 'gpt-class', 'request analysis test · classified-helion denied');
 
 const rows = requestRows(CC);
 
@@ -23,6 +29,13 @@ describe('requestVerdict', () => {
   });
   it('empty rows return a sentence, not silence', () => {
     expect(requestVerdict([])).toBe('No requests traced yet. Run a trace to populate this view.');
+  });
+  it('counts a real ok+guarded row as guardrailed, not allowed', () => {
+    // The seeded classified-helion/helion-70b trace above is ok:true, guarded:true.
+    expect(rows.some(r => r.ok && r.guarded)).toBe(true);
+    const v = requestVerdict(rows);
+    const guardrailed = Number(v.match(/(\d+) guardrailed/)![1]);
+    expect(guardrailed).toBeGreaterThan(0);
   });
 });
 

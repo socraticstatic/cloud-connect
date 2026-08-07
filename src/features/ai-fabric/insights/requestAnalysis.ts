@@ -31,13 +31,14 @@ export interface RequestOutlier {
 
 /**
  * Allowed/guardrailed/denied mirrors GovernanceDecisions.tsx:51-56's
- * predicate, adapted to the fields InsightRequestRow actually carries: `ok`
- * stands in for `allowed`, and a non-null `reason` on an otherwise-ok row
- * stands in for `guarded`. `!ok` is always denied, exactly as there.
+ * predicate exactly: `ok` stands in for `allowed`, `guarded` is the same
+ * decision-log field GovernanceDecisions reads (InsightRequestRow now
+ * carries it straight through from decisionLog() in insightsFigures.ts).
+ * `!ok` is always denied, regardless of `guarded`.
  */
 function classify(row: InsightRequestRow): 'allowed' | 'guardrailed' | 'denied' {
   if (!row.ok) return 'denied';
-  return row.reason ? 'guardrailed' : 'allowed';
+  return row.guarded ? 'guardrailed' : 'allowed';
 }
 
 /**

@@ -117,6 +117,13 @@ export interface InsightRequestRow {
   time: string;
   status: number;
   ok: boolean;
+  /**
+   * Mirrors the decision log's own `guarded` flag - the same field
+   * GovernanceDecisions.tsx:53-55 reads to split its Allowed/Guardrail bars.
+   * `ok && guarded` is a real guardrailed request; `ok && !guarded` is a
+   * plain allow.
+   */
+  guarded: boolean;
   identity: string;
   model: string;
   provider: string;
@@ -157,6 +164,7 @@ export function requestRows(cc: CloudControl): InsightRequestRow[] {
         time: new Date(d.ts).toLocaleTimeString('en-US', { hour12: false }),
         status: d.allowed ? 200 : 403,
         ok: d.allowed,
+        guarded: d.guarded,
         identity: d.tag as string,
         model: model?.name ?? (d.modelId as string),
         provider: providerName(model?.cloud ?? null),
