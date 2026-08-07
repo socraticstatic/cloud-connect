@@ -58,6 +58,10 @@ const FABRIC_X = 404;
 const FABRIC_W = 92;
 const FABRIC_RIGHT = FABRIC_X + FABRIC_W;
 
+/** Expanded drill-down: the band grows leftward into the empty mid-stage;
+ *  FABRIC_RIGHT is fixed so no region edge moves. */
+const FABRIC_X_EXPANDED = 254;
+
 const REGION_X = 596;
 const REGION_W = 320;
 const REGION_RIGHT = REGION_X + REGION_W;
@@ -110,17 +114,24 @@ export interface FabricLayout {
   }[];
   internet: { x: number; y: number; edge: { from: Pt; to: Pt } };
   arcs: { id: string; label: string; controlled: boolean; a: Pt; b: Pt; ctrl: Pt; regionIds: [string, string] }[];
+  internals?: {
+    sites: { id: string; label: string; y: number }[];
+    paths: { id: string; label: string; y: number; siteIdx: 0 | 1 }[];
+    caption: string;
+  };
 }
 
 /** Pure, deterministic layout — identical model in ⇒ identical geometry out. */
-export function computeFabricLayout(model: FabricModel): FabricLayout {
+export function computeFabricLayout(model: FabricModel, opts?: { expanded?: boolean }): FabricLayout {
   const rightCount = model.regions.length + 1; // regions + internet node
   const viewH = TOP_PAD * 2 + (rightCount - 1) * ROW_H;
   const bandTop = 28;
   const bandBottom = viewH - 28;
   const clampBand = (y: number) => Math.min(bandBottom - 10, Math.max(bandTop + 10, y));
 
-  const fabric = { x: FABRIC_X, y: bandTop, w: FABRIC_W, h: bandBottom - bandTop, cx: FABRIC_X + FABRIC_W / 2, cy: viewH / 2 };
+  const expanded = opts?.expanded ?? false;
+  const fx = expanded ? FABRIC_X_EXPANDED : FABRIC_X;
+  const fabric = { x: fx, y: bandTop, w: FABRIC_RIGHT - fx, h: bandBottom - bandTop, cx: fx + (FABRIC_RIGHT - fx) / 2, cy: viewH / 2 };
 
   // Sites: vertically centered stack.
   const siteGap = 92;
@@ -168,7 +179,37 @@ export function computeFabricLayout(model: FabricModel): FabricLayout {
     return { id: f.id, label: f.label, controlled: f.controlled, a, b, ctrl, regionIds: ends };
   }).filter(Boolean) as FabricLayout['arcs'];
 
-  return { viewW: VIEW_W, viewH, fabric, sites, regions, internet, arcs };
+  /* Drill-down internals: two diverse sites, two IPE paths each, on the
+     same axis. Site labels come from the model's first two sites when
+     present; the architecture facts are the product's (4 paths, 2 sites,
+     900ms BFD detection). */
+  let internals: FabricLayout['internals'];
+  if (expanded) {
+    const siteLabels = [
+      model.sites[0]?.label.split(' · ')[0] ?? 'Site A',
+      model.sites[1]?.label.split(' · ')[0] ?? 'Site B',
+    ];
+    const innerTop = fabric.y + 34;
+    const innerBottom = fabric.y + fabric.h - 26;
+    const half = (innerBottom - innerTop) / 2;
+    const siteY = (i: number) => innerTop + i * half + 10;
+    const pathY = (i: number) => {
+      const siteIdx = i < 2 ? 0 : 1;
+      return siteY(siteIdx) + 18 + (i % 2) * 16;
+    };
+    internals = {
+      sites: siteLabels.map((label, i) => ({ id: `fab-site-${i}`, label, y: siteY(i) })),
+      paths: [0, 1, 2, 3].map(i => ({
+        id: `fab-path-${i}`,
+        label: `MX-304 · path ${i + 1}`,
+        y: pathY(i),
+        siteIdx: (i < 2 ? 0 : 1) as 0 | 1,
+      })),
+      caption: '4 paths · 2 diverse sites · failover detect in 900ms (BFD)',
+    };
+  }
+
+  return { viewW: VIEW_W, viewH, fabric, sites, regions, internet, arcs, internals };
 }
 
 /* ----- edge stroke encoding: private vs public, single vs double ----- */
@@ -198,10 +239,12 @@ interface FabricHeroProps {
   selected?: FabricSelection | null;
   onSelect?: (sel: FabricSelection) => void;
   justProvisioned?: string | null;
+  expanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
-export function FabricHero({ model, selected = null, onSelect, justProvisioned = null }: FabricHeroProps) {
-  const layout = useMemo(() => computeFabricLayout(model), [model]);
+export function FabricHero({ model, selected = null, onSelect, justProvisioned = null, expanded = false, onToggleExpand }: FabricHeroProps) {
+  const layout = useMemo(() => computeFabricLayout(model, { expanded }), [model, expanded]);
   const [hover, setHover] = useState<string | null>(null);
   const [hoverInfo, setHoverInfo] = useState<{ x: number; y: number; region: FabricRegion } | null>(null);
 
@@ -328,20 +371,53 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
         </g>
 
         {/* ---- fabric label (its own button) ---- */}
-        <foreignObject x={layout.fabric.x - 6} y={layout.fabric.cy - 30} width={layout.fabric.w + 12} height={60}>
+        <foreignObject
+          x={layout.fabric.x - 6}
+          y={expanded ? layout.fabric.y + 2 : layout.fabric.cy - 30}
+          width={layout.fabric.w + 12}
+          height={60}
+        >
           <button
             type="button"
             aria-pressed={selected?.kind === 'fabric'}
             data-testid="fabric-node-fabric"
-            onClick={() => select({ kind: 'fabric' })}
+            onClick={() => { select({ kind: 'fabric' }); onToggleExpand?.(); }}
             onMouseEnter={() => setHover('__fabric__')} onMouseLeave={() => setHover(null)}
             onFocus={() => setHover('__fabric__')} onBlur={() => setHover(null)}
             className="w-full h-full flex flex-col items-center justify-center rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-fw-link/50"
           >
             <span className="text-[11px] font-semibold leading-tight text-fw-link">AT&amp;T</span>
             <span className="text-[11px] font-semibold leading-tight text-fw-link">Fabric</span>
+            <span className="text-[10px] leading-tight text-fw-bodyLight">{expanded ? 'collapse' : 'see inside'}</span>
           </button>
         </foreignObject>
+
+        {/* ---- drill-down internals: sites and paths, same axis ---- */}
+        {layout.internals && (
+          <g data-testid="fabric-internals">
+            {layout.internals.sites.map(s => (
+              <text key={s.id} x={layout.fabric.x + 14} y={s.y} fill={VIZ_HEX.slateInk} className="text-[10px] font-semibold">
+                {s.label}
+              </text>
+            ))}
+            {layout.internals.paths.map(p => (
+              <g key={p.id}>
+                <line
+                  x1={layout.fabric.x + 14} y1={p.y} x2={FABRIC_RIGHT - 14} y2={p.y}
+                  stroke={VIZ_HEX.cobalt} strokeWidth={1.5} strokeOpacity={0.75} strokeLinecap="round"
+                />
+                <circle cx={layout.fabric.x + 14} cy={p.y} r={2.5} fill={VIZ_HEX.cobalt} />
+                <circle cx={FABRIC_RIGHT - 14} cy={p.y} r={2.5} fill={VIZ_HEX.cobalt} />
+                <text x={layout.fabric.x + 22} y={p.y - 4} fill={VIZ_HEX.slateInk} className="text-[9px]">
+                  {p.label}
+                </text>
+              </g>
+            ))}
+            <text x={layout.fabric.cx} y={layout.fabric.y + layout.fabric.h - 10} textAnchor="middle" fill={VIZ_HEX.slateInk} className="text-[10px]">
+              {layout.internals.caption}
+            </text>
+          </g>
+        )}
 
         {/* ---- site nodes ---- */}
         <g data-nodes-site>
