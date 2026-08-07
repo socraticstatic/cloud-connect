@@ -34,7 +34,7 @@ describe('RegionPanel managed-vpc block', () => {
     CC.advanceManagedVpc(m.id); CC.advanceManagedVpc(m.id); CC.advanceManagedVpc(m.id); CC.advanceManagedVpc(m.id);
     renderPanel();
     expect(screen.getByText('att-managed-use1')).toBeInTheDocument();
-    expect(screen.getByText(/BGP sessions established/i)).toBeInTheDocument();
+    expect(screen.getByText(/routes exchanged both ways \(BGP\)/i)).toBeInTheDocument();
     // use1's ramp nb1 is already active — going live activated nothing, no undo needed
   });
 });

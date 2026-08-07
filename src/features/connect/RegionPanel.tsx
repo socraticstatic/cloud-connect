@@ -79,7 +79,7 @@ function ManagedVpcBlock({ region }: { region: FabricRegion }) {
       {record && record.stage === 'live' && (
         <div>
           <div className="text-figma-sm font-semibold text-fw-heading">{record.name}</div>
-          <div className="text-figma-xs text-fw-bodyLight">{tierLabel} · vSRX HA pair · both BGP sessions established</div>
+          <div className="text-figma-xs text-fw-bodyLight">{tierLabel} · vSRX HA pair · routes exchanged both ways (BGP)</div>
         </div>
       )}
 

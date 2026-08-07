@@ -10,3 +10,8 @@ test('renders the network observability shell', () => {
   expect(screen.getAllByTestId('record-row').length).toBeGreaterThan(0);
   expect(screen.getByText(/Network briefing/i)).toBeInTheDocument();
 });
+
+test('opens with the verdict line', () => {
+  render(<MemoryRouter><ObservePage /></MemoryRouter>);
+  expect(screen.getByTestId('verdict-line').textContent).toMatch(/AT&T-controlled path/);
+});

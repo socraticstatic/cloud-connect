@@ -274,7 +274,7 @@ function ManagedVpcTracker({ record, cloudName, regionName, onClose }: ManagedVp
           })}
 
           <div className="mt-2 pt-2 border-t border-fw-secondary/60 space-y-1">
-            <div className="text-figma-xs font-medium text-fw-body">BGP sessions</div>
+            <div className="text-figma-xs font-medium text-fw-body">Route exchange (BGP)</div>
             {record.vsrx.bgp.map(b => (
               <div key={b.peer} className="flex items-center justify-between text-[11px]">
                 <span className="text-fw-bodyLight">{b.label}</span>

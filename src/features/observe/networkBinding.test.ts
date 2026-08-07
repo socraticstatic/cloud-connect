@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CC } from '../../engine';
-import { networkBinding } from './networkBinding';
+import type { CloudControl } from '../../engine/types';
+import { networkBinding, buildVerdict } from './networkBinding';
 
 describe('networkBinding', () => {
   const b = networkBinding(CC);
@@ -18,5 +19,22 @@ describe('networkBinding', () => {
   });
   it('is deterministic', () => {
     expect(networkBinding(CC).kpis()).toEqual(networkBinding(CC).kpis());
+  });
+  it('states a verdict: controlled share, savings per month, and the public remainder', () => {
+    const v = networkBinding(CC).verdict!;
+    expect(v).toMatch(/% of your traffic rides the AT&T-controlled path/);
+    expect(v).toMatch(/saving \$[\d,.]+[kM]?\/mo/);
+    expect(v).toMatch(/\./); // it is a sentence, not a fragment
+  });
+  it('verdict is deterministic', () => {
+    expect(networkBinding(CC).verdict).toEqual(networkBinding(CC).verdict);
+  });
+  it('verdict states the quiet-fabric sentence when there are no route flows at all', () => {
+    const emptyCc = {
+      routeFlows: () => [],
+      routingKpis: () => ({ pctUnderControl: 0, totalGbps: 1 }),
+      egress: () => ({ savings: 0 }),
+    } as unknown as CloudControl;
+    expect(buildVerdict(emptyCc)).toBe('No traffic yet. The fabric is quiet.');
   });
 });

@@ -39,6 +39,6 @@ export function confirmCopy(cloudId: string, regionName: string, tier: string, o
   const az = cloudId === 'azure';
   const t = TIERS.find(x => x.id === tier)?.label ?? tier;
   return az
-    ? `This deploys a Managed VNET in ${regionName}: vSRX HA pair (${t}), VNet peering + UDRs toward your workloads, private peering + BGP to AT&T over ${onrampName}.`
-    : `This deploys a Managed VPC in ${regionName}: vSRX HA pair (${t}), TGW attachment toward your workloads, private VIF + BGP to AT&T over ${onrampName}.`;
+    ? `This deploys a Managed VNET in ${regionName}: vSRX HA pair (${t}), VNet peering + UDRs toward your workloads, private peering + route exchange (BGP) to AT&T over ${onrampName}.`
+    : `This deploys a Managed VPC in ${regionName}: vSRX HA pair (${t}), TGW attachment toward your workloads, private VIF + route exchange (BGP) to AT&T over ${onrampName}.`;
 }
