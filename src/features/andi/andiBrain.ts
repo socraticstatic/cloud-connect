@@ -9,9 +9,14 @@ import { spineAnswer } from './andiSpine';
 
 /**
  * Andi's brain — a router over things the ENGINE can ground, never a
- * pretend LLM. Three sources, in order:
+ * pretend LLM. Four sources, in order:
  *   1. typed intents (commandRegistry.parseIntent — cap/attach/steer),
  *      returned as a confirm-to-run action, never auto-executed;
+ *   1.5. spine navigation (andiSpine.spineAnswer) — an utterance asking to
+ *      GO to a spine screen (Discover/Connect/Observe/Cost) is answered
+ *      with that screen's own verdict sentence and one navigate action;
+ *      analytic phrasing of the same keywords ("why is egress cost up")
+ *      falls through past this step;
  *   2. AI-layer questions answered from aiSpend derivations;
  *   3. the engine's own grounded answer engine (CC.answerFor) for the
  *      network questions it already recognizes.

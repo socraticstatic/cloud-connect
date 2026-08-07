@@ -40,4 +40,25 @@ describe('spineAnswer navigation', () => {
     expect(spineAnswer(CC, 'cap shared-services 1m')).toBeNull();
     expect(spineAnswer(CC, 'what is my p95 latency')).toBeNull();
   });
+  it('analytic phrasing of a spine keyword falls through to the engine, not a generic verdict', () => {
+    // These name a spine keyword (cost/attach/fabric) but ask WHY or WHAT
+    // TO DO, not "take me there" - the engine's answerFor has a specific,
+    // grounded answer for each; the spine must not intercept it.
+    expect(spineAnswer(CC, 'show me why egress cost is up')).toBeNull();
+    expect(spineAnswer(CC, 'what should the attach order be')).toBeNull();
+    expect(spineAnswer(CC, 'where is my attach order plan')).toBeNull();
+    expect(spineAnswer(CC, 'show the attach order plan')).toBeNull();
+  });
+  it('a spine-shaped query the engine can ground specifically defers to that answer', () => {
+    // "egress cost" carries no why/order/plan/up/down marker, so ANALYTIC
+    // does not catch it - the answerFor collision check must.
+    expect(spineAnswer(CC, 'show me egress cost')).toBeNull();
+  });
+  it('andiSuggestions analytic prompts stay ungrounded by the spine', () => {
+    // The exact prompts andiBrain.andiSuggestions offers the user under
+    // the naas layer - none should be swallowed by spine navigation.
+    expect(spineAnswer(CC, 'Why is egress cost up?')).toBeNull();
+    expect(spineAnswer(CC, 'What is the 90-day forecast?')).toBeNull();
+    expect(spineAnswer(CC, 'What should the attach order be?')).toBeNull();
+  });
 });
