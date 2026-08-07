@@ -432,95 +432,6 @@ export function UnifiedDiscovery() {
         }
       />
 
-      {/* Estate header, in three parts: the network already in place, the
-          cloud estate on the other side of it, and the AI workloads riding
-          both. Each section is its own row of tiles rather than one flat
-          row of eight, so a viewer reads what domain a figure belongs to
-          without being told. */}
-      <div className="space-y-4">
-        {domains.map(d => (
-          <section
-            key={d.key}
-            data-testid={`estate-${d.key}`}
-            /* The tour's Discover beat speaks about "clouds, regions, and
-               VPCs" and "most of it reaches the world over public internet"
-               (cloudConnectTour.ts:126) — that is this one section, not all
-               three. Anchoring the spotlight on the outer wrapper made it
-               708px tall in an 812px viewport, 87% of the screen, which
-               highlights nothing and pushed the 'top'-placed tooltip onto
-               the spotlight via ProductTour's on-screen clamp. */
-            data-tour={d.key === 'cloud' ? 'discover-estate' : undefined}
-            className="space-y-2"
-          >
-            <div>
-              <h2 className="text-figma-sm font-semibold text-fw-heading">{d.label}</h2>
-              <p className="text-figma-xs text-fw-bodyLight">{d.blurb}</p>
-              {/* The route out of the domain. Before this, every link in
-                  Discover's body went to /naas/*: the AI section named a
-                  security gap and the screens that close it had no way in. It
-                  is also where the taxonomy becomes legible — Network and
-                  Cloud are NaaS, AI workflows are the AI Fabric. */}
-              <Link
-                to={d.cta.to}
-                data-testid={`estate-cta-${d.key}`}
-                className="mt-1 inline-flex items-center gap-0.5 text-figma-xs font-medium text-fw-link hover:underline"
-              >
-                {d.cta.label}
-                <ChevronRight size={12} aria-hidden="true" />
-              </Link>
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
-              {d.stats.map(s => (
-                <div key={s.key} className="rounded-xl border border-fw-secondary bg-fw-base px-3 py-2.5">
-                  <div className="text-figma-lg font-semibold text-fw-heading tabular-nums">
-                    {s.value}
-                    {s.of !== undefined && (
-                      <span className="text-fw-bodyLight"> / {s.of}</span>
-                    )}
-                  </div>
-                  <div className="text-[11px] uppercase tracking-wide text-fw-bodyLight">{s.label}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
-
-      <SitesPanel branches={branches} selected={selected} onToggle={toggleSelect} />
-
-      {selected.size > 0 && (
-        <SelectionBar
-          cc={cc}
-          selected={selected}
-          onClear={() => setSelected(new Set())}
-          onCreated={(label, id) => {
-            setSelected(new Set());
-            setNamed({ label, id });
-          }}
-        />
-      )}
-
-      {/* Naming what you found is the only mutation Discover makes, and it
-          changes nothing about the estate — so the confirmation points at
-          where the group now lives rather than offering to act on it. */}
-      {named && selected.size === 0 && (
-        <div
-          role="status"
-          className="flex flex-wrap items-center gap-2 rounded-xl border border-fw-secondary bg-fw-wash px-4 py-3 text-figma-sm text-fw-body"
-        >
-          <span>
-            “{named.label}” is now a group. Nothing in the estate changed — you named what you
-            found.
-          </span>
-          <Link
-            to="/naas/govern?tab=groups"
-            className="font-medium text-fw-link underline underline-offset-2"
-          >
-            See it in Govern → Groups
-          </Link>
-        </div>
-      )}
-
       <div className="space-y-3">
         {/* Tree controls */}
         <div className="flex items-center justify-between">
@@ -759,6 +670,95 @@ export function UnifiedDiscovery() {
           </div>
         )}
       </div>
+
+      {/* Estate header, in three parts: the network already in place, the
+          cloud estate on the other side of it, and the AI workloads riding
+          both. Each section is its own row of tiles rather than one flat
+          row of eight, so a viewer reads what domain a figure belongs to
+          without being told. */}
+      <div className="space-y-4">
+        {domains.map(d => (
+          <section
+            key={d.key}
+            data-testid={`estate-${d.key}`}
+            /* The tour's Discover beat speaks about "clouds, regions, and
+               VPCs" and "most of it reaches the world over public internet"
+               (cloudConnectTour.ts:126) — that is this one section, not all
+               three. Anchoring the spotlight on the outer wrapper made it
+               708px tall in an 812px viewport, 87% of the screen, which
+               highlights nothing and pushed the 'top'-placed tooltip onto
+               the spotlight via ProductTour's on-screen clamp. */
+            data-tour={d.key === 'cloud' ? 'discover-estate' : undefined}
+            className="space-y-2"
+          >
+            <div>
+              <h2 className="text-figma-sm font-semibold text-fw-heading">{d.label}</h2>
+              <p className="text-figma-xs text-fw-bodyLight">{d.blurb}</p>
+              {/* The route out of the domain. Before this, every link in
+                  Discover's body went to /naas/*: the AI section named a
+                  security gap and the screens that close it had no way in. It
+                  is also where the taxonomy becomes legible — Network and
+                  Cloud are NaaS, AI workflows are the AI Fabric. */}
+              <Link
+                to={d.cta.to}
+                data-testid={`estate-cta-${d.key}`}
+                className="mt-1 inline-flex items-center gap-0.5 text-figma-xs font-medium text-fw-link hover:underline"
+              >
+                {d.cta.label}
+                <ChevronRight size={12} aria-hidden="true" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+              {d.stats.map(s => (
+                <div key={s.key} className="rounded-xl border border-fw-secondary bg-fw-base px-3 py-2.5">
+                  <div className="text-figma-lg font-semibold text-fw-heading tabular-nums">
+                    {s.value}
+                    {s.of !== undefined && (
+                      <span className="text-fw-bodyLight"> / {s.of}</span>
+                    )}
+                  </div>
+                  <div className="text-[11px] uppercase tracking-wide text-fw-bodyLight">{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+
+      <SitesPanel branches={branches} selected={selected} onToggle={toggleSelect} />
+
+      {selected.size > 0 && (
+        <SelectionBar
+          cc={cc}
+          selected={selected}
+          onClear={() => setSelected(new Set())}
+          onCreated={(label, id) => {
+            setSelected(new Set());
+            setNamed({ label, id });
+          }}
+        />
+      )}
+
+      {/* Naming what you found is the only mutation Discover makes, and it
+          changes nothing about the estate — so the confirmation points at
+          where the group now lives rather than offering to act on it. */}
+      {named && selected.size === 0 && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center gap-2 rounded-xl border border-fw-secondary bg-fw-wash px-4 py-3 text-figma-sm text-fw-body"
+        >
+          <span>
+            “{named.label}” is now a group. Nothing in the estate changed — you named what you
+            found.
+          </span>
+          <Link
+            to="/naas/govern?tab=groups"
+            className="font-medium text-fw-link underline underline-offset-2"
+          >
+            See it in Govern → Groups
+          </Link>
+        </div>
+      )}
 
       {wizardOpen && (
         <DiscoveryWizard onClose={() => setWizardOpen(false)} onDiscovered={onDiscovered} />

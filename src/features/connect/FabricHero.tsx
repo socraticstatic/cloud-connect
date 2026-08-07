@@ -282,14 +282,13 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
     <div
       data-tour="connect-onramp"
       data-testid="fabric-hero"
-      className="rounded-2xl border border-fw-secondary bg-fw-base overflow-x-auto"
+      className="rounded-2xl border border-fw-secondary bg-fw-base"
     >
       <svg
         viewBox={`0 0 ${layout.viewW} ${layout.viewH}`}
         width="100%"
         role="group"
         aria-label="Cloud fabric: sites to the AT&T fabric to cloud regions"
-        className="min-w-[720px]"
       >
         {/* ---- the unified AT&T Fabric band (a single shape, clickable) ---- */}
         <g>
