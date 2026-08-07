@@ -9,6 +9,8 @@ import { ProviderLogo } from '../../components/brand/ProviderLogo';
 import { VpcMap } from './VpcMap';
 import { AttachmentMap } from './AttachmentMap';
 import { DiscoveryWizard } from './DiscoveryWizard';
+import { EstateFilterChips } from './EstateFilterChips';
+import { EMPTY_ESTATE_FILTERS, regionMatches } from './estateFilters';
 import { cloudConnection, regionConnection, connMeta } from './connectionState';
 import {
   allKeys,
@@ -376,9 +378,25 @@ export function UnifiedDiscovery() {
   const latencyPathOf = regionLatencyPathMap(cc);
   const publicWorkloads = clouds.filter(c => !c.attached).reduce((s, c) => s + c.workloads, 0);
 
-  const [open, setOpen] = useState<ReadonlySet<string>>(new Set(['aws']));
+  const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
   const toggle = (key: string) => setOpen(o => toggleKey(o, key));
   const [view, setView] = useState<'tree' | 'map'>('tree');
+
+  // Estate filters scope both the tree and the map from one control. Rollups
+  // start collapsed (see `open` above) so the filter chips are the first
+  // thing a viewer reaches for, not a wall of already-open regions.
+  const [estateFilters, setEstateFilters] = useState(EMPTY_ESTATE_FILTERS);
+  const fabricModel = cc.fabricModel();
+  /* A cloud group (and every region/VPC under it) hides only when NONE of
+     its regions match the active filters — matching one region is enough to
+     keep the whole group in view, so drilling in still shows the region that
+     earned it. A cloud with no fabric-shaped regions at all (nothing to test
+     a filter against) stays visible rather than vanishing under an unrelated
+     filter. */
+  const cloudMatches = (cloudId: string): boolean => {
+    const cloudRegions = fabricModel.regions.filter(r => r.cloudId === cloudId);
+    return cloudRegions.length === 0 || cloudRegions.some(r => regionMatches(r, estateFilters));
+  };
 
   /* Selection is its own set. toggleKey is reused for the immutable flip —
      the same operation on a different set — but the two sets never merge:
@@ -480,11 +498,15 @@ export function UnifiedDiscovery() {
           )}
         </div>
 
+        {/* Estate filter chips — scope both the tree and the map from one
+            control. Sits directly under the Tree/Map toggle row. */}
+        <EstateFilterChips model={fabricModel} filters={estateFilters} onChange={setEstateFilters} />
+
         {/* Cloud tree */}
-        {view === 'map' && <AttachmentMap />}
+        {view === 'map' && <AttachmentMap filters={estateFilters} />}
         {view === 'tree' && (
         <div className="space-y-2.5">
-          {clouds.map((c, i) => {
+          {clouds.filter(c => cloudMatches(c.id)).map((c, i) => {
             const ck = cloudKey(c.id);
             const cOpen = open.has(ck);
             const flash = justDiscovered === c.id;

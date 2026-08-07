@@ -61,13 +61,16 @@ describe('UnifiedDiscovery drill-down tree', () => {
     expect(anchor!.querySelector('[data-testid="estate-ai"]')).toBeNull();
   });
 
-  it('AWS starts expanded and reveals its regions', () => {
+  it('rollups start collapsed — clouds close by default, opened on click', () => {
     renderUD();
+    expect(screen.queryByRole('button', { name: 'us-east-1' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'AWS' }));
     expect(screen.getByRole('button', { name: 'us-east-1' })).toBeInTheDocument();
   });
 
   it('drills cloud → region → VPC → resource map', () => {
     renderUD();
+    fireEvent.click(screen.getByRole('button', { name: 'AWS' }));
     fireEvent.click(screen.getByRole('button', { name: 'us-east-1' }));
     const vpcBtn = screen.getByRole('button', { name: 'vpc-prod-01' });
     expect(vpcBtn).toBeInTheDocument();
@@ -201,6 +204,7 @@ describe('Discover selection → group', () => {
   it('a mixed selection of a site and a VPC says it will cover both estates', () => {
     renderUD();
     selectBranch('San Jose campus');
+    fireEvent.click(screen.getByRole('button', { name: 'AWS' }));
     fireEvent.click(screen.getByRole('button', { name: 'us-east-1' })); // drill to a VPC
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select vpc-prod-01' }));
     const bar = screen.getByTestId('discover-selection');
