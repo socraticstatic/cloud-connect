@@ -299,3 +299,27 @@ Owner directive: "on all pages, with AT&T, and without AT&T." Interpretation (st
 - [ ] **Step 5: Wire Discover** - toggle next to the filter chips; verdict + tree consume the lensed model (tree rows' via-the-AT&T-fabric badges disappear under 'without'). Failing test: flip → verdict states 0 on the fabric.
 - [ ] **Step 6:** `npx vitest run src/features/_shared src/features/connect src/features/observe src/features/discover src/features/tour src/__tests__/vocabulary.test.ts` - PASS.
 - [ ] **Step 7: Commit** - `feat(spine): the with/without lens - every page can show the world without the fabric`
+
+---
+
+### Task 8 (addendum, owner-directed 2026-08-07): Site fleets - the fabric graphic scales to enterprise estates
+
+Owner directive: "With the graphic with att fabric, the left might be 5000 sites, like for wells fargo." The left column of FabricHero must read at enterprise scale: each left node is a site CLASS carrying its fleet count, not a single building. A Wells-Fargo-scale estate is the story: thousands of branches ride one first-mile class onto the fabric.
+
+**Files:**
+- Modify: `src/engine/state-routing.ts:257-263` (EDGE_NODES gain `fleet`)  and `:466` (sites map carries it through `fabricModel()`)
+- Modify: `src/engine/types.ts` (the FabricModel site shape gains `fleet: number` - find the site entry type; FabricHero's local `FabricModel.sites` typing follows)
+- Modify: `src/features/connect/FabricHero.tsx` (site node sub-label shows the fleet; site→fabric edge stroke scales with fleet)
+- Modify: `src/features/connect/SitePanel.tsx` (fleet figure in the panel)
+- Tests: `src/features/connect/FabricHero.layout.test.ts` or FabricHero.test.tsx (append), engine test file for fabricModel if one asserts site shape
+
+**Interfaces:**
+- EDGE_NODES seed gains demo-real fleets (Wells-Fargo scale): `e-hq` fleet 1, `e-dc` fleet 2, `e-branch` fleet 4981, `e-mob` fleet 12400, `e-net` no fleet (internet is not a site class - keep it fleetless/undefined and render unchanged).
+- `fabricModel()` sites: `{ id, label, firstMile, fleet }`.
+- FabricHero: site node sub-label becomes `${fmt(fleet)} sites · first-mile · ${firstMile}` when `fleet > 1` (comma-formatted via `toLocaleString('en-US')`), unchanged single-site copy when fleet is 1 or undefined. Site→fabric edge strokeWidth scales `1.5 + Math.log10(fleet) * 0.9` clamped to [1.5, 5] (pure helper `fleetStroke(fleet?: number): number` exported from FabricHero for the layout test; fleet undefined → 1.5).
+- Labels stay the class names (HQ, DC, Branch, Mobility) - the CLASS is the node, the fleet is the count.
+
+- [ ] **Step 1: Failing tests** - engine: `fabricModel().sites` carries the seeded fleets (branch 4981). FabricHero: `fleetStroke(4981)` ≈ 4.8 (assert `toBeCloseTo(1.5 + Math.log10(4981) * 0.9, 1)` and clamping at 1 → 1.5, at 10**9 → 5); render test: the Branch site node shows '4,981 sites'.
+- [ ] **Step 2: Implement** engine seed + pass-through, FabricHero sub-label + edge stroke (both collapsed and expanded modes use the same site edges - verify the expanded-mode site edges pick up the stroke too), SitePanel fleet line ('4,981 sites on this first-mile' pattern).
+- [ ] **Step 3:** `npx vitest run src/features/connect src/engine src/features/discover src/features/tour` - PASS (discover included: AttachmentMap/tree may render site labels; update only assertions the sub-label change breaks, named in the report).
+- [ ] **Step 4: Commit** - `feat(connect): site fleets - the left column reads at Wells Fargo scale`
