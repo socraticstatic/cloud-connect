@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ObservabilityBinding, RecordRow } from './ObservabilityBinding';
 import { SankeyPanel } from './SankeyPanel';
+import { TrendBand } from '../../components/viz/kit';
 
 // Left-border tone indicator per record row. `ok` resolves against
 // tailwind.config.js's `borderColor.fw-success`; the attention tone ("warn"/
@@ -104,26 +105,7 @@ export function ObservabilityShell({ binding }: { binding: ObservabilityBinding 
                   {binding.emptyHint ?? 'No flow in this window yet.'}
                 </div>
               ) : (
-                /* deterministic mini bar series — inline SVG keeps it dep-free + testable */
-                <svg viewBox={`0 0 ${Math.max(series.length * 10, 10)} 40`} className="w-full h-24">
-                  {series.map((p, i) => {
-                    const max = Math.max(...series.map(s => s.v), 1);
-                    const h = (p.v / max) * 36;
-                    const isCursor = at === i;
-                    return (
-                      <rect
-                        key={i}
-                        x={i * 10 + 1}
-                        y={40 - h}
-                        width="8"
-                        height={h}
-                        rx="1"
-                        fill={isCursor ? '#0057B8' : '#009FDB'}
-                        opacity={reviewing && !isCursor ? 0.45 : 1}
-                      />
-                    );
-                  })}
-                </svg>
+                <TrendBand series={series} cursor={at} reviewing={reviewing} />
               )}
 
               {/* The time machine: scrub the window the charts already draw.
