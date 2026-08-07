@@ -5,12 +5,18 @@ import { aiSpendRows, aiSpendTotals, fmtTokens, fmtUsd } from '../ai-fabric/aiSp
 import { advisorDraft, attachOpportunities, steerOpportunities } from '../discover/stackFigures';
 import { workQueue } from '../work/workQueue';
 import { ruleProposals } from '../govern/ruleProposals';
+import { spineAnswer } from './andiSpine';
 
 /**
  * Andi's brain — a router over things the ENGINE can ground, never a
- * pretend LLM. Three sources, in order:
+ * pretend LLM. Four sources, in order:
  *   1. typed intents (commandRegistry.parseIntent — cap/attach/steer),
  *      returned as a confirm-to-run action, never auto-executed;
+ *   1.5. spine navigation (andiSpine.spineAnswer) — an utterance asking to
+ *      GO to a spine screen (Discover/Connect/Observe/Cost) is answered
+ *      with that screen's own verdict sentence and one navigate action;
+ *      analytic phrasing of the same keywords ("why is egress cost up")
+ *      falls through past this step;
  *   2. AI-layer questions answered from aiSpend derivations;
  *   3. the engine's own grounded answer engine (CC.answerFor) for the
  *      network questions it already recognizes.
@@ -202,6 +208,11 @@ export function andiAnswer(
       actions: intents.map(c => ({ label: c.label, kind: 'run' as const, run: c.run })),
     };
   }
+
+  // 1.5 — spine navigation: an utterance that asks to SEE a spine screen is
+  // answered with that screen's verdict and one navigate action.
+  const spine = spineAnswer(cc, q);
+  if (spine) return spine;
 
   // 2 — AI-layer grounded answers.
   const ai = aiAnswer(cc, q);
