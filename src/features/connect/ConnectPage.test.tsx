@@ -78,4 +78,21 @@ describe('ConnectPage (Cloud Fabric)', () => {
     );
     expect(screen.getByRole('link', { name: /govern these paths/i })).toHaveAttribute('href', '/naas/govern');
   });
+
+  it('?provision opens the wizard for that region with Dual preselected', () => {
+    // West US 2 (wus2) - its on-ramp (er1) is disjoint from usw2's (dx1),
+    // which the earlier provisioning test in this file activates; dx1 also
+    // targets euw1 and usc1, so any region on that on-ramp would already
+    // read 'private' by the time this test runs. wus2 stays 'public'.
+    render(
+      <MemoryRouter initialEntries={['/naas/connect?provision=wus2&dual=1']}>
+        <ConnectPage />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('dialog', { name: /Provision .* West US 2/i })).toBeInTheDocument();
+    // walk to the resiliency step and confirm Dual is the pressed option
+    fireEvent.click(screen.getByRole('button', { name: /^Next$/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Next$/ }));
+    expect(screen.getByRole('button', { name: /Dual · resilient/ })).toHaveAttribute('aria-pressed', 'true');
+  });
 });

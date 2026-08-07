@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Globe } from 'lucide-react';
 import { PageSection } from '../../components/common/layouts';
@@ -47,12 +47,28 @@ function FabricPanel({ model }: { model: FabricModel }) {
 export function ConnectPage() {
   const model = useCloudControl(cc => cc.fabricModel()) as FabricModel;
   const { search } = useLocation();
-  const fromDiscover = new URLSearchParams(search).get('from') === 'discover';
+  const params = new URLSearchParams(search);
+  const fromDiscover = params.get('from') === 'discover';
+  const provisionParam = params.get('provision');
+  const provisionDual = params.get('dual') === '1';
 
   const [selected, setSelected] = useState<FabricSelection | null>({ kind: 'fabric' });
   const [wizardRegionId, setWizardRegionId] = useState<string | null>(null);
   const [justProvisioned, setJustProvisioned] = useState<string | null>(null);
   const [fabricExpanded, setFabricExpanded] = useState(false);
+
+  // "connect <region>" from ANDI lands here as ?provision=<regionId>&dual=<0|1> -
+  // open the wizard on that region already selected. Only a real, still-public
+  // region qualifies; an unknown or already-attached id is left alone.
+  useEffect(() => {
+    if (!provisionParam) return;
+    const r = model.regions.find(x => x.regionId === provisionParam);
+    if (r && r.path === 'public') {
+      setSelected({ kind: 'region', id: r.regionId });
+      setWizardRegionId(r.regionId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [provisionParam]);
 
   const selectedRegion =
     selected?.kind === 'region' ? model.regions.find(r => r.regionId === selected.id) ?? null : null;
@@ -119,6 +135,7 @@ export function ConnectPage() {
           model={model}
           onClose={() => setWizardRegionId(null)}
           onProvisioned={handleProvisioned}
+          initialResilient={provisionDual}
         />
       )}
     </div>

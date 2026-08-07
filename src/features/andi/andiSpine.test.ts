@@ -62,3 +62,24 @@ describe('spineAnswer navigation', () => {
     expect(spineAnswer(CC, 'What should the attach order be?')).toBeNull();
   });
 });
+
+describe('spineAnswer wizard answers', () => {
+  it('connect <public region> offers the pre-filled wizard, dual when asked', () => {
+    const a = spineAnswer(CC, 'connect us-west-2 with dual paths');
+    expect(nav(a)).toBe('/naas/connect?provision=usw2&dual=1');
+    expect(a!.text).toMatch(/us-west-2/);
+    const b = spineAnswer(CC, 'connect eu-west-1');
+    expect(nav(b)).toBe('/naas/connect?provision=euw1&dual=0');
+  });
+  it('connect <attached region> answers with the connect verdict instead of a wizard', () => {
+    const attached = model().regions.find(r => r.path === 'private')!;
+    const a = spineAnswer(CC, `connect ${attached.name}`);
+    expect(a!.text).toBe(connectVerdict(model()));
+    expect(a!.actions!.every(x => !/provision=/.test(x.to ?? ''))).toBe(true);
+  });
+  it('connect <unknown region> answers honestly with no action', () => {
+    const a = spineAnswer(CC, 'connect atlantis-east-1');
+    expect(a!.text).toMatch(/public/i);
+    expect(a!.actions ?? []).toHaveLength(0);
+  });
+});

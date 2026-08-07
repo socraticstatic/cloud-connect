@@ -29,9 +29,13 @@ interface ProvisionWizardProps {
   model: FabricModel;
   onClose: () => void;
   onProvisioned: (regionId: string) => void;
+  /** Seeds the Resiliency step's answer - set when ANDI's "connect <region>
+   *  with dual paths" drafted this wizard open already knowing the answer.
+   *  Still a draft: the human walks the step and confirms it like any other. */
+  initialResilient?: boolean;
 }
 
-export function ProvisionWizard({ region, model, onClose, onProvisioned }: ProvisionWizardProps) {
+export function ProvisionWizard({ region, model, onClose, onProvisioned, initialResilient = false }: ProvisionWizardProps) {
   const actions = useCloudControlActions();
   const [step, setStep] = useState(0);
   const [attachType, setAttachType] = useState(() => recommendedAttachId(region, model));
@@ -39,7 +43,7 @@ export function ProvisionWizard({ region, model, onClose, onProvisioned }: Provi
     .map(id => model.onramps.find(o => o.id === id))
     .filter(Boolean) as FabricModel['onramps'];
   const [onrampId, setOnrampId] = useState(() => onrampChoices[0]?.id ?? '');
-  const [resilient, setResilient] = useState(false);
+  const [resilient, setResilient] = useState(initialResilient);
 
   const attach = ATTACH_TYPES.find(t => t.id === attachType)!;
   const steps = ['Attach type', 'On-ramp / PoP', 'Resiliency', 'Confirm'];
