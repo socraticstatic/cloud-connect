@@ -13,7 +13,7 @@ const SPINE_DIRS = [
   'src/features/_shared/',
 ];
 
-// Comment-or-code-only acronym use, no rendered copy — glossing a code
+// Comment-or-code-only acronym use, no rendered copy - glossing a code
 // comment would be noise. Display copy in these areas renders elsewhere
 // (e.g. attachmentModel's ASN values render in ChainDrawer, which IS scanned).
 const excluded = [
