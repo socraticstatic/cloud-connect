@@ -25,4 +25,7 @@ describe('connectVerdict', () => {
     const v = connectVerdict(model([region('private', 'dual'), region('private', 'dual')]));
     expect(v).toBe('All 2 regions are on the AT&T fabric, 2 with dual paths.');
   });
+  it('empty estate returns a sentence, not silence', () => {
+    expect(connectVerdict(model([]))).toBe('No estate mapped yet. Discover your clouds to begin.');
+  });
 });
