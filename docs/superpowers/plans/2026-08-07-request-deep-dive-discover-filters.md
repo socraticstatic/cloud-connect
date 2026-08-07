@@ -1,0 +1,244 @@
+# Request Deep Dive + Discover Filters Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** /ai/observe leads with a request-analysis deep dive (verdict, click-to-filter facets, outliers) with the raw log demoted behind a disclosure; Discover gains estate filter chips scoping tree and map, opens at cloud rollups, and compresses its stat sections into one summary band. Spec: docs/superpowers/specs/2026-08-07-request-deep-dive-discover-filters-design.md.
+
+**Architecture:** Two pure modules + two components per surface, following the figures/component split the codebase already uses. `requestAnalysis.ts` + `RequestDeepDive.tsx` beside `insightsFigures.ts`; `estateFilters.ts` + `EstateFilterChips.tsx` in `src/features/discover/`. Existing `RequestFilters`/`RequestsFilterBar`/`RequestsTable`/`RequestDrawer` and the tree/map components are consumed, not rewritten.
+
+**Tech Stack:** React 18 + TypeScript, VizKit (`CategoryBars`, `VIZ_HEX`), Vitest + @testing-library/react.
+
+**Ground truth (verified this session):**
+- The flat list: `InsightsPage.tsx:151-152` renders `<RequestsFilterBar rows={view.rows} filters={filters} onChange={setFilters} />` then `<RequestsTable rows={visibleRows} />` unconditionally below the tabs. `filters`/`setFilters` state and `visibleRows` (via `applyFilters`) already exist in InsightsPage.
+- Row shape: `InsightRequestRow` (`insightsFigures.ts:114-131`): `{ id, ts, time, status, ok, identity, model, provider, route, tokens, cost, costSaved, savedPct, ttftMs, reason }`. `RequestFilters` (`:228-236`): `{ q, provider, model, identity, path, status }` with `EMPTY_FILTERS` (`:237`). The `path` filter values are how the app names fabric vs public routes - read `applyFilters` (`:258`) and `filterOptions` (`:248`) to reuse their exact value vocabulary for facet clicks.
+- `RequestDrawer` opens per-row from RequestsTable; it takes the row (see `RequestsTable.tsx:9,45` usage).
+- Discover: `UnifiedDiscovery.tsx:379` `const [open, setOpen] = useState<ReadonlySet<string>>(new Set(['aws']))` (the default-expanded cloud); `:381` view toggle; the three stat sections render inside the `domains.map` block (moved below the tree in the P2 reorder); `AttachmentMap.tsx` draws the map from its own model derivation.
+- Money formatting: `fmtUsd`/`fmtTokens` from `../aiSpend`.
+
+## Global Constraints
+
+- All standing guards hold: `src/__tests__/vocabulary.test.ts` (acronyms glossed, savings-first, spine dirs incl. discover), `no-horizontal-scroll.test.ts` (no overflow-x-auto in spine feature dirs), `vizkit-deps.test.ts` (no chart libs under src/features). New copy: no em dashes, savings-first.
+- Verdict/aggregate text comes from pure selectors; components only render.
+- Colors from `VIZ_HEX` / existing Tailwind fw-* tokens; facet bars use `CategoryBars` from `src/components/viz/kit`.
+- Existing testids and tests survive: `unit-*`, `tab-*`, KpiStrip, RequestsTable/FilterBar/Drawer tests, discover tree/map testids, tour anchors (`src/features/tour` suite must stay green).
+- ANDI drafts nothing here; no engine mutations - both features are read-only views over existing state.
+- Test commands `npx vitest run <path>`; commits end with trailer: `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`
+
+---
+
+### Task 1: requestAnalysis module (pure)
+
+**Files:**
+- Create: `src/features/ai-fabric/insights/requestAnalysis.ts`
+- Test: `src/features/ai-fabric/insights/requestAnalysis.test.ts`
+
+**Interfaces:**
+- Consumes: `InsightRequestRow`, `RequestFilters` field vocabulary from `./insightsFigures` (import the types; reuse the exact `path`/`status` filter values `applyFilters` recognizes).
+- Produces:
+  - `export interface FacetBucket { label: string; value: number; filterKey: keyof RequestFilters; filterValue: string }`
+  - `export interface RequestFacet { id: 'identity' | 'model' | 'route' | 'outcome'; title: string; buckets: FacetBucket[] }`
+  - `export interface RequestOutlier { row: InsightRequestRow; kind: 'cost' | 'slow' }`
+  - `export function requestVerdict(rows: InsightRequestRow[]): string` - e.g. `'59 requests today: 40 allowed, 19 guardrailed, 0 denied. $208.72 spent, $291.53 saved.'` The allowed/guardrailed/denied split derives from `ok` + `reason` the same way SecurityTab/GovernanceDecisions classify decisions - read `GovernanceDecisions.tsx:51-56` and mirror its predicate exactly (allowed = ok && no guardrail reason; guardrailed = ok with reason; denied = !ok). Spend = sum(cost), saved = sum(costSaved), formatted with `fmtUsd`. Empty rows: `'No requests traced yet. Run a trace to populate this view.'`
+  - `export function requestFacets(rows: InsightRequestRow[]): RequestFacet[]` - four facets; buckets sorted by value desc; identity/model capped at top 6 with a final `'Other'` bucket (filterValue `''` marks it unclickable); route buckets map to the `path` filter's real values; outcome buckets map to the `status` filter's real values.
+  - `export function requestOutliers(rows: InsightRequestRow[]): { cost: RequestOutlier[]; slow: RequestOutlier[] }` - top 5 by `cost` desc and top 5 by `ttftMs` desc, stable tie-break by `ts` desc.
+
+- [ ] **Step 1: Write the failing test**
+
+```ts
+// src/features/ai-fabric/insights/requestAnalysis.test.ts
+import { describe, it, expect } from 'vitest';
+import { CC } from '../../../engine';
+import { requestRows } from './insightsFigures';
+import { requestVerdict, requestFacets, requestOutliers } from './requestAnalysis';
+
+const rows = requestRows(CC);
+
+describe('requestVerdict', () => {
+  it('states count, outcome split, spend and savings in one sentence pair', () => {
+    const v = requestVerdict(rows);
+    expect(v).toMatch(new RegExp(`^${rows.length} requests today: \\d+ allowed, \\d+ guardrailed, \\d+ denied\\.`));
+    expect(v).toMatch(/\$[\d,.]+ spent, \$[\d,.]+ saved\.$/);
+  });
+  it('empty rows return a sentence, not silence', () => {
+    expect(requestVerdict([])).toBe('No requests traced yet. Run a trace to populate this view.');
+  });
+});
+
+describe('requestFacets', () => {
+  it('returns the four facets with desc-sorted buckets whose values sum to the row count', () => {
+    const facets = requestFacets(rows);
+    expect(facets.map(f => f.id)).toEqual(['identity', 'model', 'route', 'outcome']);
+    for (const f of facets) {
+      const values = f.buckets.map(b => b.value);
+      expect([...values].sort((a, b) => b - a)).toEqual(values);
+      expect(values.reduce((s, v) => s + v, 0)).toBe(rows.length);
+    }
+  });
+  it('facet buckets carry the filter vocabulary applyFilters understands', () => {
+    const route = requestFacets(rows).find(f => f.id === 'route')!;
+    for (const b of route.buckets) expect(b.filterKey).toBe('path');
+  });
+});
+
+describe('requestOutliers', () => {
+  it('top five by cost and by slowness, descending', () => {
+    const { cost, slow } = requestOutliers(rows);
+    expect(cost.length).toBeLessThanOrEqual(5);
+    expect(slow.length).toBeLessThanOrEqual(5);
+    for (let i = 1; i < cost.length; i++) expect(cost[i].row.cost).toBeLessThanOrEqual(cost[i - 1].row.cost);
+    for (let i = 1; i < slow.length; i++) expect(slow[i].row.ttftMs).toBeLessThanOrEqual(slow[i - 1].row.ttftMs);
+  });
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails** - `npx vitest run src/features/ai-fabric/insights/requestAnalysis.test.ts` - FAIL, unresolved import.
+
+- [ ] **Step 3: Implement** the module per the Produces contract. Derivation rules that bind: outcome classification mirrors GovernanceDecisions' predicate; route buckets use the same labels/values `filterOptions`/`applyFilters` use for `path`; every derived sentence uses `fmtUsd`; no em dashes.
+
+- [ ] **Step 4: Run test to verify it passes.**
+
+- [ ] **Step 5: Commit** - `feat(ai-fabric): requestAnalysis - the day's requests as verdict, facets, outliers`
+
+---
+
+### Task 2: RequestDeepDive component + InsightsPage swap
+
+**Files:**
+- Create: `src/features/ai-fabric/insights/RequestDeepDive.tsx`
+- Test: `src/features/ai-fabric/insights/RequestDeepDive.test.tsx`
+- Modify: `src/features/ai-fabric/insights/InsightsPage.tsx:151-152`
+
+**Interfaces:**
+- Consumes: Task 1's module; `CategoryBars` + `VIZ_HEX` from `src/components/viz/kit`; `RequestDrawer`; `RequestsFilterBar`/`RequestsTable` (moved inside the disclosure); InsightsPage's existing `filters`/`setFilters`/`visibleRows`/`view.rows`.
+- Produces: `export function RequestDeepDive({ rows, filters, onFiltersChange }: { rows: InsightRequestRow[]; filters: RequestFilters; onFiltersChange: (f: RequestFilters) => void })` rendering:
+  - `<p data-testid="requests-verdict">` with `requestVerdict(rows)`,
+  - one `CategoryBars` per facet (`aria-label` = facet title) where each bucket row is wrapped in a real `<button data-testid={'facet-' + facet.id + '-' + bucket.filterValue}>`; clicking sets `onFiltersChange({ ...filters, [filterKey]: filterValue })`, clicking the active one resets that key to `'all'`; the active bucket's button has `aria-pressed="true"`. (If wrapping CategoryBars rows in buttons fights its markup, render facet rows as your own buttons styled like CategoryBars rows and use CategoryBars only where non-interactive - state the choice in the report.)
+  - outlier lists (`data-testid="outliers-cost"`, `data-testid="outliers-slow"`): five rows each showing time, identity, model, and the headline number (cost via fmtUsd / TTFT ms); clicking a row opens `RequestDrawer` for it.
+
+  In `InsightsPage.tsx`, replace lines 151-152 with the deep dive over ALL rows plus the disclosure over the filtered rows:
+
+```tsx
+      <RequestDeepDive rows={view.rows} filters={filters} onFiltersChange={setFilters} />
+      <details data-testid="raw-log">
+        <summary className="cursor-pointer text-figma-sm font-medium text-fw-link">Show the raw log</summary>
+        <div className="mt-3 space-y-3">
+          <RequestsFilterBar rows={view.rows} filters={filters} onChange={setFilters} />
+          <RequestsTable rows={visibleRows} />
+        </div>
+      </details>
+```
+
+- [ ] **Step 1: Write the failing test** - render `RequestDeepDive` with `requestRows(CC)`, `EMPTY_FILTERS`, and a spy: assert the verdict testid text matches `requestVerdict`; clicking a model facet button calls the spy with that model set; clicking an outlier row opens the drawer (drawer heading visible); with the spy-fed active filter, that button is `aria-pressed`.
+
+```tsx
+// src/features/ai-fabric/insights/RequestDeepDive.test.tsx
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { CC } from '../../../engine';
+import { requestRows, EMPTY_FILTERS } from './insightsFigures';
+import { requestVerdict, requestFacets } from './requestAnalysis';
+import { RequestDeepDive } from './RequestDeepDive';
+
+const rows = requestRows(CC);
+
+describe('RequestDeepDive', () => {
+  it('opens with the requests verdict', () => {
+    render(<RequestDeepDive rows={rows} filters={EMPTY_FILTERS} onFiltersChange={() => {}} />);
+    expect(screen.getByTestId('requests-verdict').textContent).toBe(requestVerdict(rows));
+  });
+  it('clicking a facet bucket applies that filter; clicking it again clears it', () => {
+    const spy = vi.fn();
+    const model = requestFacets(rows).find(f => f.id === 'model')!.buckets[0];
+    const { rerender } = render(<RequestDeepDive rows={rows} filters={EMPTY_FILTERS} onFiltersChange={spy} />);
+    fireEvent.click(screen.getByTestId(`facet-model-${model.filterValue}`));
+    expect(spy).toHaveBeenLastCalledWith({ ...EMPTY_FILTERS, model: model.filterValue });
+    rerender(<RequestDeepDive rows={rows} filters={{ ...EMPTY_FILTERS, model: model.filterValue }} onFiltersChange={spy} />);
+    const active = screen.getByTestId(`facet-model-${model.filterValue}`);
+    expect(active).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(active);
+    expect(spy).toHaveBeenLastCalledWith({ ...EMPTY_FILTERS, model: 'all' });
+  });
+  it('outlier lists render at most five rows each and open the drawer', () => {
+    render(<RequestDeepDive rows={rows} filters={EMPTY_FILTERS} onFiltersChange={() => {}} />);
+    const cost = screen.getByTestId('outliers-cost');
+    expect(cost.querySelectorAll('[data-testid^="outlier-row-"]').length).toBeLessThanOrEqual(5);
+    fireEvent.click(cost.querySelector('[data-testid^="outlier-row-"]')!);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+});
+```
+
+(Adapt the drawer assertion to RequestDrawer's real container role/testid - read `RequestDrawer.tsx` and use whatever RequestsTable's own test asserts.)
+
+- [ ] **Step 2: FAIL run.** - [ ] **Step 3: Implement component + page swap.** - [ ] **Step 4:** `npx vitest run src/features/ai-fabric` - PASS; if `RequestsPanel.test.tsx` asserts the table renders by default, update it to open the `raw-log` disclosure first and note it in the report; nothing else edited. - [ ] **Step 5: Commit** - `feat(ai-fabric): the request log becomes a deep dive - verdict, facets, outliers, log on demand`
+
+---
+
+### Task 3: estateFilters module + chips on Discover
+
+**Files:**
+- Create: `src/features/discover/estateFilters.ts`, `src/features/discover/EstateFilterChips.tsx`
+- Test: `src/features/discover/estateFilters.test.ts`
+- Modify: `src/features/discover/UnifiedDiscovery.tsx` (chips under the Tree/Map toggle; thread filters into tree + map; default rollup)
+- Modify: `src/features/discover/AttachmentMap.tsx` (accept optional filter, dim non-matching regions)
+- Test: `src/features/discover/UnifiedDiscovery.viewToggle.test.tsx` (append)
+
+**Interfaces:**
+- Consumes: `FabricModel`/`FabricRegion` from `../connect/FabricHero`; the tree's cloud grouping (UnifiedDiscovery's existing derivations).
+- Produces:
+  - `export interface EstateFilters { cloud: string | 'all'; path: 'private' | 'public' | 'all'; domain: 'network' | 'ai' | 'all' }`
+  - `export const EMPTY_ESTATE_FILTERS: EstateFilters`
+  - `export function regionMatches(r: FabricRegion, f: EstateFilters): boolean` - cloud matches `r.cloudId`; path matches `r.path`; domain: `'ai'` matches the AI/GPU clouds (`cw`, `neb` - the ids `providerName` special-cases), `'network'` matches the rest.
+  - `export function EstateFilterChips({ model, filters, onChange }: { model: FabricModel; filters: EstateFilters; onChange: (f: EstateFilters) => void })` - one chip per cloud present in the model (label = cloudName), plus `On the fabric`, `Public internet`, `Network`, `AI`; toggle semantics (click active → back to 'all'); active chips `aria-pressed="true"`; a `Clear filters` chip renders only when any filter is non-'all'; container `data-testid="estate-filter-chips"`.
+
+- [ ] **Step 1: Failing module test** - `regionMatches` truth table over the seeded model (a `cw` region matches domain 'ai' and not 'network'; path/cloud combinations AND together; EMPTY matches everything).
+
+```ts
+// src/features/discover/estateFilters.test.ts
+import { describe, it, expect } from 'vitest';
+import { CC } from '../../engine';
+import { regionMatches, EMPTY_ESTATE_FILTERS } from './estateFilters';
+import type { FabricModel } from '../connect/FabricHero';
+
+const model = CC.fabricModel() as FabricModel;
+
+describe('regionMatches', () => {
+  it('empty filters match every region', () => {
+    expect(model.regions.every(r => regionMatches(r, EMPTY_ESTATE_FILTERS))).toBe(true);
+  });
+  it('cloud, path and domain narrow conjunctively', () => {
+    const cw = model.regions.find(r => r.cloudId === 'cw')!;
+    expect(regionMatches(cw, { ...EMPTY_ESTATE_FILTERS, domain: 'ai' })).toBe(true);
+    expect(regionMatches(cw, { ...EMPTY_ESTATE_FILTERS, domain: 'network' })).toBe(false);
+    expect(regionMatches(cw, { ...EMPTY_ESTATE_FILTERS, cloud: 'aws' })).toBe(false);
+    expect(regionMatches(cw, { cloud: 'cw', path: cw.path, domain: 'ai' })).toBe(true);
+  });
+});
+```
+
+- [ ] **Step 2: FAIL run.** - [ ] **Step 3: Implement module + chips.**
+- [ ] **Step 4: Wire UnifiedDiscovery.** Add `const [estateFilters, setEstateFilters] = useState(EMPTY_ESTATE_FILTERS);` render `<EstateFilterChips>` directly under the Tree/Map toggle row; tree cloud groups and their regions/VPCs hide when no region of that cloud matches (`regionMatches` against the group's regions); the map gets `filters={estateFilters}`. Change the rollup default: `useState<ReadonlySet<string>>(new Set(['aws']))` at line 379 → `useState<ReadonlySet<string>>(new Set())`. In `AttachmentMap.tsx` accept optional `filters` and render non-matching region rows at `opacity 0.25` with their edges dashed-dimmed (do not remove them - the map keeps its geometry, filtering reads as focus). If a tree test asserts aws starts expanded, update only that assertion and report it.
+- [ ] **Step 5: Append the interaction test** to `UnifiedDiscovery.viewToggle.test.tsx` (file's existing render idiom): clicking the `Public internet` chip leaves only groups containing public regions visible and marks the chip pressed; clicking `Clear filters` restores all groups; the tree starts with zero expanded clouds (collapsed rollups).
+- [ ] **Step 6:** `npx vitest run src/features/discover src/features/tour src/__tests__/vocabulary.test.ts src/__tests__/no-horizontal-scroll.test.ts` - PASS. - [ ] **Step 7: Commit** - `feat(discover): the estate filters at the top - chips scope tree and map, rollups first`
+
+---
+
+### Task 4: Summary band on Discover
+
+**Files:**
+- Modify: `src/features/discover/UnifiedDiscovery.tsx` (the three stat sections compress into one band + disclosure)
+- Test: `src/features/discover/UnifiedDiscovery.test.tsx` (adjust only what the compression breaks)
+
+**Interfaces:** consumes the existing `domains` derivations (the tiles' values are already computed; the band re-uses the same numbers, no new data paths).
+
+- [ ] **Step 1:** Write the failing test in `UnifiedDiscovery.viewToggle.test.tsx`: a `data-testid="estate-summary-band"` renders exactly one row of tiles containing the headline figures (sites count, active on-ramps, clouds·regions, workloads, attached, exposed endpoints), and a `data-testid="estate-breakdown"` `<details>` contains the previous full sections (assert one known per-section label only appears inside it, e.g. 'ROUTES').
+- [ ] **Step 2: FAIL run.** - [ ] **Step 3: Implement**: the band is one flex row of the six headline tiles (reuse the existing tile markup at smaller width); wrap the current three `<section>` blocks in `<details data-testid="estate-breakdown"><summary>Show the breakdown</summary>...</details>`. Keep every existing testid and `data-tour="discover-estate"` anchor INSIDE the details (tour must still find it - if the tour spotlight needs the section visible, set the details `open` when `data-tour` is being targeted is out of scope; instead keep `data-tour="discover-estate"` on the summary band container so the tour highlights the visible band; verify `src/features/tour` suite and adapt which element carries the anchor, reporting the choice).
+- [ ] **Step 4:** `npx vitest run src/features/discover src/features/tour` - PASS. - [ ] **Step 5: Commit** - `feat(discover): one summary band - the breakdown on demand`
+
+---
+
+### Task 5: Verification
+
+- [ ] **Step 1:** `npx vitest run` - PASS. `npx playwright test` - PASS (tour + discover + andi + wizard specs all still green).
+- [ ] **Step 2:** Browser walkthrough (gate mode): /ai/observe opens with the deep dive (verdict, four facets, outliers); click a model facet → open the raw log → the table is filtered; click an outlier → drawer. /discover: rollups + chips; Public internet chip narrows tree and dims map; summary band + breakdown disclosure. Screenshots of both.
+- [ ] **Step 3:** Straggler fixes commit (skip if clean).
