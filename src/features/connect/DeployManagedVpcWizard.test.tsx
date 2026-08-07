@@ -44,4 +44,15 @@ describe('DeployManagedVpcWizard', () => {
     expect(screen.getByRole('dialog', { name: 'Deploy Managed VNET' })).toBeInTheDocument();
     expect(screen.getByText('Deploy Managed VNET')).toBeInTheDocument();
   });
+
+  it('draws the managed VPC as answers land: tier thickens the ribbon, CIDR labels the region', () => {
+    render(<DeployManagedVpcWizard lockedRegion={{ cloudId: 'aws', regionId: 'use1' }} onClose={() => {}} />);
+    expect(screen.getByTestId('wizard-canvas')).toBeInTheDocument();
+    // pick the 5 Gbps tier, advance - the edge thickens to the thick stroke
+    fireEvent.click(screen.getByRole('button', { name: /5 Gbps/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(Number(screen.getByTestId('wc-edge-right').getAttribute('stroke-width'))).toBe(4);
+    // the CIDR step previews the workload block on the region station
+    expect(screen.getByTestId('wc-right').textContent).toMatch(/10\./);
+  });
 });
