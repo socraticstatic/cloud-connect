@@ -1,3 +1,7 @@
+import { useCloudControl } from '../../engine/react/useCloudControl';
+import type { FabricModel } from '../connect/FabricHero';
+import { VerdictLine } from '../_shared/VerdictLine';
+import { discoverVerdict } from './verdict';
 import { UnifiedDiscovery } from './UnifiedDiscovery';
 import { StackPanel } from './StackPanel';
 import { AssessmentBanner } from '../assessment/AssessmentBanner';
@@ -13,8 +17,10 @@ import { AssessmentBanner } from '../assessment/AssessmentBanner';
  * one thing this layout is for: the page still starts where "Discover" is.
  */
 export function DiscoverPage() {
+  const model = useCloudControl(cc => cc.fabricModel()) as FabricModel;
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-8 space-y-4">
+      <VerdictLine>{discoverVerdict(model)}</VerdictLine>
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         {/* A div, not a <main>: App.tsx already owns the one main landmark
             (#main-content), and this column renders inside it. */}
