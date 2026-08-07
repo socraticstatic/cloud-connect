@@ -52,6 +52,7 @@ export function ConnectPage() {
   const [selected, setSelected] = useState<FabricSelection | null>({ kind: 'fabric' });
   const [wizardRegionId, setWizardRegionId] = useState<string | null>(null);
   const [justProvisioned, setJustProvisioned] = useState<string | null>(null);
+  const [fabricExpanded, setFabricExpanded] = useState(false);
 
   const selectedRegion =
     selected?.kind === 'region' ? model.regions.find(r => r.regionId === selected.id) ?? null : null;
@@ -85,6 +86,8 @@ export function ConnectPage() {
           selected={selected}
           onSelect={setSelected}
           justProvisioned={justProvisioned}
+          expanded={fabricExpanded}
+          onToggleExpand={() => setFabricExpanded(v => !v)}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">

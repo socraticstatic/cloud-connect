@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ProviderLogo } from '../../components/brand/ProviderLogo';
 import type { FabricRegion } from '../../engine/types';
+import { VIZ_HEX } from '../../components/viz/kit';
 
 /* ------------------------------------------------------------------ *
  * Cloud Fabric hero — the manipulable centerpiece of Connect.
@@ -41,25 +42,9 @@ export interface FabricModel {
 /* Flywheel hex applied as literal SVG attributes (the tailwind config only
  * extends text/bg/border with fw-*, so fill/stroke fw- classes compile to
  * nothing). Cobalt = private/on-fabric, green = dual/resilient, slate =
- * public. No amber anywhere. */
-/* These feed SVG stroke/fill attributes, where a Tailwind class cannot reach,
-   so raw values are correct here — but they must be the PALETTE's values.
-   `green` was #00a862, a second green that existed nowhere in the tokens and
-   competed with fw-success for the same meaning; the fabric lines the tour
-   tells you to "watch turn green" were a different green from every other
-   success signal on the screen. */
-const HEX = {
-  cobalt: '#0057b8',      // fw-ctaPrimary
-  cobaltSoft: '#7aa6d6',
-  green: '#2d7e24',       // fw-success
-  slate: '#94a3b8',
-  slateInk: '#475569',
-  ink: '#1d2329',
-  wash: '#f8fafb',
-  line: '#dcdfe3',
-  band: '#eef4fb',
-  bandStroke: '#c7ddf5',
-} as const;
+ * public. No amber anywhere. Values come from the shared VIZ_HEX kit palette
+ * — `green` is #2d7e24 (fw-success); the #00a862 duplicate that used to live
+ * here, competing with fw-success for the same meaning, is gone. */
 
 const VIEW_W = 1000;
 const ROW_H = 52;
@@ -72,6 +57,12 @@ const NODE_H = 44;
 const FABRIC_X = 404;
 const FABRIC_W = 92;
 const FABRIC_RIGHT = FABRIC_X + FABRIC_W;
+
+/** Expanded drill-down: the band grows leftward into the empty mid-stage;
+ *  FABRIC_RIGHT is fixed so no region edge moves. Wide enough (282 units)
+ *  that the two-line caption (~150–160 units at 10px) clears the on-ramp
+ *  label column starting at REGION_X's left neighbor. */
+const FABRIC_X_EXPANDED = 214;
 
 const REGION_X = 596;
 const REGION_W = 320;
@@ -125,17 +116,24 @@ export interface FabricLayout {
   }[];
   internet: { x: number; y: number; edge: { from: Pt; to: Pt } };
   arcs: { id: string; label: string; controlled: boolean; a: Pt; b: Pt; ctrl: Pt; regionIds: [string, string] }[];
+  internals?: {
+    sites: { id: string; label: string; y: number }[];
+    paths: { id: string; label: string; y: number; siteIdx: 0 | 1 }[];
+    caption: string;
+  };
 }
 
 /** Pure, deterministic layout — identical model in ⇒ identical geometry out. */
-export function computeFabricLayout(model: FabricModel): FabricLayout {
+export function computeFabricLayout(model: FabricModel, opts?: { expanded?: boolean }): FabricLayout {
   const rightCount = model.regions.length + 1; // regions + internet node
   const viewH = TOP_PAD * 2 + (rightCount - 1) * ROW_H;
   const bandTop = 28;
   const bandBottom = viewH - 28;
   const clampBand = (y: number) => Math.min(bandBottom - 10, Math.max(bandTop + 10, y));
 
-  const fabric = { x: FABRIC_X, y: bandTop, w: FABRIC_W, h: bandBottom - bandTop, cx: FABRIC_X + FABRIC_W / 2, cy: viewH / 2 };
+  const expanded = opts?.expanded ?? false;
+  const fx = expanded ? FABRIC_X_EXPANDED : FABRIC_X;
+  const fabric = { x: fx, y: bandTop, w: FABRIC_RIGHT - fx, h: bandBottom - bandTop, cx: fx + (FABRIC_RIGHT - fx) / 2, cy: viewH / 2 };
 
   // Sites: vertically centered stack.
   const siteGap = 92;
@@ -183,21 +181,62 @@ export function computeFabricLayout(model: FabricModel): FabricLayout {
     return { id: f.id, label: f.label, controlled: f.controlled, a, b, ctrl, regionIds: ends };
   }).filter(Boolean) as FabricLayout['arcs'];
 
-  return { viewW: VIEW_W, viewH, fabric, sites, regions, internet, arcs };
+  /* Drill-down internals: two diverse sites, two IPE paths each, on the
+     same axis. Site labels come from the model's first two sites when
+     present; the architecture facts are the product's (4 paths, 2 sites,
+     900ms BFD detection). */
+  let internals: FabricLayout['internals'];
+  if (expanded) {
+    const siteLabels = [
+      model.sites[0]?.label.split(' · ')[0] ?? 'Site A',
+      model.sites[1]?.label.split(' · ')[0] ?? 'Site B',
+    ];
+    const innerTop = fabric.y + 34;
+    const innerBottom = fabric.y + fabric.h - 26;
+    const half = (innerBottom - innerTop) / 2;
+    const siteY = (i: number) => innerTop + i * half + 10;
+    const pathY = (i: number) => {
+      const siteIdx = i < 2 ? 0 : 1;
+      return siteY(siteIdx) + 18 + (i % 2) * 16;
+    };
+    internals = {
+      sites: siteLabels.map((label, i) => ({ id: `fab-site-${i}`, label, y: siteY(i) })),
+      paths: [0, 1, 2, 3].map(i => ({
+        id: `fab-path-${i}`,
+        label: `MX-304 · path ${i + 1}`,
+        y: pathY(i),
+        siteIdx: (i < 2 ? 0 : 1) as 0 | 1,
+      })),
+      caption: '4 paths · 2 diverse sites · failover detect in 900ms (BFD)',
+    };
+  }
+
+  return { viewW: VIEW_W, viewH, fabric, sites, regions, internet, arcs, internals };
+}
+
+/** Splits a ' · '-joined caption into two display lines: the first two
+ *  segments on line 1, everything else on line 2. The data (caption string
+ *  in FabricLayout['internals']) stays a single line — this is presentation
+ *  only, generic over the segment count/content, not a hardcoded copy. */
+function splitCaptionLines(caption: string): [string, string] {
+  const segments = caption.split(' · ');
+  const line1 = segments.slice(0, 2).join(' · ');
+  const line2 = segments.slice(2).join(' · ');
+  return [line1, line2];
 }
 
 /* ----- edge stroke encoding: private vs public, single vs double ----- */
 function edgeStroke(path: 'private' | 'public'): { color: string; dash?: string } {
   return path === 'private'
-    ? { color: HEX.cobalt }
-    : { color: HEX.slate, dash: '5 5' };
+    ? { color: VIZ_HEX.cobalt }
+    : { color: VIZ_HEX.slate, dash: '5 5' };
 }
 
 function ReliabilityDot({ reliability }: { reliability: FabricRegion['reliability'] }) {
   const map = {
-    dual: { c: HEX.green, t: 'Dual · resilient' },
-    single: { c: HEX.cobalt, t: 'Single path' },
-    none: { c: HEX.slate, t: 'Not attached' },
+    dual: { c: VIZ_HEX.green, t: 'Dual · resilient' },
+    single: { c: VIZ_HEX.cobalt, t: 'Single path' },
+    none: { c: VIZ_HEX.slate, t: 'Not attached' },
   } as const;
   const m = map[reliability];
   return (
@@ -213,10 +252,12 @@ interface FabricHeroProps {
   selected?: FabricSelection | null;
   onSelect?: (sel: FabricSelection) => void;
   justProvisioned?: string | null;
+  expanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
-export function FabricHero({ model, selected = null, onSelect, justProvisioned = null }: FabricHeroProps) {
-  const layout = useMemo(() => computeFabricLayout(model), [model]);
+export function FabricHero({ model, selected = null, onSelect, justProvisioned = null, expanded = false, onToggleExpand }: FabricHeroProps) {
+  const layout = useMemo(() => computeFabricLayout(model, { expanded }), [model, expanded]);
   const [hover, setHover] = useState<string | null>(null);
   const [hoverInfo, setHoverInfo] = useState<{ x: number; y: number; region: FabricRegion } | null>(null);
 
@@ -241,20 +282,19 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
     <div
       data-tour="connect-onramp"
       data-testid="fabric-hero"
-      className="rounded-2xl border border-fw-secondary bg-fw-base overflow-x-auto"
+      className="rounded-2xl border border-fw-secondary bg-fw-base"
     >
       <svg
         viewBox={`0 0 ${layout.viewW} ${layout.viewH}`}
         width="100%"
         role="group"
         aria-label="Cloud fabric: sites to the AT&T fabric to cloud regions"
-        className="min-w-[720px]"
       >
         {/* ---- the unified AT&T Fabric band (a single shape, clickable) ---- */}
         <g>
           <rect
             x={layout.fabric.x} y={layout.fabric.y} width={layout.fabric.w} height={layout.fabric.h}
-            rx={18} fill={HEX.band} stroke={fabricFocus ? HEX.cobalt : HEX.bandStroke}
+            rx={18} fill={VIZ_HEX.band} stroke={fabricFocus ? VIZ_HEX.cobalt : VIZ_HEX.bandStroke}
             strokeWidth={fabricFocus ? 2.5 : 1.5}
           />
         </g>
@@ -269,7 +309,7 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
               <path
                 key={`se-${s.id}`} data-fabric-edge data-kind="site"
                 d={`M ${from.x} ${from.y} C ${from.x + 60} ${from.y}, ${to.x - 60} ${to.y}, ${to.x} ${to.y}`}
-                fill="none" stroke={HEX.cobaltSoft} strokeWidth={lit ? 2.5 : 1.5}
+                fill="none" stroke={VIZ_HEX.cobaltSoft} strokeWidth={lit ? 2.5 : 1.5}
                 strokeOpacity={focusId && !lit ? 0.35 : 0.9} strokeLinecap="round"
               />
             );
@@ -303,7 +343,7 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
                 {/* on-ramp product label — the edge detail-on-demand */}
                 {region.onrampIds.length > 0 && (
                   <text x={edge.mid.x} y={edge.mid.y} textAnchor="middle"
-                    fill={HEX.slateInk} stroke={HEX.wash} strokeWidth={3} paintOrder="stroke"
+                    fill={VIZ_HEX.slateInk} stroke={VIZ_HEX.wash} strokeWidth={3} paintOrder="stroke"
                     className="text-[10px] font-medium" style={{ opacity: focusId && !lit ? 0.4 : 1 }}>
                     {edge.onrampLabel}
                   </text>
@@ -317,7 +357,7 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
             const lit = fabricFocus || focusId === 'e-net';
             const d = `M ${e.from.x} ${e.from.y} C ${e.from.x + 60} ${e.from.y}, ${e.to.x - 60} ${e.to.y}, ${e.to.x} ${e.to.y}`;
             return (
-              <path data-fabric-edge data-kind="internet" d={d} fill="none" stroke={HEX.slate}
+              <path data-fabric-edge data-kind="internet" d={d} fill="none" stroke={VIZ_HEX.slate}
                 strokeWidth={lit ? 2.4 : 1.5} strokeOpacity={focusId && !lit ? 0.3 : 0.85}
                 strokeDasharray="5 5" strokeLinecap="round" />
             );
@@ -332,7 +372,7 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
               <path
                 key={`arc-${a.id}`} data-fabric-arc data-controlled={a.controlled}
                 d={`M ${a.a.x} ${a.a.y} Q ${a.ctrl.x} ${a.ctrl.y} ${a.b.x} ${a.b.y}`}
-                fill="none" stroke={a.controlled ? HEX.cobalt : HEX.slate}
+                fill="none" stroke={a.controlled ? VIZ_HEX.cobalt : VIZ_HEX.slate}
                 strokeWidth={lit ? 2.2 : 1.4} strokeOpacity={focusId && !lit ? 0.28 : 0.75}
                 strokeDasharray={a.controlled ? undefined : '4 5'} strokeLinecap="round"
               >
@@ -343,20 +383,65 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
         </g>
 
         {/* ---- fabric label (its own button) ---- */}
-        <foreignObject x={layout.fabric.x - 6} y={layout.fabric.cy - 30} width={layout.fabric.w + 12} height={60}>
+        <foreignObject
+          x={layout.fabric.x - 6}
+          y={expanded ? layout.fabric.y + 2 : layout.fabric.cy - 30}
+          width={layout.fabric.w + 12}
+          height={60}
+        >
           <button
             type="button"
             aria-pressed={selected?.kind === 'fabric'}
+            aria-expanded={expanded}
             data-testid="fabric-node-fabric"
-            onClick={() => select({ kind: 'fabric' })}
+            onClick={() => { select({ kind: 'fabric' }); onToggleExpand?.(); }}
             onMouseEnter={() => setHover('__fabric__')} onMouseLeave={() => setHover(null)}
             onFocus={() => setHover('__fabric__')} onBlur={() => setHover(null)}
             className="w-full h-full flex flex-col items-center justify-center rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-fw-link/50"
           >
             <span className="text-[11px] font-semibold leading-tight text-fw-link">AT&amp;T</span>
             <span className="text-[11px] font-semibold leading-tight text-fw-link">Fabric</span>
+            <span className="text-[10px] leading-tight text-fw-bodyLight">{expanded ? 'collapse' : 'see inside'}</span>
           </button>
         </foreignObject>
+
+        {/* ---- drill-down internals: sites and paths, same axis ---- */}
+        {layout.internals && (
+          <g data-testid="fabric-internals">
+            {layout.internals.sites.map(s => (
+              <text key={s.id} x={layout.fabric.x + 14} y={s.y} fill={VIZ_HEX.slateInk} className="text-[10px] font-semibold">
+                {s.label}
+              </text>
+            ))}
+            {layout.internals.paths.map(p => (
+              <g key={p.id}>
+                <line
+                  x1={layout.fabric.x + 14} y1={p.y} x2={FABRIC_RIGHT - 14} y2={p.y}
+                  stroke={VIZ_HEX.cobalt} strokeWidth={1.5} strokeOpacity={0.75} strokeLinecap="round"
+                />
+                <circle cx={layout.fabric.x + 14} cy={p.y} r={2.5} fill={VIZ_HEX.cobalt} />
+                <circle cx={FABRIC_RIGHT - 14} cy={p.y} r={2.5} fill={VIZ_HEX.cobalt} />
+                <text x={layout.fabric.x + 22} y={p.y - 4} fill={VIZ_HEX.slateInk} className="text-[9px]">
+                  {p.label}
+                </text>
+              </g>
+            ))}
+            {(() => {
+              const [line1, line2] = splitCaptionLines(layout.internals.caption);
+              const bandBottomY = layout.fabric.y + layout.fabric.h;
+              return (
+                <>
+                  <text x={layout.fabric.cx} y={bandBottomY - 22} textAnchor="middle" fill={VIZ_HEX.slateInk} className="text-[10px]">
+                    {line1}
+                  </text>
+                  <text x={layout.fabric.cx} y={bandBottomY - 10} textAnchor="middle" fill={VIZ_HEX.slateInk} className="text-[10px]">
+                    {line2}
+                  </text>
+                </>
+              );
+            })()}
+          </g>
+        )}
 
         {/* ---- site nodes ---- */}
         <g data-nodes-site>

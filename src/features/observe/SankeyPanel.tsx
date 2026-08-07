@@ -1,4 +1,5 @@
 import type { SankeyModel } from './sankeyModel';
+import { VIZ_HEX, ribbonPath } from '../../components/viz/kit';
 
 /* ------------------------------------------------------------------ *
  * The Flow tab's ribbon diagram, hand-rolled in the FabricHero idiom:
@@ -13,14 +14,6 @@ import type { SankeyModel } from './sankeyModel';
  * proportion; the sr-only list restates every ribbon for screen readers
  * (the records table below is the full data view).
  * ------------------------------------------------------------------ */
-
-const HEX = {
-  cobalt: '#0057b8',
-  slate: '#94a3b8',
-  slateInk: '#64748b',
-  ink: '#1d2329',
-  inkSoft: '#475569',
-} as const;
 
 const VIEW_W = 1000;
 const SRC_BAR_X = 212;
@@ -114,9 +107,9 @@ export function computeSankeyGeometry(model: SankeyModel): SankeyGeometry {
         fill:
           x.n.band === 'path'
             ? x.n.name === 'AT&T fabric'
-              ? HEX.cobalt
-              : HEX.slateInk
-            : HEX.slateInk,
+              ? VIZ_HEX.cobalt
+              : VIZ_HEX.slateMuted
+            : VIZ_HEX.slateMuted,
         pathKind: x.n.band === 'path' ? (x.n.name === 'AT&T fabric' ? 'private' : 'public') : undefined,
       });
       y += heights.get(x.i)! + NODE_GAP;
@@ -172,13 +165,11 @@ export function computeSankeyGeometry(model: SankeyModel): SankeyGeometry {
     const srcBand = model.nodes[l.source].band;
     const sx = (srcBand === 'source' ? SRC_BAR_X : MID_X) + BAR_W;
     const tx = model.nodes[l.target].band === 'path' ? MID_X : DEST_BAR_X;
-    const c1 = sx + (tx - sx) * 0.45;
-    const c2 = sx + (tx - sx) * 0.55;
     ribbons.push({
       key: tKey(l),
       label: `${model.nodes[l.source].name} → ${model.nodes[l.target].name} · ${r1(l.value)} Gbps`,
-      fill: l.pathKind === 'private' ? HEX.cobalt : HEX.slate,
-      d: `M ${sx} ${sy0} C ${c1} ${sy0} ${c2} ${ty0} ${tx} ${ty0} L ${tx} ${ty0 + tt} C ${c2} ${ty0 + tt} ${c1} ${sy0 + st} ${sx} ${sy0 + st} Z`,
+      fill: l.pathKind === 'private' ? VIZ_HEX.cobalt : VIZ_HEX.slate,
+      d: ribbonPath(sx, sy0, tx, ty0, st, tt),
     });
   });
 
@@ -198,16 +189,16 @@ function NodeLabel({ n }: { n: GNode }) {
   if (n.band === 'source') {
     return (
       <text x={SRC_BAR_X - 8} y={mid} dy="0.35em" textAnchor="end" fontSize={13}>
-        <tspan fill={HEX.ink} fontWeight={600}>{n.name}</tspan>
-        <tspan fill={HEX.inkSoft}>{` · ${value}`}</tspan>
+        <tspan fill={VIZ_HEX.ink} fontWeight={600}>{n.name}</tspan>
+        <tspan fill={VIZ_HEX.inkSoft}>{` · ${value}`}</tspan>
       </text>
     );
   }
   if (n.band === 'dest') {
     return (
       <text x={DEST_BAR_X + BAR_W + 8} y={mid} dy="0.35em" fontSize={13}>
-        <tspan fill={HEX.ink} fontWeight={600}>{n.name}</tspan>
-        <tspan fill={HEX.inkSoft}>{` · ${value}`}</tspan>
+        <tspan fill={VIZ_HEX.ink} fontWeight={600}>{n.name}</tspan>
+        <tspan fill={VIZ_HEX.inkSoft}>{` · ${value}`}</tspan>
       </text>
     );
   }
@@ -220,7 +211,7 @@ function NodeLabel({ n }: { n: GNode }) {
       textAnchor="middle"
       fontSize={13.5}
       fontWeight={700}
-      fill={n.pathKind === 'private' ? HEX.cobalt : HEX.inkSoft}
+      fill={n.pathKind === 'private' ? VIZ_HEX.cobalt : VIZ_HEX.inkSoft}
       stroke="#ffffff"
       strokeWidth={4}
       paintOrder="stroke"
@@ -239,15 +230,15 @@ export function SankeyPanel({ model }: { model: SankeyModel }) {
       <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">
         <p className="text-figma-base text-fw-heading">
           <span className="font-semibold">{g.publicGbps} of {total} Gbps</span> still rides the public
-          internet · <span className="font-semibold" style={{ color: HEX.cobalt }}>{g.privateGbps} Gbps</span> under
+          internet · <span className="font-semibold" style={{ color: VIZ_HEX.cobalt }}>{g.privateGbps} Gbps</span> under
           AT&amp;T control
         </p>
         <span className="flex items-center gap-3 text-[11px] text-fw-bodyLight">
           <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: HEX.cobalt }} /> AT&amp;T fabric
+            <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: VIZ_HEX.cobalt }} /> AT&amp;T fabric
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: HEX.slate }} /> public internet
+            <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: VIZ_HEX.slate }} /> public internet
           </span>
         </span>
       </div>

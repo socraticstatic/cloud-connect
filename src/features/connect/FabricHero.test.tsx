@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { CC } from '../../engine';
 import { FabricHero, computeFabricLayout, onrampShort } from './FabricHero';
+import type { FabricModel } from './FabricHero';
 
 describe('computeFabricLayout', () => {
   it('is deterministic — identical model in ⇒ identical geometry out', () => {
@@ -65,5 +67,28 @@ describe('FabricHero', () => {
       </MemoryRouter>
     );
     expect(container.querySelector('[data-tour="connect-onramp"]')).not.toBeNull();
+  });
+
+  it('clicking the fabric node expands the internals in place, clicking again collapses', () => {
+    const model = CC.fabricModel() as FabricModel;
+    function Harness() {
+      const [expanded, setExpanded] = useState(false);
+      return (
+        <MemoryRouter>
+          <FabricHero model={model} expanded={expanded} onToggleExpand={() => setExpanded(v => !v)} />
+        </MemoryRouter>
+      );
+    }
+    render(<Harness />);
+    expect(screen.queryByTestId('fabric-internals')).not.toBeInTheDocument();
+    expect(screen.getByTestId('fabric-node-fabric')).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(screen.getByTestId('fabric-node-fabric'));
+    expect(screen.getByTestId('fabric-internals')).toBeInTheDocument();
+    expect(screen.getByText('collapse')).toBeInTheDocument();
+    expect(screen.getByTestId('fabric-node-fabric')).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(screen.getByTestId('fabric-node-fabric'));
+    expect(screen.queryByTestId('fabric-internals')).not.toBeInTheDocument();
+    expect(screen.getByText('see inside')).toBeInTheDocument();
+    expect(screen.getByTestId('fabric-node-fabric')).toHaveAttribute('aria-expanded', 'false');
   });
 });

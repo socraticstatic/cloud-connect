@@ -1,6 +1,6 @@
-import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { AttIcon } from '../../components/icons/AttIcon';
 import { useCloudControlLive } from '../../engine/react/useCloudControl';
+import { CategoryBars } from '../../components/viz/kit';
 
 /**
  * The three decision outcomes, in project-palette colours.
@@ -84,26 +84,8 @@ export function GovernanceDecisions() {
           No requests traced yet — run a trace above to populate this view.
         </p>
       ) : (
-        <div style={{ width: '100%', height: 200 }} className="px-3 pb-4 pt-2">
-          <ResponsiveContainer width="100%" height={200} minWidth={300} minHeight={200}>
-            <BarChart data={data} margin={{ top: 4, right: 12, bottom: 4, left: 0 }}>
-              <CartesianGrid stroke="#f3f4f6" strokeWidth={1} vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#686e74' }} axisLine={false} tickLine={false} />
-              <YAxis
-                tick={{ fontSize: 10, fill: '#686e74' }}
-                axisLine={false}
-                tickLine={false}
-                width={32}
-                allowDecimals={false}
-              />
-              <Tooltip />
-              <Bar dataKey="count" name="Decisions" isAnimationActive={false}>
-                {data.map(d => (
-                  <Cell key={d.name} fill={d.color} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="px-5 pb-4 pt-2">
+          <CategoryBars ariaLabel="Decision counts" items={data.map(d => ({ label: d.name, value: d.count, color: d.color }))} />
         </div>
       )}
     </div>

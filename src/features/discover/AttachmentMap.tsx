@@ -32,10 +32,10 @@ export function AttachmentMap() {
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-start" data-testid="attachment-map">
-      <div className="min-w-0 flex-1 overflow-x-auto rounded-2xl border border-fw-secondary bg-fw-base p-3">
+      <div className="min-w-0 flex-1 rounded-2xl border border-fw-secondary bg-fw-base p-3">
         <svg
           viewBox={`0 0 ${layout.viewW} ${layout.viewH}`}
-          className="min-w-[860px]"
+          width="100%"
           role="group"
           aria-label="Attachment map: workloads and their paths to the AT&T network"
         >

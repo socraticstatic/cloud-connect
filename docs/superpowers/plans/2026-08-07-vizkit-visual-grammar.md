@@ -868,3 +868,79 @@ git commit -m "fix(vizkit): rendering fixes from browser verification"
 ```
 
 (Skip if the walkthrough was clean.)
+
+---
+
+### Task 7 (addendum, owner-directed 2026-08-07): No horizontal scrolls; Discover leads with the Tree/Map
+
+Direct requirements from Micah mid-execution: "NO HORIZONTAL SCROLLS. ON DISCOVER, TREE/MAP VIEW IS ON TOP."
+
+**Files:**
+- Modify: `src/features/connect/FabricHero.tsx:283-292` (wrapper div + svg className)
+- Modify: `src/features/discover/AttachmentMap.tsx:35-38` (wrapper div + svg className)
+- Modify: `src/features/discover/UnifiedDiscovery.tsx` (section order)
+- Create: `src/__tests__/no-horizontal-scroll.test.ts`
+- Test: extend `src/features/discover/UnifiedDiscovery.viewToggle.test.tsx`
+
+**Interfaces:**
+- Consumes: nothing new.
+- Produces: a standing guard test; no API changes.
+
+- [ ] **Step 1: Write the failing guard test**
+
+```ts
+// src/__tests__/no-horizontal-scroll.test.ts
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'fs';
+import { execSync } from 'child_process';
+
+/** Owner rule (2026-08-07): spine visuals scale to their container - they
+ *  never scroll sideways. SVGs with a viewBox already scale; a min-width
+ *  plus overflow-x-auto forces a horizontal scrollbar instead. */
+describe('no horizontal scroll on the spine', () => {
+  it('no overflow-x-auto in spine feature code', () => {
+    const files = execSync('git ls-files', { encoding: 'utf8' })
+      .split('\n')
+      .filter(f => /^src\/features\/(discover|connect|observe)\//.test(f) && /\.tsx$/.test(f) && !/\.test\.tsx$/.test(f));
+    const hits = files.filter(f => /overflow-x-auto/.test(readFileSync(f, 'utf8')));
+    expect(hits).toEqual([]);
+  });
+});
+```
+
+- [ ] **Step 2: Run it — expect FAIL naming FabricHero.tsx and AttachmentMap.tsx**
+
+Run: `npx vitest run src/__tests__/no-horizontal-scroll.test.ts`
+
+- [ ] **Step 3: Make the two visuals scale instead of scroll**
+
+- `FabricHero.tsx`: wrapper className `"rounded-2xl border border-fw-secondary bg-fw-base overflow-x-auto"` → `"rounded-2xl border border-fw-secondary bg-fw-base"`; svg className `"min-w-[720px]"` → removed entirely (the svg keeps `viewBox` + `width="100%"`, so it scales).
+- `AttachmentMap.tsx`: wrapper `"min-w-0 flex-1 overflow-x-auto rounded-2xl ..."` → `"min-w-0 flex-1 rounded-2xl ..."`; svg `className="min-w-[860px]"` → removed (verify the svg has a viewBox + width 100%; if it has fixed width/height attributes instead, convert them to a viewBox with width="100%").
+- Verify in the browser at 1280 and 1440 wide: neither visual shows a horizontal scrollbar; both remain legible (labels may shrink - acceptable; grotesque squash is not, report it if seen).
+
+- [ ] **Step 4: Reorder Discover — the tree/map leads**
+
+In `UnifiedDiscovery.tsx`, the render currently goes: FlowBar (~line 427) → stat-tile sections (Network / Cloud / AI workflows) → sites panel → tree controls (~line 525) → tree/map body (~548-727). Move the tree-controls + tree/map block (including the Tree/Map toggle and both `view === 'tree'` / `view === 'map'` branches) so it sits DIRECTLY after the FlowBar block; the stat sections and sites panel follow it. Do not change any block internally - this is a pure reorder. Keep every data-testid and tour anchor intact (check `src/features/tour/tourAnchors.test.tsx` still passes - tour anchors reference sections by testid, not position).
+
+Add to `UnifiedDiscovery.viewToggle.test.tsx`, following its existing render arrangement:
+
+```tsx
+  it('the tree/map view leads the page - toggle renders before the Network section', () => {
+    // render per this file's existing helper
+    const toggle = screen.getByRole('button', { name: 'Tree view' });
+    const network = screen.getByText('Network');
+    expect(toggle.compareDocumentPosition(network) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+```
+
+- [ ] **Step 5: Run the suites**
+
+Run: `npx vitest run src/__tests__/no-horizontal-scroll.test.ts src/features/discover src/features/connect src/features/tour`
+Expected: PASS. If a discover test asserts the old section order, update only that assertion and say so in the report.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/__tests__/no-horizontal-scroll.test.ts src/features/connect/FabricHero.tsx src/features/discover
+git commit -m "feat(spine): visuals scale, never scroll sideways - and Discover leads with the tree"
+```

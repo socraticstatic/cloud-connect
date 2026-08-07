@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Check, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useCloudControl, useCloudControlActions } from '../../engine/react/useCloudControl';
 import { ProviderLogo } from '../../components/brand/ProviderLogo';
+import { StationTrack } from '../../components/viz/kit';
 import { servingRamp } from '../discover/attachmentModel';
 import {
   WIZ_STEPS, type WizStep,
@@ -247,31 +248,16 @@ function ManagedVpcTracker({ record, cloudName, regionName, onClose }: ManagedVp
           </button>
         </div>
 
-        <div className="px-5 py-4 space-y-1">
-          {record.stages.map(s => {
-            const done = s.done;
-            const isCurrent = !done && s.key === record.stage;
-            return (
-              <div key={s.key} data-testid={`stage-${s.key}`} data-done={String(done)} className="flex items-center gap-2.5 py-1.5">
-                {done ? (
-                  <span className="inline-flex items-center justify-center h-5 w-5 shrink-0 rounded-full bg-fw-success text-white">
-                    <Check size={12} />
-                  </span>
-                ) : isCurrent ? (
-                  <span className="relative inline-flex h-2.5 w-2.5 shrink-0">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-fw-ctaPrimary opacity-60" />
-                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-fw-ctaPrimary" />
-                  </span>
-                ) : (
-                  <span className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-fw-neutral" />
-                )}
-                <div className="min-w-0">
-                  <div className={`text-figma-sm font-medium ${done || isCurrent ? 'text-fw-heading' : 'text-fw-bodyLight'}`}>{s.label}</div>
-                  <div className="text-[11px] text-fw-bodyLight">{s.detail}</div>
-                </div>
-              </div>
-            );
-          })}
+        <div className="px-5 py-4">
+          <StationTrack
+            ariaLabel="Bring-up progress"
+            stations={record.stages.map(s => ({
+              key: s.key,
+              label: s.label,
+              detail: s.detail,
+              state: s.done ? 'done' : s.key === record.stage ? 'current' : 'upcoming',
+            }))}
+          />
 
           <div className="mt-2 pt-2 border-t border-fw-secondary/60 space-y-1">
             <div className="text-figma-xs font-medium text-fw-body">Route exchange (BGP)</div>

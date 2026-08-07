@@ -26,4 +26,11 @@ describe('UnifiedDiscovery view toggle', () => {
     expect(screen.queryByTestId('attachment-map')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'CoreWeave' })).toBeInTheDocument();
   });
+
+  it('the tree/map view leads the page - toggle renders before the Network section', () => {
+    renderUD();
+    const toggle = screen.getByRole('button', { name: 'Tree view' });
+    const network = screen.getByText('Network');
+    expect(toggle.compareDocumentPosition(network) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });
