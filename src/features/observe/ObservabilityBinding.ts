@@ -19,6 +19,9 @@ export interface ObservabilityBinding {
   groupByOptions(): { id: string; label: string }[];
   records(groupBy: string): RecordRow[];
   briefing(): Briefing;
+  /** The one plain-English sentence this screen opens with. Optional: a
+   *  binding without verdict copy simply omits it and no line renders. */
+  verdict?: string;
   /** Markers for the time-machine scrubber. Optional: a binding whose window
    *  carries no engine-known moments simply omits it — the scrubber still
    *  works, markerless. */

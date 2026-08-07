@@ -4,6 +4,7 @@ import { ObservabilityShell } from './ObservabilityShell';
 import { networkBinding } from './networkBinding';
 import { EventStream } from './EventStream';
 import { PathTable } from '../connect/PathTable';
+import { VerdictLine } from '../_shared/VerdictLine';
 
 export function ObservePage() {
   const binding = useCloudControl(networkBinding);
@@ -13,7 +14,8 @@ export function ObservePage() {
   // (live engine feed) sits below.
   return (
     <div className="max-w-7xl mx-auto pb-8 space-y-4">
-      <div className="px-6 pt-6">
+      <div className="px-6 pt-6 space-y-3">
+        {binding.verdict && <VerdictLine>{binding.verdict}</VerdictLine>}
         <FlowBar cta={{ label: 'See the savings', to: '/naas/cost' }} />
       </div>
       <ObservabilityShell binding={binding} />

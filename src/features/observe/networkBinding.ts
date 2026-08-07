@@ -323,6 +323,20 @@ function buildBriefing(cc: CloudControl): Briefing {
   };
 }
 
+/** Phase-1 verdict: the screen's conclusion in one sentence, savings-first.
+ *  Every state returns a sentence - including the quiet fabric. */
+function buildVerdict(cc: CloudControl): string {
+  const rk = cc.routingKpis();
+  const eg = cc.egress();
+  if (!rk.totalGbps) return 'No traffic yet. The fabric is quiet.';
+  const publicPct = 100 - rk.pctUnderControl;
+  const saved = `${fmtDollars(eg.savings)}/mo`;
+  if (publicPct <= 0) {
+    return `All of your traffic rides the AT&T-controlled path, saving ${saved}.`;
+  }
+  return `${rk.pctUnderControl}% of your traffic rides the AT&T-controlled path, saving ${saved}. ${publicPct}% still crosses the public internet.`;
+}
+
 export function networkBinding(cc: CloudControl): ObservabilityBinding {
   return {
     layer: 'network',
@@ -334,6 +348,7 @@ export function networkBinding(cc: CloudControl): ObservabilityBinding {
     groupByOptions: () => GROUP_BY_OPTIONS,
     records: (groupBy: string) => buildRecords(cc, groupBy),
     briefing: () => buildBriefing(cc),
+    verdict: buildVerdict(cc),
     moments: () => cc.windowMoments(),
     sankey: () => buildSankey(cc),
   };
