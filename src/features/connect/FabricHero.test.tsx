@@ -81,11 +81,14 @@ describe('FabricHero', () => {
     }
     render(<Harness />);
     expect(screen.queryByTestId('fabric-internals')).not.toBeInTheDocument();
+    expect(screen.getByTestId('fabric-node-fabric')).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(screen.getByTestId('fabric-node-fabric'));
     expect(screen.getByTestId('fabric-internals')).toBeInTheDocument();
     expect(screen.getByText('collapse')).toBeInTheDocument();
+    expect(screen.getByTestId('fabric-node-fabric')).toHaveAttribute('aria-expanded', 'true');
     fireEvent.click(screen.getByTestId('fabric-node-fabric'));
     expect(screen.queryByTestId('fabric-internals')).not.toBeInTheDocument();
     expect(screen.getByText('see inside')).toBeInTheDocument();
+    expect(screen.getByTestId('fabric-node-fabric')).toHaveAttribute('aria-expanded', 'false');
   });
 });

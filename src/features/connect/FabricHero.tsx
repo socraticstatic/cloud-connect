@@ -59,8 +59,10 @@ const FABRIC_W = 92;
 const FABRIC_RIGHT = FABRIC_X + FABRIC_W;
 
 /** Expanded drill-down: the band grows leftward into the empty mid-stage;
- *  FABRIC_RIGHT is fixed so no region edge moves. */
-const FABRIC_X_EXPANDED = 254;
+ *  FABRIC_RIGHT is fixed so no region edge moves. Wide enough (282 units)
+ *  that the two-line caption (~150–160 units at 10px) clears the on-ramp
+ *  label column starting at REGION_X's left neighbor. */
+const FABRIC_X_EXPANDED = 214;
 
 const REGION_X = 596;
 const REGION_W = 320;
@@ -210,6 +212,17 @@ export function computeFabricLayout(model: FabricModel, opts?: { expanded?: bool
   }
 
   return { viewW: VIEW_W, viewH, fabric, sites, regions, internet, arcs, internals };
+}
+
+/** Splits a ' · '-joined caption into two display lines: the first two
+ *  segments on line 1, everything else on line 2. The data (caption string
+ *  in FabricLayout['internals']) stays a single line — this is presentation
+ *  only, generic over the segment count/content, not a hardcoded copy. */
+function splitCaptionLines(caption: string): [string, string] {
+  const segments = caption.split(' · ');
+  const line1 = segments.slice(0, 2).join(' · ');
+  const line2 = segments.slice(2).join(' · ');
+  return [line1, line2];
 }
 
 /* ----- edge stroke encoding: private vs public, single vs double ----- */
@@ -380,6 +393,7 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
           <button
             type="button"
             aria-pressed={selected?.kind === 'fabric'}
+            aria-expanded={expanded}
             data-testid="fabric-node-fabric"
             onClick={() => { select({ kind: 'fabric' }); onToggleExpand?.(); }}
             onMouseEnter={() => setHover('__fabric__')} onMouseLeave={() => setHover(null)}
@@ -413,9 +427,20 @@ export function FabricHero({ model, selected = null, onSelect, justProvisioned =
                 </text>
               </g>
             ))}
-            <text x={layout.fabric.cx} y={layout.fabric.y + layout.fabric.h - 10} textAnchor="middle" fill={VIZ_HEX.slateInk} className="text-[10px]">
-              {layout.internals.caption}
-            </text>
+            {(() => {
+              const [line1, line2] = splitCaptionLines(layout.internals.caption);
+              const bandBottomY = layout.fabric.y + layout.fabric.h;
+              return (
+                <>
+                  <text x={layout.fabric.cx} y={bandBottomY - 22} textAnchor="middle" fill={VIZ_HEX.slateInk} className="text-[10px]">
+                    {line1}
+                  </text>
+                  <text x={layout.fabric.cx} y={bandBottomY - 10} textAnchor="middle" fill={VIZ_HEX.slateInk} className="text-[10px]">
+                    {line2}
+                  </text>
+                </>
+              );
+            })()}
           </g>
         )}
 
