@@ -4,6 +4,8 @@ import { useCloudControl, useCloudControlActions } from '../../engine/react/useC
 import { ProviderLogo } from '../../components/brand/ProviderLogo';
 import { StationTrack } from '../../components/viz/kit';
 import { servingRamp } from '../discover/attachmentModel';
+import { WizardCanvas } from './WizardCanvas';
+import type { WizardCanvasSpec, RibbonThickness } from './wizardCanvasModel';
 import {
   WIZ_STEPS, type WizStep,
   eligibleRegions,
@@ -13,6 +15,14 @@ import {
   managedNoun,
 } from './managedVpcWizardModel';
 import type { ManagedVpc } from '../../engine/types';
+
+/** Tier id -> ribbon thickness. Keyed by TIERS[].id ('500M'/'1G'/'5G'), not
+ *  the display label, since that's what the wizard's `tier` state holds. */
+const TIER_THICKNESS: Record<(typeof TIERS)[number]['id'], RibbonThickness> = {
+  '500M': 'thin',
+  '1G': 'medium',
+  '5G': 'thick',
+};
 
 /* ------------------------------------------------------------------ *
  * Deploy Managed VPC wizard + live tracker (follows ProvisionWizard's
@@ -84,6 +94,26 @@ export function DeployManagedVpcWizard({ lockedRegion, onClose }: DeployManagedV
     actions.deployManagedVpc({ cloudId, regionId, tier, cidr });
   };
 
+  // The picture the answers are building. The on-ramp side is a constant
+  // ("AT&T on-ramp") until the wizard names one on deploy; the region side
+  // only appears once a region is picked (either from the region step, or
+  // pinned from the start via lockedRegion). The vSRX HA pair is always a
+  // dual edge, and the tier answer thickens it as soon as it's chosen.
+  const hasRegion = !!cloudId && !!regionId;
+  const pastTier = steps.indexOf('tier') < step;
+  const canvasSpec: WizardCanvasSpec = {
+    left: { label: 'AT&T on-ramp', sub: onrampName || undefined },
+    right: hasRegion
+      ? { label: regionName, sub: cidr || cloudName }
+      : null,
+    edgeLabel: 'Managed vSRX pair',
+    thickness: TIER_THICKNESS[tier] ?? 'medium',
+    dual: true,
+    edgeAnswered: pastTier,
+    leftAnswered: true,
+    rightAnswered: pastTier,
+  };
+
   return (
     <div
       role="dialog" aria-modal="true" aria-label={`Deploy ${managedNoun(cloudId)}`}
@@ -119,6 +149,10 @@ export function DeployManagedVpcWizard({ lockedRegion, onClose }: DeployManagedV
             </li>
           ))}
         </ol>
+
+        <div className="px-5 pt-3">
+          <WizardCanvas spec={canvasSpec} />
+        </div>
 
         <div className="px-5 py-4 min-h-[172px]">
           {current === 'region' && (

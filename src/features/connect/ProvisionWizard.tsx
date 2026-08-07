@@ -3,6 +3,8 @@ import { X, Check, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useCloudControlActions } from '../../engine/react/useCloudControl';
 import { ProviderLogo } from '../../components/brand/ProviderLogo';
 import { ATTACH_TYPES } from './attachCatalog';
+import { WizardCanvas } from './WizardCanvas';
+import type { WizardCanvasSpec } from './wizardCanvasModel';
 import type { FabricModel } from './FabricHero';
 import type { FabricRegion } from '../../engine/types';
 
@@ -49,6 +51,23 @@ export function ProvisionWizard({ region, model, onClose, onProvisioned }: Provi
     onClose();
   };
 
+  // The picture the answers are building. A question is "answered" once the
+  // user moves past its step; the current step's live selection previews as
+  // a ghost until then. The region is known from mount.
+  const chosenOnramp = onrampChoices.find(o => o.id === onrampId);
+  const canvasSpec: WizardCanvasSpec = {
+    left: chosenOnramp
+      ? { label: chosenOnramp.name, sub: chosenOnramp.site }
+      : { label: 'Nearest fabric PoP' },
+    right: { label: region.name, sub: region.cloudName },
+    edgeLabel: step > 0 ? attach.label : undefined,
+    thickness: 'medium',
+    dual: resilient && step > 2,
+    edgeAnswered: step > 0,
+    leftAnswered: step > 1,
+    rightAnswered: true,
+  };
+
   return (
     <div
       role="dialog" aria-modal="true" aria-label={`Provision ${region.cloudName} ${region.name}`}
@@ -82,6 +101,10 @@ export function ProvisionWizard({ region, model, onClose, onProvisioned }: Provi
             </li>
           ))}
         </ol>
+
+        <div className="px-5 pt-3">
+          <WizardCanvas spec={canvasSpec} />
+        </div>
 
         <div className="px-5 py-4 min-h-[172px]">
           {step === 0 && (
